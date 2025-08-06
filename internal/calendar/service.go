@@ -104,3 +104,31 @@ func (s *Service) ConvertToModel(event *calendar.Event) *models.CalendarEvent {
 
 	return modelEvent
 }
+
+// ConvertToModelWithDrive converts a calendar event to a model with drive file attachments populated
+func (s *Service) ConvertToModelWithDrive(event *calendar.Event, driveService DriveServiceInterface) *models.CalendarEvent {
+	modelEvent := s.ConvertToModel(event)
+	
+	if driveService != nil && event.Description != "" {
+		// Extract Google Docs file IDs from event description
+		if fileIDs, err := driveService.GetAttachmentsFromEvent(event.Description); err == nil {
+			for _, fileID := range fileIDs {
+				if metadata, err := driveService.GetFileMetadata(fileID); err == nil {
+					// Only include Google Docs
+					if driveService.IsGoogleDoc(metadata.MimeType) {
+						modelEvent.AttachedDocs = append(modelEvent.AttachedDocs, *metadata)
+					}
+				}
+			}
+		}
+	}
+	
+	return modelEvent
+}
+
+// DriveServiceInterface defines the interface for drive service operations needed by calendar
+type DriveServiceInterface interface {
+	GetAttachmentsFromEvent(eventDescription string) ([]string, error)
+	GetFileMetadata(fileID string) (*models.DriveFile, error)
+	IsGoogleDoc(mimeType string) bool
+}

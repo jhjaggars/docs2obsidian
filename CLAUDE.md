@@ -44,7 +44,7 @@ This is a Go CLI application that integrates Google Calendar and Google Drive wi
 ### Google API Integration
 - Calendar service wrapper in `internal/calendar/service.go`
 - Structured data models in `pkg/models/event.go` for type-safe API responses
-- Scopes: `calendar.CalendarReadonlyScope` and `drive.DriveMetadataReadonlyScope`
+- Scopes: `calendar.CalendarReadonlyScope` and `drive.DriveReadonlyScope`
 
 ### Key Dependencies
 - `github.com/spf13/cobra` - CLI framework

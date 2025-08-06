@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 
 	"docs2obsidian/internal/auth"
 	internalcalendar "docs2obsidian/internal/calendar"
+	"docs2obsidian/internal/drive"
 	"docs2obsidian/pkg/models"
 )
 
@@ -27,6 +30,7 @@ Examples:
   docs2obsidian calendar --start today            # Today only  
   docs2obsidian calendar --start 2025-01-01 --end 2025-01-31
   docs2obsidian calendar --include-details        # Show meeting URLs, attendees, etc.
+  docs2obsidian calendar --export-docs            # Export attached Google Docs to markdown
   docs2obsidian calendar --format json            # Output as JSON`,
 	RunE: runCalendarCommand,
 }
@@ -37,6 +41,8 @@ var (
 	maxResults     int64
 	outputFormat   string
 	includeDetails bool
+	exportDocs     bool
+	exportDir      string
 )
 
 func init() {
@@ -51,6 +57,8 @@ func init() {
 	calendarCmd.Flags().Int64Var(&maxResults, "limit", 100, "Maximum number of events to retrieve")
 	calendarCmd.Flags().StringVar(&outputFormat, "format", "table", "Output format (table, json)")
 	calendarCmd.Flags().BoolVar(&includeDetails, "include-details", false, "Include detailed meeting information (attendees, URLs, etc.)")
+	calendarCmd.Flags().BoolVar(&exportDocs, "export-docs", false, "Export attached Google Docs to markdown")
+	calendarCmd.Flags().StringVar(&exportDir, "export-dir", "./exported-docs", "Directory to export documents to")
 }
 
 // getBeginningOfWeek returns the start of the current week (Monday at 00:00:00)
@@ -164,6 +172,15 @@ func runCalendarCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create calendar service: %w", err)
 	}
 
+	// Create drive service if export is requested or details are included
+	var driveService *drive.Service
+	if exportDocs || includeDetails {
+		driveService, err = drive.NewService(client)
+		if err != nil {
+			return fmt.Errorf("failed to create drive service: %w", err)
+		}
+	}
+
 	// Get date range using smart defaults
 	start, end, err := getDateRange()
 	if err != nil {
@@ -177,13 +194,13 @@ func runCalendarCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Format and display results
-	return formatAndDisplayEvents(events, start, end, calendarService)
+	return formatAndDisplayEvents(events, start, end, calendarService, driveService)
 }
 
 // formatAndDisplayEvents formats and displays the calendar events
 // formatAndDisplayEvents formats and displays the calendar events
 // formatAndDisplayEvents formats and displays the calendar events
-func formatAndDisplayEvents(events []*calendar.Event, start, end time.Time, calendarService *internalcalendar.Service) error {
+func formatAndDisplayEvents(events []*calendar.Event, start, end time.Time, calendarService *internalcalendar.Service, driveService *drive.Service) error {
 	if len(events) == 0 {
 		fmt.Printf("No events found between %s and %s\n", 
 			start.Format("2006-01-02"), end.Format("2006-01-02"))
@@ -192,24 +209,38 @@ func formatAndDisplayEvents(events []*calendar.Event, start, end time.Time, cale
 
 	switch outputFormat {
 	case "json":
-		return displayEventsAsJSON(events, calendarService)
+		return displayEventsAsJSON(events, calendarService, driveService)
 	case "table":
 		fallthrough
 	default:
-		return displayEventsAsTable(events, start, end, calendarService)
+		return displayEventsAsTable(events, start, end, calendarService, driveService)
 	}
 }
 
 // displayEventsAsTable displays events in a human-readable table format
 // displayEventsAsTable displays events in a human-readable table format
 // displayEventsAsTable displays events in a human-readable table format
-func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calendarService *internalcalendar.Service) error {
+func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calendarService *internalcalendar.Service, driveService *drive.Service) error {
 	fmt.Printf("Events from %s to %s (%d events):\n\n", 
 		start.Format("2006-01-02"), end.Format("2006-01-02"), len(events))
 
+	// Create export directory if export is enabled
+	if exportDocs {
+		if err := os.MkdirAll(exportDir, 0755); err != nil {
+			return fmt.Errorf("failed to create export directory: %w", err)
+		}
+	}
+
+	var totalExported int
+
 	for _, event := range events {
-		// Convert to model for rich data access
-		modelEvent := calendarService.ConvertToModel(event)
+		// Convert to model for rich data access with drive integration
+		var modelEvent *models.CalendarEvent
+		if driveService != nil {
+			modelEvent = calendarService.ConvertToModelWithDrive(event, driveService)
+		} else {
+			modelEvent = calendarService.ConvertToModel(event)
+		}
 		
 		// Display event summary and time
 		eventTime := ""
@@ -251,21 +282,70 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 				}
 				fmt.Printf("  📝 %s\n", description)
 			}
+
+			// Show attached Google Docs
+			if len(modelEvent.AttachedDocs) > 0 {
+				fmt.Printf("  📄 Attached Docs:\n")
+				for _, doc := range modelEvent.AttachedDocs {
+					fmt.Printf("    - %s (%s)\n", doc.Name, doc.WebViewLink)
+				}
+			}
 		}
+
+		// Export docs if requested
+		if exportDocs && driveService != nil && event.Description != "" {
+			eventDir := filepath.Join(exportDir, sanitizeEventName(event.Summary))
+			exportedFiles, err := driveService.ExportAttachedDocsFromEvent(event.Description, eventDir)
+			if err != nil {
+				fmt.Printf("  ⚠️  Export error: %v\n", err)
+			} else if len(exportedFiles) > 0 {
+				fmt.Printf("  📁 Exported %d docs to: %s\n", len(exportedFiles), eventDir)
+				totalExported += len(exportedFiles)
+			}
+		}
+
 		fmt.Println()
+	}
+
+	if exportDocs && totalExported > 0 {
+		fmt.Printf("📦 Total exported: %d documents to %s\n", totalExported, exportDir)
 	}
 	
 	return nil
 }
 
+func sanitizeEventName(name string) string {
+	replacements := map[string]string{
+		"/": "-",
+		"\\": "-", 
+		":": "-",
+		"*": "",
+		"?": "",
+		"\"": "",
+		"<": "",
+		">": "",
+		"|": "-",
+	}
+	
+	for old, new := range replacements {
+		name = strings.ReplaceAll(name, old, new)
+	}
+	
+	return strings.TrimSpace(name)
+}
+
 // displayEventsAsJSON displays events in JSON format
 // displayEventsAsJSON displays events in JSON format
 // displayEventsAsJSON displays events in JSON format
-func displayEventsAsJSON(events []*calendar.Event, calendarService *internalcalendar.Service) error {
+func displayEventsAsJSON(events []*calendar.Event, calendarService *internalcalendar.Service, driveService *drive.Service) error {
 	// Convert to model events for rich data
 	modelEvents := make([]*models.CalendarEvent, len(events))
 	for i, event := range events {
-		modelEvents[i] = calendarService.ConvertToModel(event)
+		if driveService != nil {
+			modelEvents[i] = calendarService.ConvertToModelWithDrive(event, driveService)
+		} else {
+			modelEvents[i] = calendarService.ConvertToModel(event)
+		}
 	}
 	
 	jsonData, err := json.MarshalIndent(modelEvents, "", "  ")

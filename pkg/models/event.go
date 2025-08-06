@@ -11,6 +11,7 @@ type CalendarEvent struct {
 	Location    string
 	Attendees   []string
 	MeetingURL  string
+	AttachedDocs []DriveFile
 }
 
 type DriveFile struct {

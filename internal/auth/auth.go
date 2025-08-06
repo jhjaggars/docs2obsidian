@@ -42,7 +42,7 @@ func getOAuthConfig() (*oauth2.Config, error) {
 		return nil, fmt.Errorf("unable to read client secret file: %w", err)
 	}
 
-	oauthConfig, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope, drive.DriveMetadataReadonlyScope)
+	oauthConfig, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope, drive.DriveReadonlyScope)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse client secret file to config: %w", err)
 	}
@@ -53,12 +53,28 @@ func getOAuthConfig() (*oauth2.Config, error) {
 func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 	token, err := tokenFromFile()
 	if err != nil {
+		// No existing token, get new one
+		token, err = getTokenFromWeb(oauthConfig)
+		if err != nil {
+			return nil, err
+		}
+		saveToken(token)
+		return token, nil
+	}
+	
+	// Check if we have a valid access token or refresh token
+	// The OAuth2 client will automatically refresh if needed
+	if token.AccessToken == "" && token.RefreshToken == "" {
+		// Token is completely invalid, need to re-authorize
+		fmt.Println("Token is invalid. Re-authorization required.")
+		
 		token, err = getTokenFromWeb(oauthConfig)
 		if err != nil {
 			return nil, err
 		}
 		saveToken(token)
 	}
+	
 	return token, nil
 }
 
@@ -145,3 +161,4 @@ func saveToken(token *oauth2.Token) {
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
 }
+

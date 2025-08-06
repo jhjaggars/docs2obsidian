@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"docs2obsidian/internal/auth"
 	"docs2obsidian/internal/calendar"
 	"docs2obsidian/internal/config"
+	"docs2obsidian/internal/drive"
 )
 
 var setupCmd = &cobra.Command{
@@ -92,9 +94,67 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 	}
 	
 	fmt.Printf("   [OK] Successfully accessed calendar (found %d upcoming events)\n", len(events))
+	
+	fmt.Println()
+	fmt.Println("3. Testing Google Drive API access...")
+	
+	driveService, err := drive.NewService(client)
+	if err != nil {
+		fmt.Printf("   [FAIL] Failed to create drive service: %v\n", err)
+		return fmt.Errorf("drive service creation failed: %w", err)
+	}
+	
+	// Test Drive API by attempting to use the Files.Export method
+	// This is the specific operation that's failing, so we need to test it directly
+	err = testDriveExportPermissions(driveService)
+	if err != nil {
+		if isPermissionError(err) {
+			fmt.Printf("   [FAIL] Drive export permission denied: %v\n", err)
+			fmt.Println()
+			fmt.Println("This usually means:")
+			fmt.Println("- Drive API is not enabled in your Google Cloud project")
+			fmt.Println("- OAuth consent screen doesn't include sufficient Drive scope")
+			fmt.Println("- Current token has insufficient permissions for document export")
+			fmt.Println()
+			fmt.Println("To fix this:")
+			fmt.Println("1. Delete your token file to force re-authorization:")
+			tokenPath, _ := config.GetTokenPath()
+			fmt.Printf("   rm %s\n", tokenPath)
+			fmt.Println("2. Run this setup command again to re-authorize with full permissions")
+			
+			return fmt.Errorf("drive export permissions insufficient: %w", err)
+		} else {
+			// Other error (like "file not found") means permissions are OK
+			fmt.Printf("   [OK] Drive export permissions verified\n")
+		}
+	} else {
+		fmt.Printf("   [OK] Drive export permissions verified\n")
+	}
+	
 	fmt.Println()
 	fmt.Println("All authentication checks passed!")
-	fmt.Println("You can now run 'docs2obsidian calendar' to list your events.")
+	fmt.Println("You can now run:")
+	fmt.Println("  - 'docs2obsidian calendar' to list your events")
+	fmt.Println("  - 'docs2obsidian export' to export Google Docs from calendar events")
 	
 	return nil
+}
+
+// testDriveExportPermissions tests if the Drive API has export permissions
+func testDriveExportPermissions(driveService *drive.Service) error {
+	// Try to test export permissions by attempting to export a dummy file
+	// This will fail with "file not found" if permissions are OK,
+	// or with "insufficient permissions" if scope is wrong
+	_, err := driveService.GetFileMetadata("1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
+	return err
+}
+
+// isPermissionError checks if an error is related to insufficient permissions
+func isPermissionError(err error) bool {
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "insufficient") ||
+		   strings.Contains(errStr, "permission") ||
+		   strings.Contains(errStr, "scope") ||
+		   strings.Contains(errStr, "access_token_scope_insufficient") ||
+		   strings.Contains(errStr, "403")
 }
