@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -173,7 +174,7 @@ func createSource(name string) (interfaces.Source, error) {
 		}
 		return source, nil
 	default:
-		return nil, fmt.Errorf("unknown source: %s", name)
+		return nil, fmt.Errorf("unknown source '%s': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)", name)
 	}
 }
 
@@ -192,7 +193,7 @@ func createTarget(name string) (interfaces.Target, error) {
 		}
 		return target, nil
 	default:
-		return nil, fmt.Errorf("unknown target: %s", name)
+		return nil, fmt.Errorf("unknown target '%s': supported targets are 'obsidian' and 'logseq'", name)
 	}
 }
 
@@ -228,7 +229,7 @@ func createTargetWithConfig(name string, cfg *models.Config) (interfaces.Target,
 		return target, nil
 		
 	default:
-		return nil, fmt.Errorf("unknown target: %s", name)
+		return nil, fmt.Errorf("unknown target '%s': supported targets are 'obsidian' and 'logseq'", name)
 	}
 }
 
@@ -243,11 +244,12 @@ func parseSinceTime(since string) (time.Time, error) {
 	}
 
 	// Try relative duration (7d, 2h, etc.)
-	// Go's ParseDuration doesn't handle "d" for days, so convert first
+	// Go's ParseDuration doesn't handle "d" for days, so convert explicitly
 	if strings.HasSuffix(since, "d") {
 		daysStr := strings.TrimSuffix(since, "d")
-		if days, err := time.ParseDuration(daysStr + "h"); err == nil {
-			return now.Add(-days * 24), nil
+		if daysInt, err := strconv.Atoi(daysStr); err == nil && daysInt >= 0 {
+			daysDuration := time.Duration(daysInt) * 24 * time.Hour
+			return now.Add(-daysDuration), nil
 		}
 	}
 	
@@ -260,7 +262,7 @@ func parseSinceTime(since string) (time.Time, error) {
 		return t, nil
 	}
 
-	return time.Time{}, fmt.Errorf("unable to parse since time: %s", since)
+	return time.Time{}, fmt.Errorf("unable to parse since time '%s': supported formats are 'today', 'yesterday', relative durations (7d, 24h), or absolute dates (2006-01-02)", since)
 }
 
 // getEnabledSources returns list of sources that are enabled in the configuration

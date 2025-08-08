@@ -275,6 +275,10 @@ func TestParseSinceTime_InvalidInputs(t *testing.T) {
 		"7days", // Should be "7d"
 		"1week",
 		"abc",
+		"-1d",    // Negative days should be invalid
+		"-5d",    // Negative days should be invalid
+		"d",      // Missing number
+		"3.5d",   // Float days should be invalid
 	}
 
 	for _, input := range testCases {
@@ -282,6 +286,35 @@ func TestParseSinceTime_InvalidInputs(t *testing.T) {
 			_, err := parseSinceTime(input)
 			if err == nil {
 				t.Errorf("Expected %s to fail parsing, but it succeeded", input)
+			}
+		})
+	}
+}
+
+func TestParseSinceTime_EdgeCases(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected bool
+		desc     string
+	}{
+		{"0d", true, "zero days should be valid"},
+		{"365d", true, "large number of days should be valid"},
+		{"1000d", true, "very large number of days should be valid"},
+		{"24h", true, "24 hours should equal 1 day"},
+		{"168h", true, "168 hours should equal 7 days"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input+"_"+tc.desc, func(t *testing.T) {
+			result, err := parseSinceTime(tc.input)
+			if tc.expected && err != nil {
+				t.Errorf("Expected %s to parse successfully (%s), got error: %v", tc.input, tc.desc, err)
+			}
+			if tc.expected && result.IsZero() {
+				t.Errorf("Expected %s to return valid time (%s), got zero time", tc.input, tc.desc)
+			}
+			if !tc.expected && err == nil {
+				t.Errorf("Expected %s to fail parsing (%s), but it succeeded", tc.input, tc.desc)
 			}
 		})
 	}
@@ -304,7 +337,7 @@ func TestCreateSource_Unknown(t *testing.T) {
 		t.Error("Expected error for unknown source")
 	}
 
-	expectedError := "unknown source: unknown"
+	expectedError := "unknown source 'unknown': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error message %q, got %q", expectedError, err.Error())
 	}
@@ -351,7 +384,7 @@ func TestCreateTarget_Unknown(t *testing.T) {
 		t.Error("Expected error for unknown target")
 	}
 
-	expectedError := "unknown target: unknown"
+	expectedError := "unknown target 'unknown': supported targets are 'obsidian' and 'logseq'"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error message %q, got %q", expectedError, err.Error())
 	}

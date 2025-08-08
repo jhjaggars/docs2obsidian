@@ -207,6 +207,32 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 		} else if !sourceConfig.Enabled {
 			fmt.Printf("❌ Source '%s' is listed as enabled but marked disabled\n", sourceName)
 			return fmt.Errorf("invalid configuration")
+		} else {
+			// Source-specific validation
+			if sourceConfig.Type == "" {
+				fmt.Printf("❌ Source '%s' has no type specified\n", sourceName)
+				return fmt.Errorf("invalid configuration")
+			}
+			if sourceConfig.Priority < 1 {
+				fmt.Printf("❌ Source '%s' has invalid priority %d (must be >= 1)\n", sourceName, sourceConfig.Priority)
+				return fmt.Errorf("invalid configuration")
+			}
+		}
+	}
+
+	// Validate output directory is writable
+	if cfg.Sync.DefaultOutputDir != "" {
+		if err := validateOutputDirectory(cfg.Sync.DefaultOutputDir); err != nil {
+			fmt.Printf("❌ Default output directory '%s' is not writable: %v\n", cfg.Sync.DefaultOutputDir, err)
+			return fmt.Errorf("invalid configuration")
+		}
+	}
+
+	// Validate time duration settings
+	if cfg.Sync.DefaultSince != "" {
+		if _, err := parseSinceTime(cfg.Sync.DefaultSince); err != nil {
+			fmt.Printf("❌ Invalid default_since time '%s': %v\n", cfg.Sync.DefaultSince, err)
+			return fmt.Errorf("invalid configuration")
 		}
 	}
 
@@ -287,4 +313,27 @@ func getEnabledSourcesForValidation(cfg *models.Config) []string {
 	}
 	
 	return enabledSources
+}
+
+// validateOutputDirectory checks if a directory path is writable
+func validateOutputDirectory(dir string) error {
+	// First check if directory exists or can be created
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("cannot create directory: %w", err)
+	}
+
+	// Try to create a temporary file to test write permissions
+	tempFile := filepath.Join(dir, ".pkm-sync-write-test")
+	file, err := os.Create(tempFile)
+	if err != nil {
+		return fmt.Errorf("no write permission: %w", err)
+	}
+	file.Close()
+	
+	// Clean up the test file
+	if err := os.Remove(tempFile); err != nil {
+		// Not critical if we can't remove it
+	}
+	
+	return nil
 }
