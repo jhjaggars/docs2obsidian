@@ -15,11 +15,19 @@ go build -o pkm-sync ./cmd
 
 ### Basic Usage
 ```bash
-# Sync Google Calendar to Obsidian (default)
+# Quick start with configuration file (recommended)
+pkm-sync config init                    # Create default config
+pkm-sync sync                           # Sync using config defaults
+
+# Manual sync with flags (classic approach)
 pkm-sync sync --source google --target obsidian --output ./vault
 
+# Multi-source sync (with configuration)
+pkm-sync config init --source slack    # Enable additional sources
+pkm-sync sync                           # Syncs from all enabled sources
+
 # Sync to Logseq  
-pkm-sync sync --source google --target logseq --output ./graph
+pkm-sync sync --target logseq --output ./graph
 
 # Legacy commands still work
 pkm-sync calendar  # equivalent to sync with obsidian target
@@ -35,14 +43,21 @@ Same OAuth setup as docs2obsidian - place `credentials.json` in:
 ## Supported Integrations
 
 ### Sources
-- ✅ Google Calendar + Drive
-- 📋 GMail (planned)
-- 📋 Jira (planned)
-- 📋 Slack (planned)
+- ✅ **Google Calendar + Drive** - Fully implemented
+- 📋 **Slack** - Configuration ready, implementation pending
+- 📋 **Gmail** - Configuration ready, implementation pending  
+- 📋 **Jira** - Configuration ready, implementation pending
 
 ### Targets  
-- ✅ Obsidian
-- ✅ Logseq
+- ✅ **Obsidian** - YAML frontmatter, hierarchical structure
+- ✅ **Logseq** - Property blocks, flat structure
+
+### Multi-Source Features
+- ✅ **Simultaneous sync** from multiple sources
+- ✅ **Source-specific tags** for data provenance
+- ✅ **Priority-based sync order** (configurable)
+- ✅ **Individual source scheduling** (different intervals)
+- ✅ **Graceful error handling** (continues if one source fails)
 
 ## Migration from docs2obsidian
 
@@ -60,19 +75,52 @@ pkm-sync sync --target logseq
 
 ## Examples
 
-### Sync last week's calendar to Logseq
+### Multi-Source Sync Examples
 ```bash
+# Sync from all enabled sources (Google + Slack + Gmail) to Obsidian
+pkm-sync config init --source google --source slack
+pkm-sync sync
+
+# This will output: "Syncing from sources [google, slack] to obsidian"
+```
+
+### Single Source Examples  
+```bash
+# Sync last week's calendar to Logseq
 pkm-sync sync --source google --target logseq --since 7d --output ~/Documents/Logseq
-```
 
-### Dry run to see what would be synced
-```bash
+# Dry run to see what would be synced from all enabled sources
+pkm-sync sync --dry-run
+
+# Dry run for specific source only
 pkm-sync sync --source google --target obsidian --dry-run
+
+# Custom output location
+pkm-sync sync --output ~/MyVault/Calendar
 ```
 
-### Custom output location
+### Configuration-First Workflow
 ```bash
-pkm-sync sync --source google --target obsidian --output ~/MyVault/Calendar
+# Global configuration (persistent across all projects)
+pkm-sync config init --target obsidian --output ~/MyVault
+pkm-sync config show    # Verify settings
+
+# OR: Local repository configuration (project-specific)
+cat > config.yaml << EOF
+sync:
+  enabled_sources: ["google"]
+  default_target: obsidian
+  default_output_dir: ./vault
+targets:
+  obsidian:
+    type: obsidian
+    obsidian:
+      default_folder: Calendar
+EOF
+
+# Then just sync without flags
+pkm-sync sync           # Uses your configured defaults
+pkm-sync sync --since today  # Override just the time range
 ```
 
 ## Authentication Setup
@@ -118,25 +166,87 @@ This application uses OAuth 2.0 for Google API authentication:
 
 The application will guide you through the OAuth flow on first run and save your authorization token in the same config directory.
 
+## Configuration
+
+pkm-sync supports comprehensive configuration through YAML files. See **[CONFIGURATION.md](./CONFIGURATION.md)** for complete configuration documentation.
+
+### Quick Start
+```bash
+# Create default config file
+pkm-sync config init
+
+# View current configuration
+pkm-sync config show
+
+# Edit configuration
+pkm-sync config edit
+
+# Validate configuration
+pkm-sync config validate
+```
+
+### Configuration Files
+pkm-sync looks for configuration files in this order:
+1. Custom directory (`--config-dir` flag)
+2. **Global config**: `~/.config/pkm-sync/config.yaml`
+3. **Local repository**: `./config.yaml` (current directory)
+
+### Example Configuration
+```yaml
+sync:
+  enabled_sources: ["google"]
+  default_target: obsidian
+  default_output_dir: ./vault
+
+sources:
+  google:
+    enabled: true
+    type: google
+    google:
+      calendar_id: primary
+      download_docs: true
+
+targets:
+  obsidian:
+    type: obsidian
+    obsidian:
+      default_folder: Calendar
+      include_frontmatter: true
+```
+
+For complete configuration options including all sources (Google, Slack, Gmail, Jira), targets (Obsidian, Logseq), and advanced settings, see **[CONFIGURATION.md](./CONFIGURATION.md)**.
+
 ## Command Reference
 
-### New Sync Command
+### Sync Command (with Multi-Source Support)
 ```bash
-# General syntax
-pkm-sync sync [flags]
+# Use config defaults - syncs from ALL enabled sources
+pkm-sync sync
 
-# Available flags
---source string     Data source (google) (default "google")
---target string     PKM target (obsidian, logseq) (default "obsidian")
---output string     Output directory (default "./exported")  
---since string      Sync items since (7d, 2006-01-02, today) (default "7d")
---dry-run          Show what would be synced without making changes
+# Override to sync from specific source only
+pkm-sync sync --source google
+
+# Override other settings
+pkm-sync sync --target logseq --since today
+pkm-sync sync --output ./custom-output --dry-run
+
+# Multi-source example output:
+# "Syncing from sources [google, slack] to obsidian"
 
 # Time formats for --since
 --since today      # Today only
 --since 7d         # Last 7 days  
 --since 2025-01-01 # Specific date
 --since 24h        # Last 24 hours
+```
+
+### Configuration Commands
+```bash
+pkm-sync config init                    # Create default config
+pkm-sync config show                    # Show current config
+pkm-sync config path                    # Show config file location
+pkm-sync config edit                    # Open config in editor
+pkm-sync config validate               # Validate configuration
 ```
 
 ### Legacy Commands (Still Supported)
@@ -222,12 +332,8 @@ The new architecture makes it easy to add:
 - **New Targets**: Implement the `Target` interface  
 - **Custom Sync Logic**: Implement the `Syncer` interface
 
-## Future Plans
+## Documentation
 
-- GMail integration
-- Slack integration  
-- Jira integration
-- Real-time sync with webhooks
-- Configuration file support
-- Template customization
-- Automated scheduling
+- **[README.md](./README.md)** - Main documentation and quick start guide
+- **[CONFIGURATION.md](./CONFIGURATION.md)** - Complete configuration reference
+- **[CLAUDE.md](./CLAUDE.md)** - Development guide for Claude Code

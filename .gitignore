@@ -73,3 +73,6 @@ config/
 # Exported files
 exported/
 exported-docs/
+
+# Local testing output directories
+test-output/
