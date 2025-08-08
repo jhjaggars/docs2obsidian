@@ -50,10 +50,7 @@ func init() {
 	
 	// Add flags for date range and options
 	calendarCmd.Flags().StringVar(&startDate, "start", "", "Start date (defaults to beginning of current week)")
-	calendarCmd.Flags().StringVar(&startDate, "start-date", "", "Start date (defaults to beginning of current week)")
 	calendarCmd.Flags().StringVar(&endDate, "end", "", "End date (defaults to end of today)")
-	calendarCmd.Flags().StringVar(&endDate, "end-date", "", "End date (defaults to end of today)")
-	calendarCmd.Flags().Int64Var(&maxResults, "max-results", 100, "Maximum number of events to retrieve")
 	calendarCmd.Flags().Int64Var(&maxResults, "limit", 100, "Maximum number of events to retrieve")
 	calendarCmd.Flags().StringVar(&outputFormat, "format", "table", "Output format (table, json)")
 	calendarCmd.Flags().BoolVar(&includeDetails, "include-details", false, "Include detailed meeting information (attendees, URLs, etc.)")
