@@ -180,44 +180,10 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Basic validation
-	if cfg.Sync.DefaultTarget == "" {
-		fmt.Println("❌ Default target not specified")
-		return fmt.Errorf("invalid configuration")
-	}
-
-	// Check if default target exists
-	if _, exists := cfg.Targets[cfg.Sync.DefaultTarget]; !exists {
-		fmt.Printf("❌ Default target '%s' not configured\n", cfg.Sync.DefaultTarget)
-		return fmt.Errorf("invalid configuration")
-	}
-
-	// Validate enabled sources
-	enabledSources := getEnabledSourcesForValidation(cfg)
-	if len(enabledSources) == 0 {
-		fmt.Println("❌ No sources are enabled")
-		return fmt.Errorf("invalid configuration")
-	}
-
-	// Check if all enabled sources exist and are configured
-	for _, sourceName := range enabledSources {
-		if sourceConfig, exists := cfg.Sources[sourceName]; !exists {
-			fmt.Printf("❌ Enabled source '%s' not configured\n", sourceName)
-			return fmt.Errorf("invalid configuration")
-		} else if !sourceConfig.Enabled {
-			fmt.Printf("❌ Source '%s' is listed as enabled but marked disabled\n", sourceName)
-			return fmt.Errorf("invalid configuration")
-		} else {
-			// Source-specific validation
-			if sourceConfig.Type == "" {
-				fmt.Printf("❌ Source '%s' has no type specified\n", sourceName)
-				return fmt.Errorf("invalid configuration")
-			}
-			if sourceConfig.Priority < 1 {
-				fmt.Printf("❌ Source '%s' has invalid priority %d (must be >= 1)\n", sourceName, sourceConfig.Priority)
-				return fmt.Errorf("invalid configuration")
-			}
-		}
+	// Use comprehensive validation
+	if err := config.ValidateConfig(cfg); err != nil {
+		fmt.Printf("❌ Configuration validation failed: %v\n", err)
+		return err
 	}
 
 	// Validate output directory is writable
@@ -228,13 +194,8 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Validate time duration settings
-	if cfg.Sync.DefaultSince != "" {
-		if _, err := parseSinceTime(cfg.Sync.DefaultSince); err != nil {
-			fmt.Printf("❌ Invalid default_since time '%s': %v\n", cfg.Sync.DefaultSince, err)
-			return fmt.Errorf("invalid configuration")
-		}
-	}
+	// Get enabled sources for summary
+	enabledSources := getEnabledSourcesForValidation(cfg)
 
 	fmt.Println("✅ Configuration is valid")
 	fmt.Printf("   Enabled sources: [%s]\n", strings.Join(enabledSources, ", "))

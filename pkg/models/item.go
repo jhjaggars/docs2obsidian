@@ -23,12 +23,21 @@ type Attachment struct {
 	MimeType  string `json:"mime_type"`
 	URL       string `json:"url"`
 	LocalPath string `json:"local_path,omitempty"`
+	Data      string `json:"data,omitempty"`      // Base64 encoded attachment data
+	Size      int64  `json:"size,omitempty"`      // Size in bytes
 }
 
 type Link struct {
 	URL   string `json:"url"`
 	Title string `json:"title"`
 	Type  string `json:"type"` // "meeting_url", "document", "external"
+}
+
+// FromGmailMessage creates an Item from a Gmail message (implemented in converter)
+// This is a placeholder - actual implementation is in internal/sources/google/gmail/converter.go
+func FromGmailMessage(msg interface{}, config interface{}) (*Item, error) {
+	// Implementation is in internal/sources/google/gmail/converter.go to avoid import cycles
+	panic("Use gmail.FromGmailMessage instead")
 }
 
 // Migrate from existing CalendarEvent model

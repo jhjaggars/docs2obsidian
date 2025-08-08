@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -18,11 +19,12 @@ import (
 )
 
 var (
-	sourceName     string
-	targetName     string
-	outputDir      string
-	since          string
-	dryRun         bool
+	sourceName       string
+	targetName       string
+	outputDir        string
+	since            string
+	dryRun           bool
+	limit            int
 	syncOutputFormat string
 )
 
@@ -47,6 +49,7 @@ func init() {
 	syncCmd.Flags().StringVarP(&outputDir, "output", "o", "", "Output directory")
 	syncCmd.Flags().StringVar(&since, "since", "", "Sync items since (7d, 2006-01-02, today)")
 	syncCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be synced without making changes")
+	syncCmd.Flags().IntVar(&limit, "limit", 1000, "Maximum number of items to fetch (default: 1000)")
 	syncCmd.Flags().StringVar(&syncOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
 }
 
@@ -99,8 +102,10 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create target: %w", err)
 	}
 
-	// Collect items from all enabled sources
+	// Collect all items from all sources for unified processing
 	var allItems []*models.Item
+	
+	// Process each source independently to support per-source customization
 	for _, srcName := range sourcesToSync {
 		// Get source-specific config
 		sourceConfig, exists := cfg.Sources[srcName]
@@ -114,8 +119,8 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Create source
-		source, err := createSourceWithConfig(srcName, cfg)
+		// Create source with config
+		source, err := createSourceWithConfig(srcName, sourceConfig)
 		if err != nil {
 			fmt.Printf("Warning: failed to create source '%s': %v, skipping\n", srcName, err)
 			continue
@@ -161,6 +166,8 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("Found %d items from %s\n", len(items), srcName)
+		
+		// Add items to the collection
 		allItems = append(allItems, items...)
 	}
 
@@ -205,46 +212,22 @@ func createSource(name string) (interfaces.Source, error) {
 	}
 }
 
-func createSourceWithConfig(name string, cfg *models.Config) (interfaces.Source, error) {
-	switch name {
+func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig) (interfaces.Source, error) {
+	switch sourceConfig.Type {
 	case "google":
-		source := google.NewGoogleSource()
-		
-		// Apply configuration
-		configMap := make(map[string]interface{})
-		if sourceConfig, exists := cfg.Sources[name]; exists {
-			// Pass Google-specific configuration
-			if sourceConfig.Google.AttendeeAllowList != nil {
-				// Ensure we pass []string instead of []interface{} to avoid runtime panics
-				// Also validate email format
-				allowList := make([]string, 0, len(sourceConfig.Google.AttendeeAllowList))
-				for _, email := range sourceConfig.Google.AttendeeAllowList {
-					email = strings.TrimSpace(email)
-					if email != "" {
-						if !strings.Contains(email, "@") {
-							fmt.Printf("Warning: attendee_allow_list contains invalid email '%s', skipping\n", email)
-							continue
-						}
-						allowList = append(allowList, email)
-					}
-				}
-				if len(allowList) > 0 {
-					configMap["attendee_allow_list"] = allowList
-				}
-			}
-			configMap["require_multiple_attendees"] = sourceConfig.Google.RequireMultipleAttendees
-			configMap["include_self_only_events"] = sourceConfig.Google.IncludeSelfOnlyEvents
-			if sourceConfig.Google.MaxResults > 0 {
-				configMap["max_results"] = sourceConfig.Google.MaxResults
-			}
+		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
+		if err := source.Configure(nil); err != nil {
+			return nil, err
 		}
-		
-		if err := source.Configure(configMap); err != nil {
+		return source, nil
+	case "gmail":
+		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
+		if err := source.Configure(nil); err != nil {
 			return nil, err
 		}
 		return source, nil
 	default:
-		return nil, fmt.Errorf("unknown source '%s': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)", name)
+		return nil, fmt.Errorf("unknown source type '%s': supported types are 'google', 'gmail' (others like slack, jira are planned for future releases)", sourceConfig.Type)
 	}
 }
 
@@ -357,6 +340,14 @@ func getEnabledSources(cfg *models.Config) []string {
 	}
 	
 	return enabledSources
+}
+
+// getSourceOutputDirectory calculates the output directory for a source based on configuration
+func getSourceOutputDirectory(baseOutputDir string, sourceConfig models.SourceConfig) string {
+	if sourceConfig.OutputSubdir != "" {
+		return filepath.Join(baseOutputDir, sourceConfig.OutputSubdir)
+	}
+	return baseOutputDir
 }
 
 // DryRunOutput represents the complete output structure for JSON format

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/gmail/v1"
 
 	"pkm-sync/internal/config"
 )
@@ -42,7 +43,7 @@ func getOAuthConfig() (*oauth2.Config, error) {
 		return nil, fmt.Errorf("unable to read client secret file: %w", err)
 	}
 
-	oauthConfig, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope, drive.DriveReadonlyScope)
+	oauthConfig, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope, drive.DriveReadonlyScope, gmail.GmailReadonlyScope)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse client secret file to config: %w", err)
 	}
