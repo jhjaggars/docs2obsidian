@@ -36,6 +36,7 @@ func (o *ObsidianTarget) Configure(config map[string]interface{}) error {
 	if format, ok := config["daily_notes_format"].(string); ok {
 		o.dailyNotesFormat = format
 	}
+
 	return nil
 }
 
@@ -45,6 +46,7 @@ func (o *ObsidianTarget) Export(items []*models.Item, outputDir string) error {
 			return fmt.Errorf("failed to export item %s: %w", item.ID, err)
 		}
 	}
+
 	return nil
 }
 
@@ -58,6 +60,7 @@ func (o *ObsidianTarget) exportItem(item *models.Item, outputDir string) error {
 	}
 
 	content := o.formatContent(item)
+
 	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
@@ -111,6 +114,7 @@ func (o *ObsidianTarget) formatContent(item *models.Item) string {
 func (o *ObsidianTarget) FormatFilename(title string) string {
 	// Use sanitizeFilename logic similar to drive service
 	filename := sanitizeFilename(title)
+
 	return filename + ".md"
 }
 
@@ -123,10 +127,11 @@ func (o *ObsidianTarget) FormatMetadata(metadata map[string]interface{}) string 
 	for key, value := range metadata {
 		sb.WriteString(fmt.Sprintf("%s: %v\n", key, value))
 	}
+
 	return sb.String()
 }
 
-// sanitizeFilename removes or replaces characters that are invalid in filenames
+// sanitizeFilename removes or replaces characters that are invalid in filenames.
 func sanitizeFilename(filename string) string {
 	replacements := map[string]string{
 		"/":  "-",

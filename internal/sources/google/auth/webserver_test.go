@@ -258,7 +258,7 @@ func TestGetTokenFromWebServer_Integration(t *testing.T) {
 
 func TestOpenBrowser(t *testing.T) {
 	url := "https://example.com"
-	
+
 	err := openBrowser(url)
 
 	if err != nil {
@@ -292,7 +292,6 @@ func TestSuccessPageContent(t *testing.T) {
 	if !strings.Contains(body, "Authorization Successful") {
 		t.Error("Success page should contain 'Authorization Successful'")
 	}
-
 
 	if !strings.Contains(body, "pkm-sync") {
 		t.Error("Success page should contain application name")
@@ -329,7 +328,6 @@ func TestErrorPageContent(t *testing.T) {
 	if !strings.Contains(body, "access_denied") {
 		t.Error("Error page should contain the error message")
 	}
-
 
 	if !strings.Contains(body, "pkm-sync") {
 		t.Error("Error page should contain application name")

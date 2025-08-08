@@ -34,7 +34,7 @@ You can export docs from:
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	
+
 	exportCmd.Flags().StringVarP(&exportOutputDir, "output", "o", "./exported-docs", "Output directory for exported markdown files")
 	exportCmd.Flags().StringVar(&exportEventID, "event-id", "", "Export docs from specific event ID")
 	exportCmd.Flags().StringVar(&exportStartDate, "start", "", "Start date for range export (YYYY-MM-DD)")
@@ -79,7 +79,7 @@ func runExportCommand(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		
+
 		count, err := exportFromDateRange(calendarService, driveService, start, end)
 		if err != nil {
 			return err
@@ -93,12 +93,12 @@ func runExportCommand(cmd *cobra.Command, args []string) error {
 
 func exportFromEventID(calendarService *calendar.Service, driveService *drive.Service, eventID string) (int, error) {
 	fmt.Printf("Exporting docs from event ID: %s\n", eventID)
-	
+
 	// Note: We'd need to add a GetEvent method to calendar service
 	// For now, we'll search in today's events
 	events, err := calendarService.GetEventsInRange(
-		time.Now().Add(-24*time.Hour), 
-		time.Now().Add(24*time.Hour), 
+		time.Now().Add(-24*time.Hour),
+		time.Now().Add(24*time.Hour),
 		100,
 	)
 	if err != nil {
@@ -115,7 +115,7 @@ func exportFromEventID(calendarService *calendar.Service, driveService *drive.Se
 }
 
 func exportFromDateRange(calendarService *calendar.Service, driveService *drive.Service, start, end time.Time) (int, error) {
-	fmt.Printf("Exporting docs from events between %s and %s\n", 
+	fmt.Printf("Exporting docs from events between %s and %s\n",
 		start.Format("2006-01-02"), end.Format("2006-01-02"))
 
 	events, err := calendarService.GetEventsInRange(start, end, 100)
@@ -133,6 +133,7 @@ func exportFromDateRange(calendarService *calendar.Service, driveService *drive.
 		count, err := exportFromSingleEvent(driveService, event.Summary, event.Description)
 		if err != nil {
 			fmt.Printf("Warning: Error processing event %s: %v\n", event.Summary, err)
+
 			continue
 		}
 		totalExported += count
@@ -148,7 +149,7 @@ func exportFromSingleEvent(driveService *drive.Service, eventSummary, eventDescr
 
 	// Create subdirectory for this event
 	eventDir := filepath.Join(exportOutputDir, sanitizeEventName(eventSummary))
-	
+
 	exportedFiles, err := driveService.ExportAttachedDocsFromEvent(eventDescription, eventDir)
 	if err != nil {
 		return 0, err
@@ -185,4 +186,3 @@ func getExportDateRange() (time.Time, time.Time, error) {
 
 	return start, end, nil
 }
-

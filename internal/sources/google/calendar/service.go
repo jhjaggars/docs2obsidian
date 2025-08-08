@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/api/calendar/v3"
+	calendar "google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
 
 	"pkm-sync/pkg/models"
@@ -18,7 +18,7 @@ type Service struct {
 
 func NewService(client *http.Client) (*Service, error) {
 	ctx := context.Background()
-	
+
 	calendarService, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return nil, fmt.Errorf("unable to create calendar service: %w", err)
@@ -31,7 +31,7 @@ func NewService(client *http.Client) (*Service, error) {
 
 func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error) {
 	t := time.Now().Format(time.RFC3339)
-	
+
 	events, err := s.calendarService.Events.List("primary").
 		ShowDeleted(false).
 		SingleEvents(true).
@@ -39,7 +39,7 @@ func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error)
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		Do()
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve events: %w", err)
 	}
@@ -50,7 +50,7 @@ func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error)
 func (s *Service) GetEventsInRange(start, end time.Time, maxResults int64) ([]*calendar.Event, error) {
 	startTime := start.Format(time.RFC3339)
 	endTime := end.Format(time.RFC3339)
-	
+
 	events, err := s.calendarService.Events.List("primary").
 		ShowDeleted(false).
 		SingleEvents(true).
@@ -59,7 +59,7 @@ func (s *Service) GetEventsInRange(start, end time.Time, maxResults int64) ([]*c
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		Do()
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve events in range: %w", err)
 	}
@@ -97,6 +97,7 @@ func (s *Service) ConvertToModel(event *calendar.Event) *models.CalendarEvent {
 		for _, entryPoint := range event.ConferenceData.EntryPoints {
 			if entryPoint.EntryPointType == "video" && entryPoint.Uri != "" {
 				modelEvent.MeetingURL = entryPoint.Uri
+
 				break
 			}
 		}
@@ -117,10 +118,8 @@ func (s *Service) ConvertToModel(event *calendar.Event) *models.CalendarEvent {
 	return modelEvent
 }
 
-// ConvertToModelWithDrive converts a calendar event to a model with drive file attachments populated
+// ConvertToModelWithDrive converts a calendar event to a model with drive file attachments populated.
 func (s *Service) ConvertToModelWithDrive(event *calendar.Event) *models.CalendarEvent {
 	// Now that we use native Calendar API attachments, just use the base conversion
 	return s.ConvertToModel(event)
 }
-
-// DriveServiceInterface defines the interface for drive service operations needed by calendar

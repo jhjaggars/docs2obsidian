@@ -29,6 +29,7 @@ func (l *LogseqTarget) Configure(config map[string]interface{}) error {
 		l.journalPath = filepath.Join(graphPath, "journals")
 		l.pagesPath = filepath.Join(graphPath, "pages")
 	}
+
 	return nil
 }
 
@@ -39,6 +40,7 @@ func (l *LogseqTarget) Export(items []*models.Item, outputDir string) error {
 			return fmt.Errorf("failed to export item %s: %w", item.ID, err)
 		}
 	}
+
 	return nil
 }
 
@@ -52,6 +54,7 @@ func (l *LogseqTarget) exportItem(item *models.Item, outputDir string) error {
 	}
 
 	content := l.formatContent(item)
+
 	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
@@ -115,6 +118,7 @@ func (l *LogseqTarget) formatContent(item *models.Item) string {
 func (l *LogseqTarget) FormatFilename(title string) string {
 	// Logseq prefers page references format
 	filename := sanitizeFilename(title)
+
 	return filename + ".md"
 }
 
@@ -127,10 +131,11 @@ func (l *LogseqTarget) FormatMetadata(metadata map[string]interface{}) string {
 	for key, value := range metadata {
 		sb.WriteString(fmt.Sprintf("- %s:: %v\n", key, value))
 	}
+
 	return sb.String()
 }
 
-// sanitizeFilename removes or replaces characters that are invalid in filenames
+// sanitizeFilename removes or replaces characters that are invalid in filenames.
 func sanitizeFilename(filename string) string {
 	replacements := map[string]string{
 		"/":  "-",

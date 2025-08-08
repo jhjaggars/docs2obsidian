@@ -3,15 +3,16 @@ package models
 import "time"
 
 type CalendarEvent struct {
-	ID          string
-	Summary     string
-	Description string
-	Start       time.Time
-	End         time.Time
-	Location    string
-	Attendees   []string
-	MeetingURL  string
-	Attachments []CalendarAttachment
+	ID           string
+	Summary      string
+	Description  string
+	Start        time.Time
+	End          time.Time
+	Location     string
+	Attendees    []string
+	MeetingURL   string
+	Attachments  []CalendarAttachment
+	AttachedDocs []DriveFile // Keep for backward compatibility
 }
 
 type CalendarAttachment struct {
@@ -31,4 +32,3 @@ type DriveFile struct {
 	Owners       []string
 	Shared       bool
 }
-

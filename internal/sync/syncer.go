@@ -25,6 +25,7 @@ func (s *DefaultSyncer) Sync(source interfaces.Source, target interfaces.Target,
 
 	if options.DryRun {
 		fmt.Printf("DRY RUN: Would export %d items to %s\n", len(items), options.OutputDir)
+
 		return nil
 	}
 
@@ -34,5 +35,6 @@ func (s *DefaultSyncer) Sync(source interfaces.Source, target interfaces.Target,
 	}
 
 	fmt.Printf("Successfully exported %d items\n", len(items))
+
 	return nil
 }
