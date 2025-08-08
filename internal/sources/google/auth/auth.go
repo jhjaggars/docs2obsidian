@@ -79,6 +79,20 @@ func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 }
 
 func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
+	fmt.Println("Starting OAuth 2.0 authorization flow...")
+	
+	token, err := getTokenFromWebServer(config)
+	if err != nil {
+		fmt.Printf("Web server authorization failed: %v\n", err)
+		fmt.Println("Falling back to manual authorization...")
+		fmt.Println()
+		return getTokenFromWebManual(config)
+	}
+	
+	return token, nil
+}
+
+func getTokenFromWebManual(config *oauth2.Config) (*oauth2.Token, error) {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	
 	fmt.Println("To authorize this application, please visit this URL in your browser:")

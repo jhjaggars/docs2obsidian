@@ -93,10 +93,11 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 Users must:
 1. Create Google Cloud project with Calendar/Drive APIs enabled
 2. Configure OAuth consent screen for "Desktop application"
-3. Download credentials.json to config directory or use `--credentials` flag
-4. Run `./pkm-sync setup` to verify configuration and complete OAuth flow
+3. Add `http://127.0.0.1:*` to authorized redirect URIs (enables automatic authorization flow)
+4. Download credentials.json to config directory or use `--credentials` flag
+5. Run `./pkm-sync setup` to verify configuration and complete OAuth flow
 
-The application will guide users through browser authorization and handle token storage automatically.
+The application uses an automatic web server-based OAuth flow that opens the user's browser and captures the authorization code automatically. If the web server fails, it falls back to the manual copy/paste flow for compatibility.
 
 ## Development Notes
 
