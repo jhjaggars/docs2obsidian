@@ -141,6 +141,7 @@ This application uses OAuth 2.0 for Google API authentication:
    - Enable the Google Calendar API and Google Drive API
    - Configure the OAuth consent screen
    - Create OAuth 2.0 Client ID credentials for a "Desktop application"
+   - Add `http://127.0.0.1:*` to the authorized redirect URIs (enables automatic authorization)
    - Download the credentials file
 
 2. **Place credentials file**:
@@ -164,7 +165,7 @@ This application uses OAuth 2.0 for Google API authentication:
    pkm-sync --config-dir /custom/config/dir setup
    ```
 
-The application will guide you through the OAuth flow on first run and save your authorization token in the same config directory.
+The application will automatically open your browser for authorization and handle the OAuth flow automatically. Your authorization token is saved in the same config directory. If the automatic flow fails, it falls back to manual copy/paste mode.
 
 ## Configuration
 
