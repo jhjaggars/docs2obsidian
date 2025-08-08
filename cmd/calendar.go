@@ -50,10 +50,7 @@ func init() {
 	
 	// Add flags for date range and options
 	calendarCmd.Flags().StringVar(&startDate, "start", "", "Start date (defaults to beginning of current week)")
-	calendarCmd.Flags().StringVar(&startDate, "start-date", "", "Start date (defaults to beginning of current week)")
 	calendarCmd.Flags().StringVar(&endDate, "end", "", "End date (defaults to end of today)")
-	calendarCmd.Flags().StringVar(&endDate, "end-date", "", "End date (defaults to end of today)")
-	calendarCmd.Flags().Int64Var(&maxResults, "max-results", 100, "Maximum number of events to retrieve")
 	calendarCmd.Flags().Int64Var(&maxResults, "limit", 100, "Maximum number of events to retrieve")
 	calendarCmd.Flags().StringVar(&outputFormat, "format", "table", "Output format (table, json)")
 	calendarCmd.Flags().BoolVar(&includeDetails, "include-details", false, "Include detailed meeting information (attendees, URLs, etc.)")
@@ -268,10 +265,18 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 			}
 			
 			if len(modelEvent.Attendees) > 0 && len(modelEvent.Attendees) <= 5 {
-				fmt.Printf("  👥 %s\n", strings.Join(modelEvent.Attendees, ", "))
+				attendeeNames := make([]string, len(modelEvent.Attendees))
+				for i, attendee := range modelEvent.Attendees {
+					attendeeNames[i] = attendee.GetDisplayName()
+				}
+				fmt.Printf("  👥 %s\n", strings.Join(attendeeNames, ", "))
 			} else if len(modelEvent.Attendees) > 5 {
+				attendeeNames := make([]string, 3)
+				for i := 0; i < 3; i++ {
+					attendeeNames[i] = modelEvent.Attendees[i].GetDisplayName()
+				}
 				fmt.Printf("  👥 %s and %d others\n", 
-					strings.Join(modelEvent.Attendees[:3], ", "), 
+					strings.Join(attendeeNames, ", "), 
 					len(modelEvent.Attendees)-3)
 			}
 			

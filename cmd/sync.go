@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -18,12 +19,13 @@ import (
 )
 
 var (
-	sourceName string
-	targetName string
-	outputDir  string
-	since      string
-	dryRun     bool
-	limit      int
+	sourceName       string
+	targetName       string
+	outputDir        string
+	since            string
+	dryRun           bool
+	limit            int
+	syncOutputFormat string
 )
 
 var syncCmd = &cobra.Command{
@@ -48,6 +50,7 @@ func init() {
 	syncCmd.Flags().StringVar(&since, "since", "", "Sync items since (7d, 2006-01-02, today)")
 	syncCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be synced without making changes")
 	syncCmd.Flags().IntVar(&limit, "limit", 1000, "Maximum number of items to fetch (default: 1000)")
+	syncCmd.Flags().StringVar(&syncOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
 }
 
 func runSyncCommand(cmd *cobra.Command, args []string) error {
@@ -99,8 +102,10 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create target: %w", err)
 	}
 
+	// Collect all items from all sources for unified processing
+	var allItems []*models.Item
+	
 	// Process each source independently to support per-source customization
-	totalItems := 0
 	for _, srcName := range sourcesToSync {
 		// Get source-specific config
 		sourceConfig, exists := cfg.Sources[srcName]
@@ -133,9 +138,21 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 			sourceSinceTime = sinceTime
 		}
 
+		// Use source-specific max results if configured, otherwise default to 1000
+		maxResults := 1000 // default value
+		if sourceConfig.Google.MaxResults > 0 {
+			// Validate max results range
+			if sourceConfig.Google.MaxResults > 2500 {
+				fmt.Printf("Warning: max_results for source '%s' is %d (maximum allowed: 2500), using 2500\n", srcName, sourceConfig.Google.MaxResults)
+				maxResults = 2500
+			} else {
+				maxResults = sourceConfig.Google.MaxResults
+			}
+		}
+
 		// Fetch items from this source
 		fmt.Printf("Fetching from %s...\n", srcName)
-		items, err := source.Fetch(sourceSinceTime, limit)
+		items, err := source.Fetch(sourceSinceTime, maxResults)
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch from source '%s': %v, skipping\n", srcName, err)
 			continue
@@ -149,44 +166,36 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("Found %d items from %s\n", len(items), srcName)
-
-		// Calculate per-source output directory
-		sourceOutputDir := getSourceOutputDirectory(finalOutputDir, sourceConfig)
 		
-		// Determine target for this source (may override default)
-		sourceTargetName := finalTargetName
-		if sourceConfig.OutputTarget != "" {
-			sourceTargetName = sourceConfig.OutputTarget
-		}
-
-		// Create source-specific target if different from default
-		var sourceTarget interfaces.Target
-		if sourceTargetName != finalTargetName {
-			sourceTarget, err = createTargetWithConfig(sourceTargetName, cfg)
-			if err != nil {
-				fmt.Printf("Warning: failed to create target '%s' for source '%s': %v, using default target\n", sourceTargetName, srcName, err)
-				sourceTarget = target
-				sourceOutputDir = finalOutputDir // Reset to default output dir
-			}
-		} else {
-			sourceTarget = target
-		}
-
-		if dryRun {
-			fmt.Printf("DRY RUN: Would export %d items from %s to %s using %s target\n", len(items), srcName, sourceOutputDir, sourceTargetName)
-		} else {
-			// Export items from this source
-			if err := sourceTarget.Export(items, sourceOutputDir); err != nil {
-				fmt.Printf("Warning: failed to export from source '%s': %v, skipping\n", srcName, err)
-				continue
-			}
-			fmt.Printf("Successfully exported %d items from %s to %s\n", len(items), srcName, sourceOutputDir)
-		}
-
-		totalItems += len(items)
+		// Add items to the collection
+		allItems = append(allItems, items...)
 	}
 
-	fmt.Printf("Total items processed: %d\n", totalItems)
+	fmt.Printf("Total items collected: %d\n", len(allItems))
+
+	if dryRun {
+		// Generate preview of what would be done
+		previews, err := target.Preview(allItems, finalOutputDir)
+		if err != nil {
+			return fmt.Errorf("failed to generate preview: %w", err)
+		}
+		
+		switch syncOutputFormat {
+		case "json":
+			return outputDryRunJSON(allItems, previews, finalTargetName, finalOutputDir, sourcesToSync)
+		case "summary":
+			return outputDryRunSummary(allItems, previews, finalTargetName, finalOutputDir, sourcesToSync)
+		default:
+			return fmt.Errorf("unknown format '%s': supported formats are 'summary' and 'json'", syncOutputFormat)
+		}
+	}
+
+	// Export all items to target
+	if err := target.Export(allItems, finalOutputDir); err != nil {
+		return fmt.Errorf("failed to export to target: %w", err)
+	}
+
+	fmt.Printf("Successfully exported %d items\n", len(allItems))
 	return nil
 }
 
@@ -339,4 +348,102 @@ func getSourceOutputDirectory(baseOutputDir string, sourceConfig models.SourceCo
 		return filepath.Join(baseOutputDir, sourceConfig.OutputSubdir)
 	}
 	return baseOutputDir
+}
+
+// DryRunOutput represents the complete output structure for JSON format
+type DryRunOutput struct {
+	Target      string                     `json:"target"`
+	OutputDir   string                     `json:"output_dir"`
+	Sources     []string                   `json:"sources"`
+	TotalItems  int                        `json:"total_items"`
+	Summary     DryRunSummary              `json:"summary"`
+	Items       []*models.Item             `json:"items"`
+	FilePreviews []*interfaces.FilePreview `json:"file_previews"`
+}
+
+type DryRunSummary struct {
+	CreateCount   int `json:"create_count"`
+	UpdateCount   int `json:"update_count"`
+	SkipCount     int `json:"skip_count"`
+	ConflictCount int `json:"conflict_count"`
+}
+
+func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
+	summary := calculateSummary(previews)
+	
+	output := DryRunOutput{
+		Target:       target,
+		OutputDir:    outputDir,
+		Sources:      sources,
+		TotalItems:   len(items),
+		Summary:      summary,
+		Items:        items,
+		FilePreviews: previews,
+	}
+	
+	jsonData, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+	
+	fmt.Println(string(jsonData))
+	return nil
+}
+
+func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
+	fmt.Printf("=== DRY RUN: Preview of sync operation ===\n")
+	fmt.Printf("Target: %s\nOutput directory: %s\nTotal items: %d\n\n", target, outputDir, len(items))
+	
+	summary := calculateSummary(previews)
+	
+	fmt.Printf("Summary:\n")
+	fmt.Printf("  📝 %d files would be created\n", summary.CreateCount)
+	fmt.Printf("  ✏️  %d files would be updated\n", summary.UpdateCount)
+	fmt.Printf("  ⏭️  %d files would be skipped (no changes)\n", summary.SkipCount)
+	if summary.ConflictCount > 0 {
+		fmt.Printf("  ⚠️  %d files have potential conflicts\n", summary.ConflictCount)
+	}
+	fmt.Printf("\n")
+	
+	// Show detailed file operations
+	fmt.Printf("Detailed file operations:\n")
+	for _, preview := range previews {
+		emoji := "📝"
+		if preview.Action == "update" {
+			emoji = "✏️"
+		} else if preview.Action == "skip" {
+			emoji = "⏭️"
+		}
+		if preview.Conflict {
+			emoji = "⚠️"
+		}
+		
+		fmt.Printf("  %s %s %s\n", emoji, preview.Action, preview.FilePath)
+	}
+	
+	// Ask if user wants to see file content previews
+	fmt.Printf("\nWould you like to see content previews? This will show the first few lines of each file that would be created/updated.\n")
+	fmt.Printf("Note: Use --format json to see complete data model including full content\n")
+	
+	return nil
+}
+
+func calculateSummary(previews []*interfaces.FilePreview) DryRunSummary {
+	summary := DryRunSummary{}
+	
+	for _, preview := range previews {
+		switch preview.Action {
+		case "create":
+			summary.CreateCount++
+		case "update":
+			summary.UpdateCount++
+		case "skip":
+			summary.SkipCount++
+		}
+		if preview.Conflict {
+			summary.ConflictCount++
+		}
+	}
+	
+	return summary
 }

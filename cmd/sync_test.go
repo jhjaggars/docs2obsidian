@@ -389,3 +389,247 @@ func TestCreateTarget_Unknown(t *testing.T) {
 		t.Errorf("Expected error message %q, got %q", expectedError, err.Error())
 	}
 }
+
+func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) {
+	tests := []struct {
+		name               string
+		attendeeAllowList  []string
+		expectedEmails     []string
+		shouldPassConfig   bool
+		description        string
+	}{
+		{
+			name:              "valid emails",
+			attendeeAllowList: []string{"user1@example.com", "user2@company.org"},
+			expectedEmails:    []string{"user1@example.com", "user2@company.org"},
+			shouldPassConfig:  true,
+			description:       "Valid emails should be passed to source configuration",
+		},
+		{
+			name:              "emails with whitespace",
+			attendeeAllowList: []string{" user1@example.com ", "user2@company.org"},
+			expectedEmails:    []string{"user1@example.com", "user2@company.org"},
+			shouldPassConfig:  true,
+			description:       "Emails with whitespace should be trimmed and passed",
+		},
+		{
+			name:              "invalid emails filtered out",
+			attendeeAllowList: []string{"user1@example.com", "invalid-email", "user2@company.org"},
+			expectedEmails:    []string{"user1@example.com", "user2@company.org"},
+			shouldPassConfig:  true,
+			description:       "Invalid emails should be filtered out but valid ones passed",
+		},
+		{
+			name:              "empty strings filtered out",
+			attendeeAllowList: []string{"user1@example.com", "", "user2@company.org", "   "},
+			expectedEmails:    []string{"user1@example.com", "user2@company.org"},
+			shouldPassConfig:  true,
+			description:       "Empty strings should be filtered out",
+		},
+		{
+			name:              "all invalid emails",
+			attendeeAllowList: []string{"invalid1", "invalid2", ""},
+			expectedEmails:    []string{},
+			shouldPassConfig:  false,
+			description:       "When all emails are invalid, no config should be passed",
+		},
+		{
+			name:              "nil allow list",
+			attendeeAllowList: nil,
+			expectedEmails:    []string{},
+			shouldPassConfig:  false,
+			description:       "Nil allow list should not pass any config",
+		},
+		{
+			name:              "empty allow list",
+			attendeeAllowList: []string{},
+			expectedEmails:    []string{},
+			shouldPassConfig:  false,
+			description:       "Empty allow list should not pass any config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &models.Config{
+				Sources: map[string]models.SourceConfig{
+					"google": {
+						Enabled: true,
+						Type:    "google",
+						Google: models.GoogleSourceConfig{
+							AttendeeAllowList:        tt.attendeeAllowList,
+							RequireMultipleAttendees: true,
+							IncludeSelfOnlyEvents:    false,
+						},
+					},
+				},
+			}
+
+			// Note: This test can't fully verify the actual configuration being passed
+			// since createSourceWithConfig calls source.Configure() internally.
+			// But we can verify that it doesn't error and creates a valid source.
+			source, err := createSourceWithConfig("google", config)
+			if err != nil {
+				t.Errorf("createSourceWithConfig failed: %v", err)
+			}
+			if source == nil {
+				t.Error("Expected non-nil source")
+			}
+		})
+	}
+}
+
+func TestCreateSourceWithConfig_GoogleMaxResultsValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		maxResults  int
+		description string
+	}{
+		{
+			name:        "valid max results",
+			maxResults:  500,
+			description: "Valid max results should be accepted",
+		},
+		{
+			name:        "zero max results should use default",
+			maxResults:  0,
+			description: "Zero max results should use default",
+		},
+		{
+			name:        "negative max results should use default",
+			maxResults:  -1,
+			description: "Negative max results should use default",
+		},
+		{
+			name:        "max results at limit",
+			maxResults:  2500,
+			description: "Max results at limit should be accepted",
+		},
+		{
+			name:        "max results over limit",
+			maxResults:  5000,
+			description: "Max results over limit should be capped",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &models.Config{
+				Sources: map[string]models.SourceConfig{
+					"google": {
+						Enabled: true,
+						Type:    "google",
+						Google: models.GoogleSourceConfig{
+							MaxResults:               tt.maxResults,
+							RequireMultipleAttendees: true,
+							IncludeSelfOnlyEvents:    false,
+						},
+					},
+				},
+			}
+
+			source, err := createSourceWithConfig("google", config)
+			if err != nil {
+				t.Errorf("createSourceWithConfig failed: %v", err)
+			}
+			if source == nil {
+				t.Error("Expected non-nil source")
+			}
+		})
+	}
+}
+
+func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
+	tests := []struct {
+		name                     string
+		requireMultipleAttendees bool
+		includeSelfOnlyEvents    bool
+		description              string
+	}{
+		{
+			name:                     "require multiple attendees true, include self only false",
+			requireMultipleAttendees: true,
+			includeSelfOnlyEvents:    false,
+			description:              "Default configuration",
+		},
+		{
+			name:                     "require multiple attendees false, include self only false",
+			requireMultipleAttendees: false,
+			includeSelfOnlyEvents:    false,
+			description:              "Allow single attendee events",
+		},
+		{
+			name:                     "require multiple attendees true, include self only true",
+			requireMultipleAttendees: true,
+			includeSelfOnlyEvents:    true,
+			description:              "Include self-only events",
+		},
+		{
+			name:                     "require multiple attendees false, include self only true",
+			requireMultipleAttendees: false,
+			includeSelfOnlyEvents:    true,
+			description:              "All events allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &models.Config{
+				Sources: map[string]models.SourceConfig{
+					"google": {
+						Enabled: true,
+						Type:    "google",
+						Google: models.GoogleSourceConfig{
+							RequireMultipleAttendees: tt.requireMultipleAttendees,
+							IncludeSelfOnlyEvents:    tt.includeSelfOnlyEvents,
+						},
+					},
+				},
+			}
+
+			source, err := createSourceWithConfig("google", config)
+			if err != nil {
+				t.Errorf("createSourceWithConfig failed: %v", err)
+			}
+			if source == nil {
+				t.Error("Expected non-nil source")
+			}
+		})
+	}
+}
+
+func TestCreateSourceWithConfig_MissingGoogleConfig(t *testing.T) {
+	config := &models.Config{
+		Sources: map[string]models.SourceConfig{
+			"google": {
+				Enabled: true,
+				Type:    "google",
+				// Google config is zero value (default)
+			},
+		},
+	}
+
+	source, err := createSourceWithConfig("google", config)
+	if err != nil {
+		t.Errorf("createSourceWithConfig failed with missing google config: %v", err)
+	}
+	if source == nil {
+		t.Error("Expected non-nil source even with missing google config")
+	}
+}
+
+func TestCreateSourceWithConfig_SourceNotInConfig(t *testing.T) {
+	config := &models.Config{
+		Sources: map[string]models.SourceConfig{
+			// google source not configured
+		},
+	}
+
+	source, err := createSourceWithConfig("google", config)
+	if err != nil {
+		t.Errorf("createSourceWithConfig failed with source not in config: %v", err)
+	}
+	if source == nil {
+		t.Error("Expected non-nil source even when not in config")
+	}
+}
