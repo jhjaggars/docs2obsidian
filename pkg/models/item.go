@@ -49,13 +49,13 @@ func FromCalendarEvent(event *CalendarEvent) *Item {
 		},
 	}
 
-	// Convert Drive attachments
-	for _, doc := range event.AttachedDocs {
+	// Convert Calendar attachments
+	for _, attachment := range event.Attachments {
 		item.Attachments = append(item.Attachments, Attachment{
-			ID:       doc.ID,
-			Name:     doc.Name,
-			MimeType: doc.MimeType,
-			URL:      doc.WebViewLink,
+			ID:       attachment.FileID,
+			Name:     attachment.Title,
+			MimeType: attachment.MimeType,
+			URL:      attachment.FileURL,
 		})
 	}
 
