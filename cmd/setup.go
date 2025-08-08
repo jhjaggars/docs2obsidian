@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"docs2obsidian/internal/auth"
-	"docs2obsidian/internal/calendar"
-	"docs2obsidian/internal/config"
-	"docs2obsidian/internal/drive"
+	"pkm-sync/internal/sources/google/auth"
+	"pkm-sync/internal/sources/google/calendar"
+	"pkm-sync/internal/config"
+	"pkm-sync/internal/sources/google/drive"
 )
 
 var setupCmd = &cobra.Command{
@@ -51,7 +51,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Printf("6. Download the credentials and save as 'credentials.json' in: %s\n", defaultPath)
 		fmt.Println()
 		fmt.Println("Alternatively, use a custom path with:")
-		fmt.Println("  docs2obsidian --credentials /path/to/credentials.json setup")
+		fmt.Println("  pkm-sync --credentials /path/to/credentials.json setup")
 		
 		return fmt.Errorf("credentials.json file not found")
 	}
@@ -134,8 +134,8 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("All authentication checks passed!")
 	fmt.Println("You can now run:")
-	fmt.Println("  - 'docs2obsidian calendar' to list your events")
-	fmt.Println("  - 'docs2obsidian export' to export Google Docs from calendar events")
+	fmt.Println("  - 'pkm-sync calendar' to list your events")
+	fmt.Println("  - 'pkm-sync export' to export Google Docs from calendar events")
 	
 	return nil
 }

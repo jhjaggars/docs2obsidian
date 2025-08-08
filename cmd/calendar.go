@@ -11,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/api/calendar/v3"
 
-	"docs2obsidian/internal/auth"
-	internalcalendar "docs2obsidian/internal/calendar"
-	"docs2obsidian/internal/drive"
-	"docs2obsidian/pkg/models"
+	"pkm-sync/internal/sources/google/auth"
+	internalcalendar "pkm-sync/internal/sources/google/calendar"
+	"pkm-sync/internal/sources/google/drive"
+	"pkm-sync/pkg/models"
 )
 
 var calendarCmd = &cobra.Command{
@@ -26,12 +26,12 @@ By default, shows events from the beginning of the current week to the end of to
 Supports flexible date formats including ISO 8601 dates and relative dates like 'today', 'tomorrow', 'yesterday'.
 
 Examples:
-  docs2obsidian calendar                           # Current week to today
-  docs2obsidian calendar --start today            # Today only  
-  docs2obsidian calendar --start 2025-01-01 --end 2025-01-31
-  docs2obsidian calendar --include-details        # Show meeting URLs, attendees, etc.
-  docs2obsidian calendar --export-docs            # Export attached Google Docs to markdown
-  docs2obsidian calendar --format json            # Output as JSON`,
+  pkm-sync calendar                           # Current week to today
+  pkm-sync calendar --start today            # Today only  
+  pkm-sync calendar --start 2025-01-01 --end 2025-01-31
+  pkm-sync calendar --include-details        # Show meeting URLs, attendees, etc.
+  pkm-sync calendar --export-docs            # Export attached Google Docs to markdown
+  pkm-sync calendar --format json            # Output as JSON`,
 	RunE: runCalendarCommand,
 }
 // Calendar command flags

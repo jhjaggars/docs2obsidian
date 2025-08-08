@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"docs2obsidian/pkg/models"
+	"pkm-sync/pkg/models"
 	"google.golang.org/api/drive/v3"
 )
 

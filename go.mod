@@ -1,4 +1,4 @@
-module docs2obsidian
+module pkm-sync
 
 go 1.24.4
 

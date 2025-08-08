@@ -1,8 +1,81 @@
-# docs2obsidian
+# pkm-sync
 
-A Go application that integrates Google Calendar and Google Drive with Obsidian notes.
+A universal synchronization tool for Personal Knowledge Management (PKM) systems. Connect data sources like Google Calendar to PKM tools like Obsidian and Logseq.
 
-## Setup
+## Migrated from docs2obsidian
+
+This tool was formerly known as `docs2obsidian`. All existing functionality is preserved with full backward compatibility.
+
+## Quick Start
+
+### Install
+```bash
+go build -o pkm-sync ./cmd
+```
+
+### Basic Usage
+```bash
+# Sync Google Calendar to Obsidian (default)
+pkm-sync sync --source google --target obsidian --output ./vault
+
+# Sync to Logseq  
+pkm-sync sync --source google --target logseq --output ./graph
+
+# Legacy commands still work
+pkm-sync calendar  # equivalent to sync with obsidian target
+pkm-sync export    # equivalent to sync with obsidian target
+```
+
+### Configuration
+Same OAuth setup as docs2obsidian - place `credentials.json` in:
+- **Linux/Unix**: `~/.config/pkm-sync/credentials.json` (or old path: `~/.config/docs2obsidian/credentials.json`)
+- **macOS**: `~/.config/pkm-sync/credentials.json` (or old paths: `~/.config/docs2obsidian/credentials.json`, `~/Library/Application Support/docs2obsidian/credentials.json`)
+- **Windows**: `%APPDATA%\pkm-sync\credentials.json` (or old path: `%APPDATA%\docs2obsidian\credentials.json`)
+
+## Supported Integrations
+
+### Sources
+- ✅ Google Calendar + Drive
+- 📋 GMail (planned)
+- 📋 Jira (planned)
+- 📋 Slack (planned)
+
+### Targets  
+- ✅ Obsidian
+- ✅ Logseq
+
+## Migration from docs2obsidian
+
+No changes needed! Your existing setup will continue to work:
+
+```bash
+# These still work exactly the same
+pkm-sync setup
+pkm-sync calendar  
+pkm-sync export
+
+# New capabilities
+pkm-sync sync --target logseq
+```
+
+## Examples
+
+### Sync last week's calendar to Logseq
+```bash
+pkm-sync sync --source google --target logseq --since 7d --output ~/Documents/Logseq
+```
+
+### Dry run to see what would be synced
+```bash
+pkm-sync sync --source google --target obsidian --dry-run
+```
+
+### Custom output location
+```bash
+pkm-sync sync --source google --target obsidian --output ~/MyVault/Calendar
+```
+
+## Authentication Setup
 
 ### Prerequisites
 
@@ -10,7 +83,7 @@ A Go application that integrates Google Calendar and Google Drive with Obsidian 
 2. A Google Cloud project that you control
 3. Access to enable APIs in your Google Cloud project
 
-### Authentication Setup
+### OAuth 2.0 Setup
 
 This application uses OAuth 2.0 for Google API authentication:
 
@@ -25,67 +98,74 @@ This application uses OAuth 2.0 for Google API authentication:
 2. **Place credentials file**:
    
    **Default locations (checked in order)**:
-   - **Linux/Unix**: `~/.config/docs2obsidian/credentials.json`
-   - **macOS**: `~/.config/docs2obsidian/credentials.json` OR `~/Library/Application Support/docs2obsidian/credentials.json`
-   - **Windows**: `%APPDATA%\docs2obsidian\credentials.json`
+   - **Linux/Unix**: `~/.config/pkm-sync/credentials.json`
+   - **macOS**: `~/.config/pkm-sync/credentials.json` OR `~/Library/Application Support/pkm-sync/credentials.json`
+   - **Windows**: `%APPDATA%\pkm-sync\credentials.json`
    - **Fallback**: `./credentials.json` (current directory)
+   
+   **Backward compatibility**: Old `docs2obsidian` paths are still checked automatically.
 
 3. **Verify setup**:
    ```bash
-   docs2obsidian setup
+   pkm-sync setup
    ```
 
 4. **Custom credential location** (optional):
    ```bash
-   docs2obsidian --credentials /path/to/credentials.json setup
-   docs2obsidian --config-dir /custom/config/dir setup
+   pkm-sync --credentials /path/to/credentials.json setup
+   pkm-sync --config-dir /custom/config/dir setup
    ```
 
 The application will guide you through the OAuth flow on first run and save your authorization token in the same config directory.
 
-## Usage
+## Command Reference
 
-### Build the application
+### New Sync Command
 ```bash
-go build -o docs2obsidian ./cmd
+# General syntax
+pkm-sync sync [flags]
+
+# Available flags
+--source string     Data source (google) (default "google")
+--target string     PKM target (obsidian, logseq) (default "obsidian")
+--output string     Output directory (default "./exported")  
+--since string      Sync items since (7d, 2006-01-02, today) (default "7d")
+--dry-run          Show what would be synced without making changes
+
+# Time formats for --since
+--since today      # Today only
+--since 7d         # Last 7 days  
+--since 2025-01-01 # Specific date
+--since 24h        # Last 24 hours
 ```
 
-### Verify setup
+### Legacy Commands (Still Supported)
 ```bash
-docs2obsidian setup
+pkm-sync setup      # Verify authentication
+pkm-sync calendar   # List calendar events  
+pkm-sync export     # Export Google Docs from calendar events
 ```
 
-### List upcoming calendar events
+### Global Flags
 ```bash
-docs2obsidian calendar
+--credentials string    Path to credentials.json file
+--config-dir string     Custom configuration directory
 ```
 
-### Using custom credential paths
-```bash
-# Use custom credentials file
-docs2obsidian --credentials /path/to/my-credentials.json calendar
+## Target Differences
 
-# Use custom config directory
-docs2obsidian --config-dir /my/config/dir calendar
-```
+### Obsidian Output
+- YAML frontmatter with metadata
+- Hierarchical file structure support
+- Standard markdown format
+- Attachments as `[[filename]]` links
 
-### Command help
-```bash
-# Get general help
-docs2obsidian --help
-
-# Get help for specific commands
-docs2obsidian setup --help
-docs2obsidian calendar --help
-```
-
-## Project Structure
-
-- `cmd/` - Main application entry point
-- `internal/auth/` - Authentication handling (OAuth2 and ADC)
-- `internal/calendar/` - Google Calendar API integration
-- `internal/drive/` - Google Drive API integration (planned)
-- `pkg/models/` - Data models for events and files
+### Logseq Output
+- Property blocks instead of YAML frontmatter
+- Flat file structure (all in output directory)
+- Block-based content structure
+- Date format: `[[Jan 2nd, 2006]]`
+- Tags as `#tagname`
 
 ## Troubleshooting
 
@@ -101,25 +181,53 @@ docs2obsidian calendar --help
 - Save the file in the default config directory (see Authentication Setup section for paths)
 - Alternatively, place in current directory as `./credentials.json`
 - Verify the file is named exactly `credentials.json` (not `client_secret_*.json`)
-- Use `docs2obsidian setup` to see which paths are being checked
+- Use `pkm-sync setup` to see which paths are being checked
 
 #### "token refresh failed" or authentication errors
 - Your OAuth token may have expired
 - Delete the token file from your config directory and re-authenticate
 - Token locations: same as credentials.json but named `token.json`
-- Run `docs2obsidian calendar` to start the OAuth flow again
+- Run `pkm-sync calendar` to start the OAuth flow again
 
-#### "Calendar API has not been used in project"
-- Enable the Google Calendar API in your Google Cloud project
-- Go to APIs & Services > Library in Google Cloud Console
-- Search for "Calendar API" and enable it
+#### Migration Issues
+- Old `docs2obsidian` credentials are automatically found and used
+- No manual migration required
+- Both old and new config directory paths are checked
 
 ### Getting Help
-Run `docs2obsidian setup` to diagnose authentication issues and get specific guidance.
+Run `pkm-sync setup` to diagnose authentication issues and get specific guidance.
 
-## Next Steps
+## Architecture
 
-- Google Drive integration for shared documents
-- Obsidian note generation with templates
-- Automated synchronization
+### Project Structure
+```
+pkm-sync/
+├── cmd/                 # CLI entry points
+├── internal/
+│   ├── sources/         # Data source interfaces and implementations
+│   │   └── google/      # Google Calendar + Drive (migrated code)
+│   ├── targets/         # PKM output interfaces and implementations
+│   │   ├── obsidian/    # Obsidian-specific formatting
+│   │   └── logseq/      # Logseq-specific formatting
+│   ├── sync/           # Core synchronization logic
+│   └── config/         # Configuration management (enhanced)
+├── pkg/
+│   ├── models/         # Universal data models
+│   └── interfaces/     # Core interfaces
+```
+
+### Extensibility
+The new architecture makes it easy to add:
+- **New Sources**: Implement the `Source` interface
+- **New Targets**: Implement the `Target` interface  
+- **Custom Sync Logic**: Implement the `Syncer` interface
+
+## Future Plans
+
+- GMail integration
+- Slack integration  
+- Jira integration
+- Real-time sync with webhooks
 - Configuration file support
+- Template customization
+- Automated scheduling

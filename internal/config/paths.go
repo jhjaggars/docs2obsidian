@@ -33,11 +33,11 @@ func GetConfigDir() (string, error) {
 	var configDir string
 	switch runtime.GOOS {
 	case "windows":
-		configDir = filepath.Join(homeDir, "AppData", "Roaming", "docs2obsidian")
+		configDir = filepath.Join(homeDir, "AppData", "Roaming", "pkm-sync")
 	case "darwin":
-		configDir = filepath.Join(homeDir, ".config", "docs2obsidian")
+		configDir = filepath.Join(homeDir, ".config", "pkm-sync")
 	default:
-		configDir = filepath.Join(homeDir, ".config", "docs2obsidian")
+		configDir = filepath.Join(homeDir, ".config", "pkm-sync")
 	}
 
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -98,11 +98,15 @@ func getCredentialSearchPaths() []string {
 	
 	switch runtime.GOOS {
 	case "windows":
-		paths = append(paths, filepath.Join(homeDir, "AppData", "Roaming", "docs2obsidian", "credentials.json"))
+		paths = append(paths, filepath.Join(homeDir, "AppData", "Roaming", "pkm-sync", "credentials.json"))
 	case "darwin":
+		paths = append(paths, filepath.Join(homeDir, ".config", "pkm-sync", "credentials.json"))
+		paths = append(paths, filepath.Join(homeDir, "Library", "Application Support", "pkm-sync", "credentials.json"))
+		// Backward compatibility with old paths
 		paths = append(paths, filepath.Join(homeDir, ".config", "docs2obsidian", "credentials.json"))
 		paths = append(paths, filepath.Join(homeDir, "Library", "Application Support", "docs2obsidian", "credentials.json"))
 	default:
+		paths = append(paths, filepath.Join(homeDir, ".config", "pkm-sync", "credentials.json"))
 		paths = append(paths, filepath.Join(homeDir, ".config", "docs2obsidian", "credentials.json"))
 	}
 	

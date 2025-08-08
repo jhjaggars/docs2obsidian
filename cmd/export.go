@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"docs2obsidian/internal/auth"
-	"docs2obsidian/internal/calendar"
-	"docs2obsidian/internal/drive"
+	"pkm-sync/internal/sources/google/auth"
+	"pkm-sync/internal/sources/google/calendar"
+	"pkm-sync/internal/sources/google/drive"
 )
 
 var (

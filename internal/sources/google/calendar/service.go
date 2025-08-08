@@ -9,7 +9,7 @@ import (
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
 
-	"docs2obsidian/pkg/models"
+	"pkm-sync/pkg/models"
 )
 
 type Service struct {
