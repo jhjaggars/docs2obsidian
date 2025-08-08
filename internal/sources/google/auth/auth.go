@@ -14,7 +14,7 @@ import (
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/drive/v3"
 
-	"docs2obsidian/internal/config"
+	"pkm-sync/internal/config"
 )
 
 func GetClient() (*http.Client, error) {

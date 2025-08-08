@@ -1,8 +1,129 @@
-# docs2obsidian
+# pkm-sync
 
-A Go application that integrates Google Calendar and Google Drive with Obsidian notes.
+A universal synchronization tool for Personal Knowledge Management (PKM) systems. Connect data sources like Google Calendar to PKM tools like Obsidian and Logseq.
 
-## Setup
+## Migrated from docs2obsidian
+
+This tool was formerly known as `docs2obsidian`. All existing functionality is preserved with full backward compatibility.
+
+## Quick Start
+
+### Install
+```bash
+go build -o pkm-sync ./cmd
+```
+
+### Basic Usage
+```bash
+# Quick start with configuration file (recommended)
+pkm-sync config init                    # Create default config
+pkm-sync sync                           # Sync using config defaults
+
+# Manual sync with flags (classic approach)
+pkm-sync sync --source google --target obsidian --output ./vault
+
+# Multi-source sync (with configuration)
+pkm-sync config init --source slack    # Enable additional sources
+pkm-sync sync                           # Syncs from all enabled sources
+
+# Sync to Logseq  
+pkm-sync sync --target logseq --output ./graph
+
+# Legacy commands still work
+pkm-sync calendar  # equivalent to sync with obsidian target
+pkm-sync export    # equivalent to sync with obsidian target
+```
+
+### Configuration
+Same OAuth setup as docs2obsidian - place `credentials.json` in:
+- **Linux/Unix**: `~/.config/pkm-sync/credentials.json` (or old path: `~/.config/docs2obsidian/credentials.json`)
+- **macOS**: `~/.config/pkm-sync/credentials.json` (or old paths: `~/.config/docs2obsidian/credentials.json`, `~/Library/Application Support/docs2obsidian/credentials.json`)
+- **Windows**: `%APPDATA%\pkm-sync\credentials.json` (or old path: `%APPDATA%\docs2obsidian\credentials.json`)
+
+## Supported Integrations
+
+### Sources
+- ✅ **Google Calendar + Drive** - Fully implemented
+- 📋 **Slack** - Configuration ready, implementation pending
+- 📋 **Gmail** - Configuration ready, implementation pending  
+- 📋 **Jira** - Configuration ready, implementation pending
+
+### Targets  
+- ✅ **Obsidian** - YAML frontmatter, hierarchical structure
+- ✅ **Logseq** - Property blocks, flat structure
+
+### Multi-Source Features
+- ✅ **Simultaneous sync** from multiple sources
+- ✅ **Source-specific tags** for data provenance
+- ✅ **Priority-based sync order** (configurable)
+- ✅ **Individual source scheduling** (different intervals)
+- ✅ **Graceful error handling** (continues if one source fails)
+
+## Migration from docs2obsidian
+
+No changes needed! Your existing setup will continue to work:
+
+```bash
+# These still work exactly the same
+pkm-sync setup
+pkm-sync calendar  
+pkm-sync export
+
+# New capabilities
+pkm-sync sync --target logseq
+```
+
+## Examples
+
+### Multi-Source Sync Examples
+```bash
+# Sync from all enabled sources (Google + Slack + Gmail) to Obsidian
+pkm-sync config init --source google --source slack
+pkm-sync sync
+
+# This will output: "Syncing from sources [google, slack] to obsidian"
+```
+
+### Single Source Examples  
+```bash
+# Sync last week's calendar to Logseq
+pkm-sync sync --source google --target logseq --since 7d --output ~/Documents/Logseq
+
+# Dry run to see what would be synced from all enabled sources
+pkm-sync sync --dry-run
+
+# Dry run for specific source only
+pkm-sync sync --source google --target obsidian --dry-run
+
+# Custom output location
+pkm-sync sync --output ~/MyVault/Calendar
+```
+
+### Configuration-First Workflow
+```bash
+# Global configuration (persistent across all projects)
+pkm-sync config init --target obsidian --output ~/MyVault
+pkm-sync config show    # Verify settings
+
+# OR: Local repository configuration (project-specific)
+cat > config.yaml << EOF
+sync:
+  enabled_sources: ["google"]
+  default_target: obsidian
+  default_output_dir: ./vault
+targets:
+  obsidian:
+    type: obsidian
+    obsidian:
+      default_folder: Calendar
+EOF
+
+# Then just sync without flags
+pkm-sync sync           # Uses your configured defaults
+pkm-sync sync --since today  # Override just the time range
+```
+
+## Authentication Setup
 
 ### Prerequisites
 
@@ -10,7 +131,7 @@ A Go application that integrates Google Calendar and Google Drive with Obsidian 
 2. A Google Cloud project that you control
 3. Access to enable APIs in your Google Cloud project
 
-### Authentication Setup
+### OAuth 2.0 Setup
 
 This application uses OAuth 2.0 for Google API authentication:
 
@@ -25,67 +146,136 @@ This application uses OAuth 2.0 for Google API authentication:
 2. **Place credentials file**:
    
    **Default locations (checked in order)**:
-   - **Linux/Unix**: `~/.config/docs2obsidian/credentials.json`
-   - **macOS**: `~/.config/docs2obsidian/credentials.json` OR `~/Library/Application Support/docs2obsidian/credentials.json`
-   - **Windows**: `%APPDATA%\docs2obsidian\credentials.json`
+   - **Linux/Unix**: `~/.config/pkm-sync/credentials.json`
+   - **macOS**: `~/.config/pkm-sync/credentials.json` OR `~/Library/Application Support/pkm-sync/credentials.json`
+   - **Windows**: `%APPDATA%\pkm-sync\credentials.json`
    - **Fallback**: `./credentials.json` (current directory)
+   
+   **Backward compatibility**: Old `docs2obsidian` paths are still checked automatically.
 
 3. **Verify setup**:
    ```bash
-   docs2obsidian setup
+   pkm-sync setup
    ```
 
 4. **Custom credential location** (optional):
    ```bash
-   docs2obsidian --credentials /path/to/credentials.json setup
-   docs2obsidian --config-dir /custom/config/dir setup
+   pkm-sync --credentials /path/to/credentials.json setup
+   pkm-sync --config-dir /custom/config/dir setup
    ```
 
 The application will guide you through the OAuth flow on first run and save your authorization token in the same config directory.
 
-## Usage
+## Configuration
 
-### Build the application
+pkm-sync supports comprehensive configuration through YAML files. See **[CONFIGURATION.md](./CONFIGURATION.md)** for complete configuration documentation.
+
+### Quick Start
 ```bash
-go build -o docs2obsidian ./cmd
+# Create default config file
+pkm-sync config init
+
+# View current configuration
+pkm-sync config show
+
+# Edit configuration
+pkm-sync config edit
+
+# Validate configuration
+pkm-sync config validate
 ```
 
-### Verify setup
-```bash
-docs2obsidian setup
+### Configuration Files
+pkm-sync looks for configuration files in this order:
+1. Custom directory (`--config-dir` flag)
+2. **Global config**: `~/.config/pkm-sync/config.yaml`
+3. **Local repository**: `./config.yaml` (current directory)
+
+### Example Configuration
+```yaml
+sync:
+  enabled_sources: ["google"]
+  default_target: obsidian
+  default_output_dir: ./vault
+
+sources:
+  google:
+    enabled: true
+    type: google
+    google:
+      calendar_id: primary
+      download_docs: true
+
+targets:
+  obsidian:
+    type: obsidian
+    obsidian:
+      default_folder: Calendar
+      include_frontmatter: true
 ```
 
-### List upcoming calendar events
+For complete configuration options including all sources (Google, Slack, Gmail, Jira), targets (Obsidian, Logseq), and advanced settings, see **[CONFIGURATION.md](./CONFIGURATION.md)**.
+
+## Command Reference
+
+### Sync Command (with Multi-Source Support)
 ```bash
-docs2obsidian calendar
+# Use config defaults - syncs from ALL enabled sources
+pkm-sync sync
+
+# Override to sync from specific source only
+pkm-sync sync --source google
+
+# Override other settings
+pkm-sync sync --target logseq --since today
+pkm-sync sync --output ./custom-output --dry-run
+
+# Multi-source example output:
+# "Syncing from sources [google, slack] to obsidian"
+
+# Time formats for --since
+--since today      # Today only
+--since 7d         # Last 7 days  
+--since 2025-01-01 # Specific date
+--since 24h        # Last 24 hours
 ```
 
-### Using custom credential paths
+### Configuration Commands
 ```bash
-# Use custom credentials file
-docs2obsidian --credentials /path/to/my-credentials.json calendar
-
-# Use custom config directory
-docs2obsidian --config-dir /my/config/dir calendar
+pkm-sync config init                    # Create default config
+pkm-sync config show                    # Show current config
+pkm-sync config path                    # Show config file location
+pkm-sync config edit                    # Open config in editor
+pkm-sync config validate               # Validate configuration
 ```
 
-### Command help
+### Legacy Commands (Still Supported)
 ```bash
-# Get general help
-docs2obsidian --help
-
-# Get help for specific commands
-docs2obsidian setup --help
-docs2obsidian calendar --help
+pkm-sync setup      # Verify authentication
+pkm-sync calendar   # List calendar events  
+pkm-sync export     # Export Google Docs from calendar events
 ```
 
-## Project Structure
+### Global Flags
+```bash
+--credentials string    Path to credentials.json file
+--config-dir string     Custom configuration directory
+```
 
-- `cmd/` - Main application entry point
-- `internal/auth/` - Authentication handling (OAuth2 and ADC)
-- `internal/calendar/` - Google Calendar API integration
-- `internal/drive/` - Google Drive API integration (planned)
-- `pkg/models/` - Data models for events and files
+## Target Differences
+
+### Obsidian Output
+- YAML frontmatter with metadata
+- Hierarchical file structure support
+- Standard markdown format
+- Attachments as `[[filename]]` links
+
+### Logseq Output
+- Property blocks instead of YAML frontmatter
+- Flat file structure (all in output directory)
+- Block-based content structure
+- Date format: `[[Jan 2nd, 2006]]`
+- Tags as `#tagname`
 
 ## Troubleshooting
 
@@ -101,25 +291,49 @@ docs2obsidian calendar --help
 - Save the file in the default config directory (see Authentication Setup section for paths)
 - Alternatively, place in current directory as `./credentials.json`
 - Verify the file is named exactly `credentials.json` (not `client_secret_*.json`)
-- Use `docs2obsidian setup` to see which paths are being checked
+- Use `pkm-sync setup` to see which paths are being checked
 
 #### "token refresh failed" or authentication errors
 - Your OAuth token may have expired
 - Delete the token file from your config directory and re-authenticate
 - Token locations: same as credentials.json but named `token.json`
-- Run `docs2obsidian calendar` to start the OAuth flow again
+- Run `pkm-sync calendar` to start the OAuth flow again
 
-#### "Calendar API has not been used in project"
-- Enable the Google Calendar API in your Google Cloud project
-- Go to APIs & Services > Library in Google Cloud Console
-- Search for "Calendar API" and enable it
+#### Migration Issues
+- Old `docs2obsidian` credentials are automatically found and used
+- No manual migration required
+- Both old and new config directory paths are checked
 
 ### Getting Help
-Run `docs2obsidian setup` to diagnose authentication issues and get specific guidance.
+Run `pkm-sync setup` to diagnose authentication issues and get specific guidance.
 
-## Next Steps
+## Architecture
 
-- Google Drive integration for shared documents
-- Obsidian note generation with templates
-- Automated synchronization
-- Configuration file support
+### Project Structure
+```
+pkm-sync/
+├── cmd/                 # CLI entry points
+├── internal/
+│   ├── sources/         # Data source interfaces and implementations
+│   │   └── google/      # Google Calendar + Drive (migrated code)
+│   ├── targets/         # PKM output interfaces and implementations
+│   │   ├── obsidian/    # Obsidian-specific formatting
+│   │   └── logseq/      # Logseq-specific formatting
+│   ├── sync/           # Core synchronization logic
+│   └── config/         # Configuration management (enhanced)
+├── pkg/
+│   ├── models/         # Universal data models
+│   └── interfaces/     # Core interfaces
+```
+
+### Extensibility
+The new architecture makes it easy to add:
+- **New Sources**: Implement the `Source` interface
+- **New Targets**: Implement the `Target` interface  
+- **Custom Sync Logic**: Implement the `Syncer` interface
+
+## Documentation
+
+- **[README.md](./README.md)** - Main documentation and quick start guide
+- **[CONFIGURATION.md](./CONFIGURATION.md)** - Complete configuration reference
+- **[CLAUDE.md](./CLAUDE.md)** - Development guide for Claude Code

@@ -1,0 +1,52 @@
+# Local repository configuration for pkm-sync testing
+# This file demonstrates repository-specific configuration
+# that overrides global settings when present in the project directory
+
+sync:
+  enabled_sources: ["google"]
+  default_target: obsidian
+  default_since: 7d
+  default_output_dir: ./test-output
+  merge_sources: true
+  source_tags: true
+  on_conflict: skip
+  deduplicate_by: id
+
+sources:
+  google:
+    enabled: true
+    type: google
+    priority: 1
+    google:
+      calendar_id: primary
+      include_declined: false
+      include_private: true
+      download_docs: true
+      doc_formats: ["markdown"]
+      max_doc_size: "10MB"
+      include_shared: true
+      
+  slack:
+    enabled: false  # Available for testing when implemented
+    type: slack
+    priority: 2
+
+targets:
+  obsidian:
+    type: obsidian
+    obsidian:
+      default_folder: Calendar
+      filename_template: "{{date}} - {{title}}"
+      date_format: "2006-01-02"
+      tag_prefix: "calendar/"
+      include_frontmatter: true
+      
+  logseq:
+    type: logseq
+    logseq:
+      use_properties: true
+      default_page: Calendar
+
+auth:
+  credentials_path: ~/.config/pkm-sync/credentials.json
+  token_path: ~/.config/pkm-sync/token.json

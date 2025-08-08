@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"docs2obsidian/internal/config"
+	"pkm-sync/internal/config"
 )
 
 var (
@@ -15,10 +15,10 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "docs2obsidian",
-	Short: "A tool to integrate Google Calendar and Drive with Obsidian",
-	Long: `docs2obsidian integrates Google Calendar and Google Drive with your Obsidian notes system.
-It uses OAuth 2.0 for authentication and can fetch calendar events and shared documents.`,
+	Use:   "pkm-sync",
+	Short: "Synchronize data between various sources and PKM systems",
+	Long: `pkm-sync integrates data sources (Google Calendar, Slack, etc.) 
+with Personal Knowledge Management systems (Obsidian, Logseq, etc.).`,
 }
 
 func init() {
@@ -33,6 +33,9 @@ func init() {
 			config.SetCustomConfigDir(configDir)
 		}
 	}
+	
+	// Initialize legacy command compatibility
+	initLegacyCommands()
 }
 
 func Execute() {
