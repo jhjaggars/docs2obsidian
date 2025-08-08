@@ -237,7 +237,7 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 		// Convert to model for rich data access with drive integration
 		var modelEvent *models.CalendarEvent
 		if driveService != nil {
-			modelEvent = calendarService.ConvertToModelWithDrive(event, driveService)
+			modelEvent = calendarService.ConvertToModelWithDrive(event)
 		} else {
 			modelEvent = calendarService.ConvertToModel(event)
 		}
@@ -283,11 +283,11 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 				fmt.Printf("  📝 %s\n", description)
 			}
 
-			// Show attached Google Docs
-			if len(modelEvent.AttachedDocs) > 0 {
-				fmt.Printf("  📄 Attached Docs:\n")
-				for _, doc := range modelEvent.AttachedDocs {
-					fmt.Printf("    - %s (%s)\n", doc.Name, doc.WebViewLink)
+			// Show attached files
+			if len(modelEvent.Attachments) > 0 {
+				fmt.Printf("  📄 Attachments:\n")
+				for _, attachment := range modelEvent.Attachments {
+					fmt.Printf("    - %s (%s)\n", attachment.Title, attachment.FileURL)
 				}
 			}
 		}
@@ -342,7 +342,7 @@ func displayEventsAsJSON(events []*calendar.Event, calendarService *internalcale
 	modelEvents := make([]*models.CalendarEvent, len(events))
 	for i, event := range events {
 		if driveService != nil {
-			modelEvents[i] = calendarService.ConvertToModelWithDrive(event, driveService)
+			modelEvents[i] = calendarService.ConvertToModelWithDrive(event)
 		} else {
 			modelEvents[i] = calendarService.ConvertToModel(event)
 		}

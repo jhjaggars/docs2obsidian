@@ -11,7 +11,15 @@ type CalendarEvent struct {
 	Location    string
 	Attendees   []string
 	MeetingURL  string
-	AttachedDocs []DriveFile
+	Attachments []CalendarAttachment
+}
+
+type CalendarAttachment struct {
+	FileURL  string
+	FileID   string
+	Title    string
+	MimeType string
+	IconLink string
 }
 
 type DriveFile struct {
@@ -23,3 +31,4 @@ type DriveFile struct {
 	Owners       []string
 	Shared       bool
 }
+
