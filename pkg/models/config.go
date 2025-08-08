@@ -74,6 +74,12 @@ type GoogleSourceConfig struct {
 	IncludeDeclined  bool     `json:"include_declined" yaml:"include_declined"`
 	IncludePrivate   bool     `json:"include_private" yaml:"include_private"`
 	EventTypes       []string `json:"event_types" yaml:"event_types"` // filter by event types
+	MaxResults       int      `json:"max_results" yaml:"max_results"` // maximum number of events to fetch (default: 1000)
+	
+	// Attendee filtering
+	AttendeeAllowList        []string `json:"attendee_allow_list" yaml:"attendee_allow_list"`               // only include events with these attendees
+	RequireMultipleAttendees bool     `json:"require_multiple_attendees" yaml:"require_multiple_attendees"` // exclude events with 0-1 attendees (default: true)
+	IncludeSelfOnlyEvents    bool     `json:"include_self_only_events" yaml:"include_self_only_events"`     // include events where you're the only attendee (default: false)
 	
 	// Drive settings
 	DownloadDocs     bool     `json:"download_docs" yaml:"download_docs"`

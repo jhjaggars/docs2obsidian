@@ -265,10 +265,18 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 			}
 			
 			if len(modelEvent.Attendees) > 0 && len(modelEvent.Attendees) <= 5 {
-				fmt.Printf("  👥 %s\n", strings.Join(modelEvent.Attendees, ", "))
+				attendeeNames := make([]string, len(modelEvent.Attendees))
+				for i, attendee := range modelEvent.Attendees {
+					attendeeNames[i] = attendee.GetDisplayName()
+				}
+				fmt.Printf("  👥 %s\n", strings.Join(attendeeNames, ", "))
 			} else if len(modelEvent.Attendees) > 5 {
+				attendeeNames := make([]string, 3)
+				for i := 0; i < 3; i++ {
+					attendeeNames[i] = modelEvent.Attendees[i].GetDisplayName()
+				}
 				fmt.Printf("  👥 %s and %d others\n", 
-					strings.Join(modelEvent.Attendees[:3], ", "), 
+					strings.Join(attendeeNames, ", "), 
 					len(modelEvent.Attendees)-3)
 			}
 			

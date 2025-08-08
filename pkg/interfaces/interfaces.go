@@ -21,6 +21,16 @@ type Target interface {
 	FormatFilename(title string) string
 	GetFileExtension() string
 	FormatMetadata(metadata map[string]interface{}) string
+	Preview(items []*models.Item, outputDir string) ([]*FilePreview, error)
+}
+
+// FilePreview represents what would happen to a file during sync
+type FilePreview struct {
+	FilePath    string    // Full path where file would be created
+	Action      string    // "create", "update", "skip"
+	Content     string    // Full content that would be written
+	ExistingContent string // Current content if file exists
+	Conflict    bool      // True if there would be a conflict
 }
 
 // Syncer coordinates between sources and targets

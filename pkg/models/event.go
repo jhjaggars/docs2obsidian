@@ -2,6 +2,19 @@ package models
 
 import "time"
 
+type Attendee struct {
+	Email       string
+	DisplayName string
+}
+
+// GetDisplayName returns the display name if available, otherwise returns email
+func (a *Attendee) GetDisplayName() string {
+	if a.DisplayName != "" {
+		return a.DisplayName
+	}
+	return a.Email
+}
+
 type CalendarEvent struct {
 	ID          string
 	Summary     string
@@ -9,7 +22,7 @@ type CalendarEvent struct {
 	Start       time.Time
 	End         time.Time
 	Location    string
-	Attendees   []string
+	Attendees   []Attendee
 	MeetingURL  string
 	Attachments []CalendarAttachment
 }

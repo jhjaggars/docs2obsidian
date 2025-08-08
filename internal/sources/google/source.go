@@ -38,6 +38,32 @@ func (g *GoogleSource) Configure(config map[string]interface{}) error {
 		return err
 	}
 
+	// Configure attendee allow list if provided
+	if allowListInterface, exists := config["attendee_allow_list"]; exists {
+		if allowList, ok := allowListInterface.([]interface{}); ok {
+			var stringAllowList []string
+			for _, item := range allowList {
+				if emailStr, ok := item.(string); ok {
+					stringAllowList = append(stringAllowList, emailStr)
+				}
+			}
+			g.calendarService.SetAttendeeAllowList(stringAllowList)
+		}
+	}
+
+	// Configure attendee count filtering options
+	if requireMultiple, exists := config["require_multiple_attendees"]; exists {
+		if requireBool, ok := requireMultiple.(bool); ok {
+			g.calendarService.SetRequireMultipleAttendees(requireBool)
+		}
+	}
+
+	if includeSelfOnly, exists := config["include_self_only_events"]; exists {
+		if includeBool, ok := includeSelfOnly.(bool); ok {
+			g.calendarService.SetIncludeSelfOnlyEvents(includeBool)
+		}
+	}
+
 	g.driveService, err = drive.NewService(client)
 	if err != nil {
 		return err
