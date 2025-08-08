@@ -52,14 +52,17 @@ type SyncConfig struct {
 }
 
 type SourceConfig struct {
-	// Source enablement and type
+	// Basic source settings
 	Enabled bool   `json:"enabled" yaml:"enabled"`
 	Type    string `json:"type" yaml:"type"`
 	
-	// Source-specific sync settings
-	SyncInterval time.Duration `json:"sync_interval,omitempty" yaml:"sync_interval,omitempty"` // Override global interval
-	Since        string        `json:"since,omitempty" yaml:"since,omitempty"`                 // Override global since
-	Priority     int           `json:"priority,omitempty" yaml:"priority,omitempty"`           // Sync order (1=highest)
+	// Per-source overrides (NEW)
+	Name         string        `json:"name,omitempty" yaml:"name,omitempty"`                 // Human-readable instance name
+	OutputSubdir string        `json:"output_subdir,omitempty" yaml:"output_subdir,omitempty"` // Custom subdirectory
+	OutputTarget string        `json:"output_target,omitempty" yaml:"output_target,omitempty"` // Override default target
+	SyncInterval time.Duration `json:"sync_interval,omitempty" yaml:"sync_interval,omitempty"`
+	Since        string        `json:"since,omitempty" yaml:"since,omitempty"`
+	Priority     int           `json:"priority,omitempty" yaml:"priority,omitempty"`
 	
 	// Source-specific configurations
 	Google GoogleSourceConfig `json:"google,omitempty" yaml:"google,omitempty"`
@@ -185,18 +188,55 @@ type SlackSourceConfig struct {
 }
 
 type GmailSourceConfig struct {
-	// Email filtering
-	Labels          []string `json:"labels" yaml:"labels"`               // ["IMPORTANT", "STARRED"]
-	Query           string   `json:"query" yaml:"query"`                 // Gmail search query
-	IncludeUnread   bool     `json:"include_unread" yaml:"include_unread"`
-	IncludeThreads  bool     `json:"include_threads" yaml:"include_threads"`
-	MaxEmailAge     string   `json:"max_email_age" yaml:"max_email_age"`  // "30d"
+	// Instance identification
+	Name        string `json:"name" yaml:"name"`                 // "Work Emails", "Personal Important"
+	Description string `json:"description" yaml:"description"`   // Optional description
+	
+	// Query and filtering
+	Labels              []string `json:"labels" yaml:"labels"`                             // ["IMPORTANT", "STARRED"]
+	Query               string   `json:"query" yaml:"query"`                               // Custom Gmail search
+	IncludeUnread       bool     `json:"include_unread" yaml:"include_unread"`             // Include unread emails
+	IncludeRead         bool     `json:"include_read" yaml:"include_read"`                 // Include read emails
+	IncludeThreads      bool     `json:"include_threads" yaml:"include_threads"`           // Include full threads
+	MaxEmailAge         string   `json:"max_email_age" yaml:"max_email_age"`               // "30d", "1y"
+	MinEmailAge         string   `json:"min_email_age,omitempty" yaml:"min_email_age,omitempty"` // "1d" (exclude very recent)
+	
+	// Sender/recipient filtering (NEW)
+	FromDomains         []string `json:"from_domains,omitempty" yaml:"from_domains,omitempty"`         // ["company.com"]
+	ToDomains           []string `json:"to_domains,omitempty" yaml:"to_domains,omitempty"`             // ["company.com"]
+	ExcludeFromDomains  []string `json:"exclude_from_domains,omitempty" yaml:"exclude_from_domains,omitempty"` // ["noreply.com"]
+	RequireAttachments  bool     `json:"require_attachments,omitempty" yaml:"require_attachments,omitempty"`   // Only emails with attachments
 	
 	// Content processing
-	ExtractLinks    bool     `json:"extract_links" yaml:"extract_links"`
-	DownloadAttachments bool `json:"download_attachments" yaml:"download_attachments"`
-	AttachmentTypes []string `json:"attachment_types" yaml:"attachment_types"` // ["pdf", "doc"]
-	MaxAttachmentSize string `json:"max_attachment_size" yaml:"max_attachment_size"` // "5MB"
+	ExtractLinks          bool     `json:"extract_links" yaml:"extract_links"`               // Extract URLs from content
+	ExtractRecipients     bool     `json:"extract_recipients" yaml:"extract_recipients"`     // Extract to/cc/bcc details
+	IncludeFullHeaders    bool     `json:"include_full_headers" yaml:"include_full_headers"` // Include all email headers
+	ProcessHTMLContent    bool     `json:"process_html_content" yaml:"process_html_content"` // Convert HTML to markdown
+	IncludeOriginalHTML   bool     `json:"include_original_html,omitempty" yaml:"include_original_html,omitempty"` // Keep HTML version
+	StripQuotedText       bool     `json:"strip_quoted_text,omitempty" yaml:"strip_quoted_text,omitempty"`       // Remove quoted replies
+	ExtractSignatures     bool     `json:"extract_signatures,omitempty" yaml:"extract_signatures,omitempty"`     // Extract email signatures
+	
+	// Attachment handling
+	DownloadAttachments   bool     `json:"download_attachments" yaml:"download_attachments"`
+	AttachmentTypes       []string `json:"attachment_types" yaml:"attachment_types"`         // ["pdf", "doc", "jpg"]
+	MaxAttachmentSize     string   `json:"max_attachment_size" yaml:"max_attachment_size"`   // "5MB"
+	AttachmentSubdir      string   `json:"attachment_subdir,omitempty" yaml:"attachment_subdir,omitempty"` // Custom attachment folder
+	
+	// Rate limiting and performance
+	RequestDelay          time.Duration `json:"request_delay,omitempty" yaml:"request_delay,omitempty"`     // Delay between requests
+	MaxRequests           int           `json:"max_requests,omitempty" yaml:"max_requests,omitempty"`       // Max requests per sync
+	BatchSize             int           `json:"batch_size,omitempty" yaml:"batch_size,omitempty"`           // Messages per API call
+	
+	// Output customization
+	FilenameTemplate      string        `json:"filename_template,omitempty" yaml:"filename_template,omitempty"`   // "{{date}}-{{from}}-{{subject}}"
+	IncludeThreadContext  bool          `json:"include_thread_context,omitempty" yaml:"include_thread_context,omitempty"` // Link to thread messages
+	GroupByThread         bool          `json:"group_by_thread,omitempty" yaml:"group_by_thread,omitempty"`       // One file per thread
+	TaggingRules          []TaggingRule `json:"tagging_rules,omitempty" yaml:"tagging_rules,omitempty"`           // Custom tagging logic
+}
+
+type TaggingRule struct {
+	Condition string   `json:"condition" yaml:"condition"` // "from:boss@company.com"
+	Tags      []string `json:"tags" yaml:"tags"`           // ["urgent", "work"]
 }
 
 type JiraSourceConfig struct {

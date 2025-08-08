@@ -44,8 +44,8 @@ Same OAuth setup as docs2obsidian - place `credentials.json` in:
 
 ### Sources
 - ✅ **Google Calendar + Drive** - Fully implemented
+- ✅ **Gmail** - Fully implemented with multi-instance support
 - 📋 **Slack** - Configuration ready, implementation pending
-- 📋 **Gmail** - Configuration ready, implementation pending  
 - 📋 **Jira** - Configuration ready, implementation pending
 
 ### Targets  

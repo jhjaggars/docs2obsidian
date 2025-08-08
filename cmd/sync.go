@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ var (
 	outputDir  string
 	since      string
 	dryRun     bool
+	limit      int
 )
 
 var syncCmd = &cobra.Command{
@@ -45,6 +47,7 @@ func init() {
 	syncCmd.Flags().StringVarP(&outputDir, "output", "o", "", "Output directory")
 	syncCmd.Flags().StringVar(&since, "since", "", "Sync items since (7d, 2006-01-02, today)")
 	syncCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be synced without making changes")
+	syncCmd.Flags().IntVar(&limit, "limit", 1000, "Maximum number of items to fetch (default: 1000)")
 }
 
 func runSyncCommand(cmd *cobra.Command, args []string) error {
@@ -96,8 +99,8 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create target: %w", err)
 	}
 
-	// Collect items from all enabled sources
-	var allItems []*models.Item
+	// Process each source independently to support per-source customization
+	totalItems := 0
 	for _, srcName := range sourcesToSync {
 		// Get source-specific config
 		sourceConfig, exists := cfg.Sources[srcName]
@@ -111,8 +114,8 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Create source
-		source, err := createSource(srcName)
+		// Create source with config
+		source, err := createSourceWithConfig(srcName, sourceConfig)
 		if err != nil {
 			fmt.Printf("Warning: failed to create source '%s': %v, skipping\n", srcName, err)
 			continue
@@ -132,7 +135,7 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 
 		// Fetch items from this source
 		fmt.Printf("Fetching from %s...\n", srcName)
-		items, err := source.Fetch(sourceSinceTime, 1000) // TODO: make configurable
+		items, err := source.Fetch(sourceSinceTime, limit)
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch from source '%s': %v, skipping\n", srcName, err)
 			continue
@@ -146,22 +149,44 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("Found %d items from %s\n", len(items), srcName)
-		allItems = append(allItems, items...)
+
+		// Calculate per-source output directory
+		sourceOutputDir := getSourceOutputDirectory(finalOutputDir, sourceConfig)
+		
+		// Determine target for this source (may override default)
+		sourceTargetName := finalTargetName
+		if sourceConfig.OutputTarget != "" {
+			sourceTargetName = sourceConfig.OutputTarget
+		}
+
+		// Create source-specific target if different from default
+		var sourceTarget interfaces.Target
+		if sourceTargetName != finalTargetName {
+			sourceTarget, err = createTargetWithConfig(sourceTargetName, cfg)
+			if err != nil {
+				fmt.Printf("Warning: failed to create target '%s' for source '%s': %v, using default target\n", sourceTargetName, srcName, err)
+				sourceTarget = target
+				sourceOutputDir = finalOutputDir // Reset to default output dir
+			}
+		} else {
+			sourceTarget = target
+		}
+
+		if dryRun {
+			fmt.Printf("DRY RUN: Would export %d items from %s to %s using %s target\n", len(items), srcName, sourceOutputDir, sourceTargetName)
+		} else {
+			// Export items from this source
+			if err := sourceTarget.Export(items, sourceOutputDir); err != nil {
+				fmt.Printf("Warning: failed to export from source '%s': %v, skipping\n", srcName, err)
+				continue
+			}
+			fmt.Printf("Successfully exported %d items from %s to %s\n", len(items), srcName, sourceOutputDir)
+		}
+
+		totalItems += len(items)
 	}
 
-	fmt.Printf("Total items collected: %d\n", len(allItems))
-
-	if dryRun {
-		fmt.Printf("DRY RUN: Would export %d items to %s\n", len(allItems), finalOutputDir)
-		return nil
-	}
-
-	// Export all items to target
-	if err := target.Export(allItems, finalOutputDir); err != nil {
-		return fmt.Errorf("failed to export to target: %w", err)
-	}
-
-	fmt.Printf("Successfully exported %d items\n", len(allItems))
+	fmt.Printf("Total items processed: %d\n", totalItems)
 	return nil
 }
 
@@ -175,6 +200,25 @@ func createSource(name string) (interfaces.Source, error) {
 		return source, nil
 	default:
 		return nil, fmt.Errorf("unknown source '%s': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)", name)
+	}
+}
+
+func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig) (interfaces.Source, error) {
+	switch sourceConfig.Type {
+	case "google":
+		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
+		if err := source.Configure(nil); err != nil {
+			return nil, err
+		}
+		return source, nil
+	case "gmail":
+		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
+		if err := source.Configure(nil); err != nil {
+			return nil, err
+		}
+		return source, nil
+	default:
+		return nil, fmt.Errorf("unknown source type '%s': supported types are 'google', 'gmail' (others like slack, jira are planned for future releases)", sourceConfig.Type)
 	}
 }
 
@@ -287,4 +331,12 @@ func getEnabledSources(cfg *models.Config) []string {
 	}
 	
 	return enabledSources
+}
+
+// getSourceOutputDirectory calculates the output directory for a source based on configuration
+func getSourceOutputDirectory(baseOutputDir string, sourceConfig models.SourceConfig) string {
+	if sourceConfig.OutputSubdir != "" {
+		return filepath.Join(baseOutputDir, sourceConfig.OutputSubdir)
+	}
+	return baseOutputDir
 }

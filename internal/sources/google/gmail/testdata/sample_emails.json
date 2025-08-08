@@ -1,0 +1,149 @@
+{
+  "simple_text_email": {
+    "id": "sample-001",
+    "threadId": "thread-001",
+    "labelIds": ["INBOX", "UNREAD"],
+    "snippet": "This is a simple text email for testing purposes...",
+    "internalDate": "1704067200000",
+    "payload": {
+      "mimeType": "text/plain",
+      "headers": [
+        {"name": "Subject", "value": "Test Email - Simple Text"},
+        {"name": "From", "value": "John Doe <john.doe@example.com>"},
+        {"name": "To", "value": "jane.smith@example.com"},
+        {"name": "Date", "value": "Mon, 01 Jan 2024 12:00:00 +0000"},
+        {"name": "Message-ID", "value": "<sample001@example.com>"},
+        {"name": "Reply-To", "value": "noreply@example.com"}
+      ],
+      "body": {
+        "data": "VGhpcyBpcyBhIHNpbXBsZSB0ZXh0IGVtYWlsIGZvciB0ZXN0aW5nIHB1cnBvc2VzLgoKSXQgY29udGFpbnMgbXVsdGlwbGUgbGluZXMgYW5kIGNhbiBiZSB1c2VkIHRvIHRlc3QgYmFzaWMgZW1haWwgcGFyc2luZy4KClRoYW5rcyEKSm9obg=="
+      }
+    }
+  },
+  "html_email_with_links": {
+    "id": "sample-002", 
+    "threadId": "thread-002",
+    "labelIds": ["INBOX", "IMPORTANT"],
+    "snippet": "HTML email with formatting and links...",
+    "internalDate": "1704070800000",
+    "payload": {
+      "mimeType": "multipart/alternative",
+      "headers": [
+        {"name": "Subject", "value": "Weekly Newsletter - HTML Format"},
+        {"name": "From", "value": "Newsletter Team <newsletter@company.com>"},
+        {"name": "To", "value": "subscriber@example.com"},
+        {"name": "CC", "value": "archive@company.com, backup@company.com"},
+        {"name": "Date", "value": "Mon, 01 Jan 2024 13:00:00 +0000"},
+        {"name": "Message-ID", "value": "<newsletter002@company.com>"}
+      ],
+      "parts": [
+        {
+          "mimeType": "text/plain",
+          "body": {
+            "data": "V2Vla2x5IE5ld3NsZXR0ZXIKCkNoZWNrIG91dCBvdXIgbmV3IGZlYXR1cmVzIGF0IGh0dHBzOi8vY29tcGFueS5jb20vZmVhdHVyZXMKClZpc2l0IG91ciBibG9nOiBodHRwczovL2Jsb2cuY29tcGFueS5jb20="
+          }
+        },
+        {
+          "mimeType": "text/html",
+          "body": {
+            "data": "PGh0bWw+CjxoZWFkPjx0aXRsZT5XZWVrbHkgTmV3c2xldHRlcjwvdGl0bGU+PC9oZWFkPgo8Ym9keT4KPHA+PGI+V2Vla2x5IE5ld3NsZXR0ZXI8L2I+PC9wPgo8cD5DaGVjayBvdXQgb3VyIDxhIGhyZWY9Imh0dHBzOi8vY29tcGFueS5jb20vZmVhdHVyZXMiPm5ldyBmZWF0dXJlczwvYT4hPC9wPgo8cD5WaXNpdCBvdXIgPGEgaHJlZj0iaHR0cHM6Ly9ibG9nLmNvbXBhbnkuY29tIj5ibG9nPC9hPiBmb3IgdXBkYXRlcy48L3A+CjxwPjxlbT5UaGFua3MgZm9yIHN1YnNjcmlidW5nITwvZW0+PC9wPgo8L2JvZHk+CjwvaHRtbD4="
+          }
+        }
+      ]
+    }
+  },
+  "email_with_attachments": {
+    "id": "sample-003",
+    "threadId": "thread-003", 
+    "labelIds": ["INBOX", "STARRED"],
+    "snippet": "Email with multiple attachments including PDF and images...",
+    "internalDate": "1704074400000",
+    "payload": {
+      "mimeType": "multipart/mixed",
+      "headers": [
+        {"name": "Subject", "value": "Project Documents - Q1 Report"},
+        {"name": "From", "value": "Project Manager <pm@company.com>"},
+        {"name": "To", "value": "team@company.com"},
+        {"name": "CC", "value": "management@company.com"},
+        {"name": "Date", "value": "Mon, 01 Jan 2024 14:00:00 +0000"},
+        {"name": "Message-ID", "value": "<project003@company.com>"}
+      ],
+      "parts": [
+        {
+          "mimeType": "text/plain",
+          "body": {
+            "data": "SGksIHRlYW0sCgpQbGVhc2UgZmluZCBhdHRhY2hlZCB0aGUgUTEgcmVwb3J0IGFuZCBzdXBwb3J0aW5nIGRvY3VtZW50cy4KClRoZSBQREYgY29udGFpbnMgdGhlIGZ1bGwgcmVwb3J0LCBhbmQgdGhlIGltYWdlcyBzaG93IGtleSBtZXRyaWNzLgoKUmVnYXJkcywKUHJvamVjdCBNYW5hZ2Vy"
+          }
+        },
+        {
+          "mimeType": "application/pdf",
+          "filename": "Q1_Report_2024.pdf",
+          "body": {
+            "attachmentId": "attach-pdf-001",
+            "size": 1048576
+          }
+        },
+        {
+          "mimeType": "image/png",
+          "filename": "metrics_chart.png", 
+          "body": {
+            "attachmentId": "attach-img-001",
+            "size": 204800
+          }
+        },
+        {
+          "mimeType": "image/jpeg",
+          "filename": "team_photo.jpg",
+          "body": {
+            "attachmentId": "attach-img-002", 
+            "size": 512000
+          }
+        }
+      ]
+    }
+  },
+  "complex_recipients_email": {
+    "id": "sample-004",
+    "threadId": "thread-004",
+    "labelIds": ["INBOX"],
+    "snippet": "Email with complex recipient formatting...",
+    "internalDate": "1704078000000", 
+    "payload": {
+      "mimeType": "text/plain",
+      "headers": [
+        {"name": "Subject", "value": "Meeting Invitation - All Hands"},
+        {"name": "From", "value": "\"CEO, Company Inc.\" <ceo@company.com>"},
+        {"name": "To", "value": "\"Smith, John\" <john.smith@company.com>, \"Doe, Jane\" <jane.doe@company.com>, all-staff@company.com"},
+        {"name": "CC", "value": "board@company.com, \"External Advisor, PhD\" <advisor@external.com>"},
+        {"name": "BCC", "value": "confidential@company.com"},
+        {"name": "Date", "value": "Mon, 01 Jan 2024 15:00:00 +0000"},
+        {"name": "Message-ID", "value": "<meeting004@company.com>"},
+        {"name": "Reply-To", "value": "assistant@company.com"}
+      ],
+      "body": {
+        "data": "RGVhciBUZWFtLAoKWW91IGFyZSBpbnZpdGVkIHRvIG91ciBRMSBBbGwgSGFuZHMgbWVldGluZy4KCkRhdGU6IEphbnVhcnkgMTUsIDIwMjQKVGltZTogMTA6MDAgQU0gUFNUCkxvY2F0aW9uOiBDb25mZXJlbmNlIFJvb20gQQoKQWdlbmRhOgotIFExIFJldmlldwotIFEyIFBsYW5uaW5nCi0gT3BlbiBRJkEKClBsZWFzZSBjb25maXJtIHlvdXIgYXR0ZW5kYW5jZS4KClRoYW5rcyEKQ0VP"
+      }
+    }
+  },
+  "quoted_reply_email": {
+    "id": "sample-005",
+    "threadId": "thread-005",
+    "labelIds": ["INBOX", "UNREAD"],
+    "snippet": "Email with quoted reply text...",
+    "internalDate": "1704081600000",
+    "payload": {
+      "mimeType": "text/plain", 
+      "headers": [
+        {"name": "Subject", "value": "Re: Project Update"},
+        {"name": "From", "value": "team-lead@company.com"},
+        {"name": "To", "value": "developer@company.com"},
+        {"name": "Date", "value": "Mon, 01 Jan 2024 16:00:00 +0000"},
+        {"name": "Message-ID", "value": "<reply005@company.com>"},
+        {"name": "In-Reply-To", "value": "<original004@company.com>"}
+      ],
+      "body": {
+        "data": "VGhhbmtzIGZvciB0aGUgdXBkYXRlIQoKSSBhZ3JlZSB3aXRoIHlvdXIgYXBwcm9hY2ggYW5kIHRoaW5rIHdlIHNob3VsZCBwcm9jZWVkLgoKTGV0J3Mgc2NoZWR1bGUgYSBmb2xsb3ctdXAgbWVldGluZyBmb3IgbmV4dCB3ZWVrLgoKT24gTW9uLCBKYW4gMSwgMjAyNCBhdCAxMjowMCBQTSBkZXZlbG9wZXJAY29tcGFueS5jb20gd3JvdGU6Cj4gSGkgVGVhbSBMZWFkLAo+IAo+IEknbSB3cml0aW5nIHRvIHVwZGF0ZSB5b3Ugb24gdGhlIHByb2plY3QgcHJvZ3Jlc3MuCj4gCj4gV2UndmUgY29tcGxldGVkIHRoZSBpbml0aWFsIGRldmVsb3BtZW50IHBoYXNlIGFuZCBhcmUgcmVhZHkKPiB0byBtb3ZlIGludG8gdGVzdGluZy4KPiAKPiBUaGUgZmVhdHVyZXMgaW1wbGVtZW50ZWQ6Cj4gLSBVc2VyIGF1dGhlbnRpY2F0aW9uCj4gLSBEYXRhIHZhbGlkYXRpb24KPiAtIEFQSSBlbmRwb2ludHMKPiAKPiBOZXh0IHN0ZXBzOgo+IC0gVW5pdCB0ZXN0aW5nCj4gLSBJbnRlZ3JhdGlvbiB0ZXN0aW5nCj4gLSBQZXJmb3JtYW5jZSBvcHRpbWl6YXRpb24KPiAKPiBQbGVhc2UgbGV0IG1lIGtub3cgeW91ciB0aG91Z2h0cy4KPiAKPiBCZXN0IHJlZ2FyZHMsCj4gRGV2ZWxvcGVy"
+      }
+    }
+  }
+}
