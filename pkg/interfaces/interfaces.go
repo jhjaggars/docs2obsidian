@@ -1,8 +1,8 @@
 package interfaces
 
 import (
-	"time"
 	"pkm-sync/pkg/models"
+	"time"
 )
 
 // Source represents any data source (Google Calendar, Slack, etc.)
@@ -23,7 +23,7 @@ type Target interface {
 	FormatMetadata(metadata map[string]interface{}) string
 }
 
-// Syncer coordinates between sources and targets
+// Syncer coordinates between sources and targets.
 type Syncer interface {
 	Sync(source Source, target Target, options SyncOptions) error
 }

@@ -31,7 +31,7 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse success template: %v", err))
 	}
-	
+
 	errorTemplate, err = template.ParseFS(templateFS, "templates/error.html")
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse error template: %v", err))
@@ -91,18 +91,21 @@ func (as *authServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	if errorParam != "" {
 		as.serveErrorPage(w, errorParam)
 		as.errCh <- fmt.Errorf("OAuth error: %s", errorParam)
+
 		return
 	}
 
 	if state != as.state {
 		as.serveErrorPage(w, "invalid state parameter - possible CSRF attack")
 		as.errCh <- fmt.Errorf("state parameter mismatch: expected %s, got %s", as.state, state)
+
 		return
 	}
 
 	if code == "" {
 		as.serveErrorPage(w, "missing authorization code")
 		as.errCh <- fmt.Errorf("authorization code not found in callback")
+
 		return
 	}
 
@@ -142,6 +145,7 @@ func (as *authServer) waitForCode(timeout time.Duration) (string, error) {
 func (as *authServer) shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	return as.server.Shutdown(ctx)
 }
 
@@ -158,6 +162,7 @@ func generateRandomState() (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
+
 	return hex.EncodeToString(bytes), nil
 }
 
@@ -169,6 +174,7 @@ func findAvailablePort() (int, error) {
 	defer listener.Close()
 
 	addr := listener.Addr().(*net.TCPAddr)
+
 	return addr.Port, nil
 }
 
@@ -202,6 +208,7 @@ func getTokenFromWebServer(config *oauth2.Config) (*oauth2.Token, error) {
 	}
 
 	fmt.Println("Authorization successful!")
+
 	return token, nil
 }
 

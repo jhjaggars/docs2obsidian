@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"pkm-sync/pkg/models"
-	"google.golang.org/api/drive/v3"
+
+	drive "google.golang.org/api/drive/v3"
 )
 
 type Service struct {
@@ -25,7 +26,7 @@ func NewService(httpClient *http.Client) (*Service, error) {
 	return &Service{client: driveService}, nil
 }
 
-// GetFileMetadata retrieves metadata for a Google Drive file
+// GetFileMetadata retrieves metadata for a Google Drive file.
 func (s *Service) GetFileMetadata(fileID string) (*models.DriveFile, error) {
 	file, err := s.client.Files.Get(fileID).Fields("id,name,mimeType,webViewLink,modifiedTime,owners").Do()
 	if err != nil {
@@ -54,12 +55,12 @@ func (s *Service) GetFileMetadata(fileID string) (*models.DriveFile, error) {
 	return driveFile, nil
 }
 
-// IsGoogleDoc checks if a file is a Google Doc that can be exported to markdown
+// IsGoogleDoc checks if a file is a Google Doc that can be exported to markdown.
 func (s *Service) IsGoogleDoc(mimeType string) bool {
 	return mimeType == "application/vnd.google-apps.document"
 }
 
-// ExportDocAsMarkdown exports a Google Doc as markdown format
+// ExportDocAsMarkdown exports a Google Doc as markdown format.
 func (s *Service) ExportDocAsMarkdown(fileID string, outputPath string) error {
 	if !s.IsGoogleDocByID(fileID) {
 		return fmt.Errorf("file %s is not a Google Doc", fileID)
@@ -93,24 +94,25 @@ func (s *Service) ExportDocAsMarkdown(fileID string, outputPath string) error {
 	return nil
 }
 
-// IsGoogleDocByID checks if a file ID represents a Google Doc
+// IsGoogleDocByID checks if a file ID represents a Google Doc.
 func (s *Service) IsGoogleDocByID(fileID string) bool {
 	file, err := s.client.Files.Get(fileID).Fields("mimeType").Do()
 	if err != nil {
 		return false
 	}
+
 	return s.IsGoogleDoc(file.MimeType)
 }
 
-// GetAttachmentsFromEvent extracts Google Drive file attachments from a calendar event
+// GetAttachmentsFromEvent extracts Google Drive file attachments from a calendar event.
 func (s *Service) GetAttachmentsFromEvent(eventDescription string) ([]string, error) {
 	var fileIDs []string
-	
+
 	// Look for Google Drive links in the event description
 	// Google Drive links typically follow patterns like:
 	// https://docs.google.com/document/d/FILE_ID/edit
 	// https://drive.google.com/file/d/FILE_ID/view
-	
+
 	lines := strings.Split(eventDescription, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -126,11 +128,11 @@ func (s *Service) GetAttachmentsFromEvent(eventDescription string) ([]string, er
 			}
 		}
 	}
-	
+
 	return fileIDs, nil
 }
 
-// extractFileIDFromDocsURL extracts file ID from Google Docs URL
+// extractFileIDFromDocsURL extracts file ID from Google Docs URL.
 func extractFileIDFromDocsURL(url string) string {
 	// Pattern: https://docs.google.com/document/d/FILE_ID/edit
 	parts := strings.Split(url, "/")
@@ -141,13 +143,15 @@ func extractFileIDFromDocsURL(url string) string {
 			if idx := strings.Index(fileID, "?"); idx != -1 {
 				fileID = fileID[:idx]
 			}
+
 			return fileID
 		}
 	}
+
 	return ""
 }
 
-// extractFileIDFromDriveURL extracts file ID from Google Drive URL
+// extractFileIDFromDriveURL extracts file ID from Google Drive URL.
 func extractFileIDFromDriveURL(url string) string {
 	// Pattern: https://drive.google.com/file/d/FILE_ID/view
 	parts := strings.Split(url, "/")
@@ -158,13 +162,15 @@ func extractFileIDFromDriveURL(url string) string {
 			if idx := strings.Index(fileID, "?"); idx != -1 {
 				fileID = fileID[:idx]
 			}
+
 			return fileID
 		}
 	}
+
 	return ""
 }
 
-// ExportAttachedDocsFromEvent exports all Google Docs attached to an event
+// ExportAttachedDocsFromEvent exports all Google Docs attached to an event.
 func (s *Service) ExportAttachedDocsFromEvent(eventDescription, outputDir string) ([]string, error) {
 	fileIDs, err := s.GetAttachmentsFromEvent(eventDescription)
 	if err != nil {
@@ -172,18 +178,20 @@ func (s *Service) ExportAttachedDocsFromEvent(eventDescription, outputDir string
 	}
 
 	var exportedFiles []string
-	
+
 	for _, fileID := range fileIDs {
 		// Get file metadata to determine name and type
 		metadata, err := s.GetFileMetadata(fileID)
 		if err != nil {
 			fmt.Printf("Warning: Could not get metadata for file %s: %v\n", fileID, err)
+
 			continue
 		}
 
 		// Only export Google Docs
 		if !s.IsGoogleDoc(metadata.MimeType) {
 			fmt.Printf("Skipping %s: not a Google Doc (type: %s)\n", metadata.Name, metadata.MimeType)
+
 			continue
 		}
 
@@ -197,6 +205,7 @@ func (s *Service) ExportAttachedDocsFromEvent(eventDescription, outputDir string
 		// Export the document
 		if err := s.ExportDocAsMarkdown(fileID, outputPath); err != nil {
 			fmt.Printf("Warning: Could not export %s: %v\n", metadata.Name, err)
+
 			continue
 		}
 
@@ -207,30 +216,30 @@ func (s *Service) ExportAttachedDocsFromEvent(eventDescription, outputDir string
 	return exportedFiles, nil
 }
 
-// sanitizeFilename removes or replaces characters that are invalid in filenames
+// sanitizeFilename removes or replaces characters that are invalid in filenames.
 func sanitizeFilename(filename string) string {
 	// Replace common problematic characters
 	replacements := map[string]string{
-		"/": "-",
-		"\\": "-", 
-		":": "-",
-		"*": "",
-		"?": "",
+		"/":  "-",
+		"\\": "-",
+		":":  "-",
+		"*":  "",
+		"?":  "",
 		"\"": "",
-		"<": "",
-		">": "",
-		"|": "-",
+		"<":  "",
+		">":  "",
+		"|":  "-",
 	}
-	
+
 	for old, new := range replacements {
 		filename = strings.ReplaceAll(filename, old, new)
 	}
-	
+
 	// Remove multiple consecutive spaces and trim
 	filename = strings.TrimSpace(filename)
 	for strings.Contains(filename, "  ") {
 		filename = strings.ReplaceAll(filename, "  ", " ")
 	}
-	
+
 	return filename
 }

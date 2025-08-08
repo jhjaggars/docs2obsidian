@@ -133,7 +133,7 @@ func TestGetConfigFilePath_Custom(t *testing.T) {
 	}
 }
 
-// Test helper function to create a temporary config file
+// Test helper function to create a temporary config file.
 func createTempConfig(t *testing.T, content string) (string, func()) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, config.ConfigFileName)
@@ -345,6 +345,7 @@ func TestConfigInit_BasicDefaults(t *testing.T) {
 	for _, src := range cfg.Sync.EnabledSources {
 		if src == source {
 			found = true
+
 			break
 		}
 	}
@@ -372,6 +373,7 @@ func TestConfigInit_BasicDefaults(t *testing.T) {
 	for _, src := range cfg.Sync.EnabledSources {
 		if src == source {
 			slackEnabled = true
+
 			break
 		}
 	}

@@ -6,7 +6,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Build the application
-go build -o pkm-sync ./cmd
+make build                   # Build the binary
+go build -o pkm-sync ./cmd   # Alternative: direct go build
+
+# Development commands
+make test                    # Run all tests
+make lint                    # Run comprehensive linting
+make fmt                     # Format code with gofmt
+make gofmt                   # Check gofmt formatting (CI-friendly)
+make gofumpt                 # Format with stricter gofumpt
+make imports                 # Fix imports with goimports
+make security                # Run security checks (govulncheck + go vet)
+make check                   # Run all checks (gofmt, imports, vet, lint, test, security)
+
+# Container operations
+make ko-build                # Build container image locally
+make ko-push                 # Build and push container image
+make ko-run                  # Run container image locally
+
+# Development setup
+make dev-setup               # Install all development tools
+make help                    # Show all available commands
 
 # Run the application (requires OAuth setup first)
 ./pkm-sync setup             # Verify authentication configuration
@@ -68,6 +88,42 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 - `google.golang.org/api/drive/v3` - Google Drive API
 - `golang.org/x/oauth2/google` - OAuth 2.0 client
 - `gopkg.in/yaml.v3` - YAML configuration parsing
+
+## Code Quality Requirements
+
+All code changes must pass the following checks before being merged:
+
+### Required Checks (run with `make check`)
+1. **Formatting**: Code must be gofmt'ed (`make gofmt`)
+2. **Imports**: Imports must be properly organized (`make imports`)
+3. **Linting**: Must pass golangci-lint with comprehensive rules (`make lint`)
+4. **Testing**: All tests must pass (`make test`)
+5. **Security**: Must pass vulnerability and security checks (`make security`)
+6. **Go vet**: Must pass standard Go static analysis
+
+### Linting Rules
+The project uses golangci-lint with the following categories of linters:
+- **Bug Detection**: errcheck, gosimple, govet, ineffassign, staticcheck, unused, unconvert
+- **Code Style**: goimports, misspell, gofmt, gofumpt
+- **Code Quality**: goconst, gocritic, gocyclo, revive, nakedret, unparam
+- **Security**: gosec
+- **Performance**: prealloc
+- **Style**: lll (120 char limit), whitespace, nlreturn, nolintlint
+
+### Import Requirements
+- All Google API imports must use explicit aliases to avoid conflicts:
+  ```go
+  calendar "google.golang.org/api/calendar/v3"
+  drive "google.golang.org/api/drive/v3"
+  ```
+- All package imports should be organized by goimports
+- YAML package should be explicitly imported: `yaml "gopkg.in/yaml.v3"`
+
+### CI/CD Pipeline
+- GitHub Actions automatically run all checks on PRs and main branch
+- ko is used for container image builds and multi-platform releases
+- Security scanning with govulncheck and go vet
+- Multi-version Go testing (1.22, 1.23)
 
 ## Current Implementation Status
 

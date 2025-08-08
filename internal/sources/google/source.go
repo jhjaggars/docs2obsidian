@@ -59,7 +59,7 @@ func (g *GoogleSource) Fetch(since time.Time, limit int) ([]*models.Item, error)
 	for _, event := range events {
 		// Convert to our model first
 		calEvent := g.calendarService.ConvertToModelWithDrive(event)
-		
+
 		// Then convert to universal Item format
 		item := models.FromCalendarEvent(calEvent)
 		items = append(items, item)

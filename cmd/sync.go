@@ -87,7 +87,7 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid since parameter: %w", err)
 	}
 
-	fmt.Printf("Syncing from sources [%s] to %s (output: %s, since: %s)\n", 
+	fmt.Printf("Syncing from sources [%s] to %s (output: %s, since: %s)\n",
 		strings.Join(sourcesToSync, ", "), finalTargetName, finalOutputDir, finalSince)
 
 	// Create target with config
@@ -103,11 +103,13 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		sourceConfig, exists := cfg.Sources[srcName]
 		if !exists {
 			fmt.Printf("Warning: source '%s' not configured, skipping\n", srcName)
+
 			continue
 		}
 
 		if !sourceConfig.Enabled {
 			fmt.Printf("Source '%s' is disabled, skipping\n", srcName)
+
 			continue
 		}
 
@@ -115,6 +117,7 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		source, err := createSource(srcName)
 		if err != nil {
 			fmt.Printf("Warning: failed to create source '%s': %v, skipping\n", srcName, err)
+
 			continue
 		}
 
@@ -135,6 +138,7 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		items, err := source.Fetch(sourceSinceTime, 1000) // TODO: make configurable
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch from source '%s': %v, skipping\n", srcName, err)
+
 			continue
 		}
 
@@ -201,33 +205,33 @@ func createTargetWithConfig(name string, cfg *models.Config) (interfaces.Target,
 	switch name {
 	case "obsidian":
 		target := obsidian.NewObsidianTarget()
-		
+
 		// Apply configuration
 		configMap := make(map[string]interface{})
 		if targetConfig, exists := cfg.Targets[name]; exists {
 			configMap["template_dir"] = targetConfig.Obsidian.DefaultFolder
 			configMap["daily_notes_format"] = targetConfig.Obsidian.DateFormat
 		}
-		
+
 		if err := target.Configure(configMap); err != nil {
 			return nil, err
 		}
 		return target, nil
-		
+
 	case "logseq":
 		target := logseq.NewLogseqTarget()
-		
+
 		// Apply configuration
 		configMap := make(map[string]interface{})
 		if targetConfig, exists := cfg.Targets[name]; exists {
 			configMap["default_page"] = targetConfig.Logseq.DefaultPage
 		}
-		
+
 		if err := target.Configure(configMap); err != nil {
 			return nil, err
 		}
 		return target, nil
-		
+
 	default:
 		return nil, fmt.Errorf("unknown target '%s': supported targets are 'obsidian' and 'logseq'", name)
 	}
@@ -252,7 +256,7 @@ func parseSinceTime(since string) (time.Time, error) {
 			return now.Add(-daysDuration), nil
 		}
 	}
-	
+
 	if duration, err := time.ParseDuration(since); err == nil {
 		return now.Add(-duration), nil
 	}
@@ -268,7 +272,7 @@ func parseSinceTime(since string) (time.Time, error) {
 // getEnabledSources returns list of sources that are enabled in the configuration
 func getEnabledSources(cfg *models.Config) []string {
 	var enabledSources []string
-	
+
 	// Use explicit enabled_sources list if provided
 	if len(cfg.Sync.EnabledSources) > 0 {
 		for _, srcName := range cfg.Sync.EnabledSources {
@@ -278,13 +282,13 @@ func getEnabledSources(cfg *models.Config) []string {
 		}
 		return enabledSources
 	}
-	
+
 	// Fallback: find all enabled sources in config
 	for srcName, sourceConfig := range cfg.Sources {
 		if sourceConfig.Enabled {
 			enabledSources = append(enabledSources, srcName)
 		}
 	}
-	
+
 	return enabledSources
 }

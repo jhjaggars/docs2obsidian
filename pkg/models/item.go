@@ -2,13 +2,13 @@ package models
 
 import "time"
 
-// Item represents a universal data item from any source
+// Item represents a universal data item from any source.
 type Item struct {
 	ID          string                 `json:"id"`
 	Title       string                 `json:"title"`
 	Content     string                 `json:"content"`
-	SourceType  string                 `json:"source_type"`  // "google_calendar", "slack", etc.
-	ItemType    string                 `json:"item_type"`    // "event", "message", "document", etc.
+	SourceType  string                 `json:"source_type"` // "google_calendar", "slack", etc.
+	ItemType    string                 `json:"item_type"`   // "event", "message", "document", etc.
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
 	Tags        []string               `json:"tags"`
@@ -31,7 +31,7 @@ type Link struct {
 	Type  string `json:"type"` // "meeting_url", "document", "external"
 }
 
-// Migrate from existing CalendarEvent model
+// Migrate from existing CalendarEvent model.
 func FromCalendarEvent(event *CalendarEvent) *Item {
 	item := &Item{
 		ID:         event.ID,

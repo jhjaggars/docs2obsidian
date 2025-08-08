@@ -74,11 +74,12 @@ func FindCredentialsFile() (string, error) {
 		if _, err := os.Stat(customCredentialsPath); err == nil {
 			return customCredentialsPath, nil
 		}
+
 		return "", fmt.Errorf("custom credentials file not found: %s", customCredentialsPath)
 	}
 
 	paths := getCredentialSearchPaths()
-	
+
 	for _, path := range paths {
 		if _, err := os.Stat(path); err == nil {
 			return path, nil
@@ -90,12 +91,12 @@ func FindCredentialsFile() (string, error) {
 
 func getCredentialSearchPaths() []string {
 	var paths []string
-	
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return []string{"credentials.json"}
 	}
-	
+
 	switch runtime.GOOS {
 	case "windows":
 		paths = append(paths, filepath.Join(homeDir, "AppData", "Roaming", "pkm-sync", "credentials.json"))
@@ -109,8 +110,8 @@ func getCredentialSearchPaths() []string {
 		paths = append(paths, filepath.Join(homeDir, ".config", "pkm-sync", "credentials.json"))
 		paths = append(paths, filepath.Join(homeDir, ".config", "docs2obsidian", "credentials.json"))
 	}
-	
+
 	paths = append(paths, "credentials.json")
-	
+
 	return paths
 }
