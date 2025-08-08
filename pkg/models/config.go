@@ -74,6 +74,7 @@ type GoogleSourceConfig struct {
 	IncludeDeclined  bool     `json:"include_declined" yaml:"include_declined"`
 	IncludePrivate   bool     `json:"include_private" yaml:"include_private"`
 	EventTypes       []string `json:"event_types" yaml:"event_types"` // filter by event types
+	MaxResults       int      `json:"max_results" yaml:"max_results"` // maximum number of events to fetch (default: 1000)
 	
 	// Attendee filtering
 	AttendeeAllowList        []string `json:"attendee_allow_list" yaml:"attendee_allow_list"`               // only include events with these attendees

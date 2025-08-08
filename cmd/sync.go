@@ -133,9 +133,21 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 			sourceSinceTime = sinceTime
 		}
 
+		// Use source-specific max results if configured, otherwise default to 1000
+		maxResults := 1000 // default value
+		if sourceConfig.Google.MaxResults > 0 {
+			// Validate max results range
+			if sourceConfig.Google.MaxResults > 2500 {
+				fmt.Printf("Warning: max_results for source '%s' is %d (maximum allowed: 2500), using 2500\n", srcName, sourceConfig.Google.MaxResults)
+				maxResults = 2500
+			} else {
+				maxResults = sourceConfig.Google.MaxResults
+			}
+		}
+
 		// Fetch items from this source
 		fmt.Printf("Fetching from %s...\n", srcName)
-		items, err := source.Fetch(sourceSinceTime, 1000) // TODO: make configurable
+		items, err := source.Fetch(sourceSinceTime, maxResults)
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch from source '%s': %v, skipping\n", srcName, err)
 			continue
@@ -203,10 +215,28 @@ func createSourceWithConfig(name string, cfg *models.Config) (interfaces.Source,
 		if sourceConfig, exists := cfg.Sources[name]; exists {
 			// Pass Google-specific configuration
 			if sourceConfig.Google.AttendeeAllowList != nil {
-				configMap["attendee_allow_list"] = sourceConfig.Google.AttendeeAllowList
+				// Ensure we pass []string instead of []interface{} to avoid runtime panics
+				// Also validate email format
+				allowList := make([]string, 0, len(sourceConfig.Google.AttendeeAllowList))
+				for _, email := range sourceConfig.Google.AttendeeAllowList {
+					email = strings.TrimSpace(email)
+					if email != "" {
+						if !strings.Contains(email, "@") {
+							fmt.Printf("Warning: attendee_allow_list contains invalid email '%s', skipping\n", email)
+							continue
+						}
+						allowList = append(allowList, email)
+					}
+				}
+				if len(allowList) > 0 {
+					configMap["attendee_allow_list"] = allowList
+				}
 			}
 			configMap["require_multiple_attendees"] = sourceConfig.Google.RequireMultipleAttendees
 			configMap["include_self_only_events"] = sourceConfig.Google.IncludeSelfOnlyEvents
+			if sourceConfig.Google.MaxResults > 0 {
+				configMap["max_results"] = sourceConfig.Google.MaxResults
+			}
 		}
 		
 		if err := source.Configure(configMap); err != nil {

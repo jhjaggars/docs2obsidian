@@ -25,7 +25,7 @@ func NewService(client *http.Client) (*Service, error) {
 	
 	calendarService, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, fmt.Errorf("unable to create calendar service: %w", err)
+		return nil, fmt.Errorf("failed to initialize Google Calendar service: %w. Ensure credentials are valid and Calendar API is enabled", err)
 	}
 
 	return &Service{
@@ -106,10 +106,6 @@ func (s *Service) passesSelfOnlyEventFilter(event *calendar.Event) bool {
 // filterEvents applies the attendee allow list filter to a slice of events
 func (s *Service) filterEvents(events []*calendar.Event) []*calendar.Event {
 	// Always apply filtering, even if allow list is empty (for attendee count filtering)
-	// if len(s.attendeeAllowList) == 0 {
-	//	return events // No filtering if allow list is empty
-	// }
-	
 	var filteredEvents []*calendar.Event
 	for _, event := range events {
 		if s.shouldIncludeEvent(event) {
