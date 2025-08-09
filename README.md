@@ -1,6 +1,6 @@
 # pkm-sync
 
-A universal synchronization tool for Personal Knowledge Management (PKM) systems. Connect data sources like Google Calendar to PKM tools like Obsidian and Logseq.
+A universal synchronization tool for Personal Knowledge Management (PKM) systems. Connect data sources like Google Calendar, Gmail, and Drive to PKM tools like Obsidian and Logseq.
 
 ## Migrated from docs2obsidian
 
@@ -17,21 +17,22 @@ go build -o pkm-sync ./cmd
 ```bash
 # Quick start with configuration file (recommended)
 pkm-sync config init                    # Create default config
-pkm-sync sync                           # Sync using config defaults
+pkm-sync gmail                          # Sync Gmail emails
+pkm-sync calendar                       # Sync calendar events
+pkm-sync drive                          # Export Google Drive documents
 
 # Manual sync with flags (classic approach)
-pkm-sync sync --source google --target obsidian --output ./vault
+pkm-sync gmail --source gmail_work --target obsidian --output ./vault
+pkm-sync calendar --start 2025-01-01 --end 2025-01-31
+pkm-sync drive --event-id 12345 --output ./docs
 
 # Multi-source sync (with configuration)
-pkm-sync config init --source slack    # Enable additional sources
-pkm-sync sync                           # Syncs from all enabled sources
+pkm-sync config init --source gmail_work --source gmail_personal
+pkm-sync gmail                          # Syncs from all enabled Gmail sources
 
 # Sync to Logseq  
-pkm-sync sync --target logseq --output ./graph
-
-# Legacy commands still work
-pkm-sync calendar  # equivalent to sync with obsidian target
-pkm-sync export    # equivalent to sync with obsidian target
+pkm-sync gmail --target logseq --output ./graph
+pkm-sync calendar --target logseq --output ./graph
 ```
 
 ### Configuration
@@ -43,8 +44,9 @@ Same OAuth setup as docs2obsidian - place `credentials.json` in:
 ## Supported Integrations
 
 ### Sources
-- ✅ **Google Calendar + Drive** - Fully implemented
-- ✅ **Gmail** - Fully implemented with multi-instance support
+- ✅ **Gmail** - Fully implemented with multi-instance support and thread grouping
+- ✅ **Google Calendar** - Fully implemented
+- ✅ **Google Drive** - Fully implemented for document export
 - 📋 **Slack** - Configuration ready, implementation pending
 - 📋 **Jira** - Configuration ready, implementation pending
 
@@ -67,36 +69,73 @@ No changes needed! Your existing setup will continue to work:
 # These still work exactly the same
 pkm-sync setup
 pkm-sync calendar  
-pkm-sync export
+pkm-sync drive
 
 # New capabilities
-pkm-sync sync --target logseq
+pkm-sync gmail --target logseq
 ```
 
 ## Examples
 
-### Multi-Source Sync Examples
+### Gmail Sync Examples
 ```bash
-# Sync from all enabled sources (Google + Slack + Gmail) to Obsidian
-pkm-sync config init --source google --source slack
-pkm-sync sync
+# Sync work emails to Obsidian with thread grouping
+pkm-sync gmail --source gmail_work --target obsidian --output ./vault
 
-# This will output: "Syncing from sources [google, slack] to obsidian"
+# Sync personal emails to Logseq
+pkm-sync gmail --source gmail_personal --target logseq --since 7d
+
+# Dry run to see what would be synced (includes thread grouping preview)
+pkm-sync gmail --source gmail_work --dry-run
+
+# Example output with thread grouping:
+# "Found 62 emails from gmail_direct" → "Found 25 emails from gmail_direct"
+# Creates files like: Thread-Summary_project-discussion_8-messages.md
+```
+
+### Calendar Sync Examples
+```bash
+# Sync last week's calendar to Obsidian
+pkm-sync calendar --start 2025-01-01 --end 2025-01-31 --target obsidian
+
+# List today's events
+pkm-sync calendar --start today --end today
+
+# Export calendar with details
+pkm-sync calendar --include-details --format json
+```
+
+### Drive Export Examples
+```bash
+# Export docs from specific event
+pkm-sync drive --event-id 12345 --output ./docs
+
+# Export docs from date range
+pkm-sync drive --start 2025-01-01 --end 2025-01-31 --output ./docs
+```
+
+### Multi-Source Configuration Examples
+```bash
+# Configure multiple Gmail sources
+pkm-sync config init --source gmail_work --source gmail_personal
+pkm-sync gmail  # Syncs from all enabled Gmail sources
+
+# This will output: "Syncing Gmail from sources [gmail_work, gmail_personal] to obsidian"
 ```
 
 ### Single Source Examples  
 ```bash
 # Sync last week's calendar to Logseq
-pkm-sync sync --source google --target logseq --since 7d --output ~/Documents/Logseq
+pkm-sync calendar --start 2025-01-01 --end 2025-01-31 --target logseq --output ~/Documents/Logseq
 
 # Dry run to see what would be synced from all enabled sources
-pkm-sync sync --dry-run
+pkm-sync gmail --dry-run
 
 # Dry run for specific source only
-pkm-sync sync --source google --target obsidian --dry-run
+pkm-sync gmail --source gmail_work --target obsidian --dry-run
 
 # Custom output location
-pkm-sync sync --output ~/MyVault/Calendar
+pkm-sync gmail --output ~/MyVault/Calendar
 ```
 
 ### Configuration-First Workflow
@@ -118,9 +157,11 @@ targets:
       default_folder: Calendar
 EOF
 
-# Then just sync without flags
-pkm-sync sync           # Uses your configured defaults
-pkm-sync sync --since today  # Override just the time range
+# Then use specific commands
+pkm-sync gmail           # Sync Gmail emails
+pkm-sync calendar        # Sync calendar events
+pkm-sync drive           # Export Google Drive documents
+pkm-sync gmail --since today  # Override just the time range
 ```
 
 ## Authentication Setup
@@ -217,22 +258,53 @@ targets:
 
 For complete configuration options including all sources (Google, Slack, Gmail, Jira), targets (Obsidian, Logseq), and advanced settings, see **[CONFIGURATION.md](./CONFIGURATION.md)**.
 
+## Gmail Thread Grouping
+
+Reduce email clutter with intelligent thread grouping:
+
+### Thread Modes
+- **`individual`** (default) - Each email as separate file
+- **`consolidated`** - All thread messages in one file  
+- **`summary`** - Key messages only per thread
+
+### Quick Setup
+```yaml
+# Add to your config.yaml
+sources:
+  gmail_work:
+    type: gmail
+    gmail:
+      include_threads: true
+      thread_mode: "summary"          # or "consolidated"  
+      thread_summary_length: 3        # for summary mode
+      query: "in:inbox to:me"
+```
+
+### Results
+- **Before**: 62 individual email files  
+- **After**: 25 grouped items (60% reduction!)
+- **Filenames**: No spaces, command-line friendly
+  - `Thread-Summary_project-update_5-messages.md`
+  - `Thread_meeting-notes-weekly-sync_8-messages.md`
+
+See **[CONFIGURATION.md](./CONFIGURATION.md#gmail-thread-grouping)** for complete thread grouping documentation.
+
 ## Command Reference
 
 ### Sync Command (with Multi-Source Support)
 ```bash
 # Use config defaults - syncs from ALL enabled sources
-pkm-sync sync
+pkm-sync gmail
 
 # Override to sync from specific source only
-pkm-sync sync --source google
+pkm-sync gmail --source gmail_work
 
 # Override other settings
-pkm-sync sync --target logseq --since today
-pkm-sync sync --output ./custom-output --dry-run
+pkm-sync gmail --target logseq --since today
+pkm-sync gmail --output ./custom-output --dry-run
 
 # Multi-source example output:
-# "Syncing from sources [google, slack] to obsidian"
+# "Syncing Gmail from sources [gmail_work, gmail_personal] to obsidian"
 
 # Time formats for --since
 --since today      # Today only

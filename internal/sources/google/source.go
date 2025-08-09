@@ -117,6 +117,16 @@ func (g *GoogleSource) Fetch(since time.Time, limit int) ([]*models.Item, error)
 			items = append(items, item)
 		}
 
+		// Apply thread processing if enabled
+		if g.config.Gmail.IncludeThreads {
+			threadProcessor := gmail.NewThreadProcessor(g.config.Gmail)
+			processedItems, err := threadProcessor.ProcessThreads(items)
+			if err != nil {
+				return nil, fmt.Errorf("failed to process threads: %w", err)
+			}
+			return processedItems, nil
+		}
+
 		return items, nil
 	}
 

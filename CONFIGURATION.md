@@ -20,19 +20,22 @@ pkm-sync config show    # Verify settings
 # OR: Local repository configuration (project-specific)
 cat > config.yaml << EOF
 sync:
-  enabled_sources: ["google"]
+  enabled_sources: ["gmail_work", "gmail_personal"]
   default_target: obsidian
   default_output_dir: ./vault
-targets:
-  obsidian:
-    type: obsidian
-    obsidian:
-      default_folder: Calendar
+sources:
+  gmail_work:
+    enabled: true
+    type: gmail
+    gmail:
+      name: "Work Emails"
+      labels: ["IMPORTANT", "STARRED"]
 EOF
 
-# Then just sync without flags
-pkm-sync sync           # Uses your configured defaults
-pkm-sync sync --since today  # Override just the time range
+# Then use specific commands
+pkm-sync gmail           # Sync Gmail emails
+pkm-sync calendar        # Sync calendar events
+pkm-sync drive           # Export Google Drive documents
 ```
 
 ### Configuration Commands
@@ -50,7 +53,7 @@ The config file allows you to set defaults so you don't need to specify flags ev
 
 ```yaml
 sync:
-  enabled_sources: ["google"]  # Multiple sources can be enabled
+  enabled_sources: ["gmail_work", "gmail_personal"]  # Multiple sources can be enabled
   default_target: obsidian  
   default_since: 7d
   default_output_dir: ./exported  # Single output directory for all targets
@@ -59,19 +62,31 @@ sync:
   on_conflict: skip        # How to handle conflicts
 
 sources:
-  google:
+  gmail_work:
     enabled: true          # Must be true and in enabled_sources
-    type: google
+    type: gmail
     priority: 1            # Sync order
+    gmail:
+      name: "Work Emails"
+      labels: ["IMPORTANT", "STARRED"]
+      query: "from:company.com"
+      
+  gmail_personal:
+    enabled: true
+    type: gmail
+    priority: 2
+    gmail:
+      name: "Personal Emails"
+      labels: ["STARRED"]
+      
+  google:
+    enabled: true
+    type: google
+    priority: 3
     google:
       calendar_id: primary
       include_declined: false
       download_docs: true
-      
-  slack:
-    enabled: false         # Future source (not implemented yet)
-    type: slack
-    priority: 2
 
 targets:
   obsidian:
@@ -94,11 +109,11 @@ targets:
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `enabled_sources` | array | `["google"]` | Array of active sources |
+| `enabled_sources` | array | `["gmail_work"]` | Array of active sources |
 | `default_target` | string | `"obsidian"` | Default PKM target (obsidian, logseq) |
 | `default_since` | string | `"7d"` | Default time range (7d, today, 2025-01-01) |
 | `default_output_dir` | string | `"./exported"` | Single output directory for all targets |
-| `source_schedules` | object | `{"google": "24h", "slack": "1h", "gmail_work": "4h", "gmail_personal": "6h", "jira": "2h"}` | Per-source sync intervals |
+| `source_schedules` | object | `{"gmail_work": "4h", "gmail_personal": "6h"}` | Per-source sync intervals |
 | `auto_sync` | boolean | `false` | Enable automatic syncing |
 | `sync_interval` | duration | `24h` | Fallback sync interval |
 | `merge_sources` | boolean | `true` | Combine data from all enabled sources |
@@ -114,26 +129,11 @@ targets:
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `enabled` | boolean | `true` (google), `false` (others) | Enable this source |
-| `type` | string | varies | Source type (google, slack, gmail, jira) |
+| `enabled` | boolean | `true` (gmail), `false` (others) | Enable this source |
+| `type` | string | varies | Source type (gmail, google, slack, jira) |
 | `priority` | integer | varies by source | Sync order priority (1=highest) |
 | `sync_interval` | duration | inherited | Override global sync interval |
 | `since` | string | inherited | Override global since parameter |
-
-### Google Source Settings (`sources.google.google:`)
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `calendar_id` | string | `"primary"` | Calendar to sync (primary or specific ID) |
-| `include_declined` | boolean | `false` | Include declined events |
-| `include_private` | boolean | `true` | Include private events |
-| `event_types` | array | `[]` | Filter by event types |
-| `download_docs` | boolean | `true` | Download attached Google Docs |
-| `doc_formats` | array | `["markdown"]` | Export formats for docs |
-| `max_doc_size` | string | `"10MB"` | Maximum document size |
-| `include_shared` | boolean | `true` | Include shared documents |
-| `request_delay` | duration | `100ms` | Delay between API requests |
-| `max_requests` | integer | `100` | Maximum API requests |
 
 ### Gmail Source Settings (`sources.{gmail_instance}.gmail:`)
 
@@ -148,6 +148,8 @@ Gmail integration supports multiple instances (e.g., `gmail_work`, `gmail_person
 | `include_unread` | boolean | `true` | Include unread emails |
 | `include_read` | boolean | `false` | Include read emails |
 | `include_threads` | boolean | `false` | Include full email threads |
+| `thread_mode` | string | `"individual"` | Thread grouping mode (individual, consolidated, summary) |
+| `thread_summary_length` | integer | `5` | Max messages in summary mode |
 | `max_email_age` | string | `"30d"` | Maximum email age (30d, 1y, etc.) |
 | `min_email_age` | string | `""` | Minimum email age (exclude very recent) |
 | `from_domains` | array | `[]` | Filter by sender domains (["company.com"]) |
@@ -173,38 +175,20 @@ Gmail integration supports multiple instances (e.g., `gmail_work`, `gmail_person
 | `group_by_thread` | boolean | `false` | One file per thread |
 | `tagging_rules` | array | `[]` | Custom tagging rules |
 
-#### Gmail Filename Templates
+### Google Calendar & Drive Source Settings (`sources.google.google:`)
 
-Available template variables for `filename_template`:
-- `{{date}}` - Email date (YYYY-MM-DD)
-- `{{time}}` - Email time (HH:MM:SS)
-- `{{from}}` - Sender email or name
-- `{{to}}` - Primary recipient
-- `{{subject}}` - Email subject
-- `{{id}}` - Gmail message ID
-- `{{thread}}` - Gmail thread ID
-- `{{year}}`, `{{month}}`, `{{day}}` - Date components
-
-#### Gmail Tagging Rules
-
-Tagging rules allow automatic tag assignment based on email properties:
-
-```yaml
-tagging_rules:
-  - condition: "from:ceo@company.com"
-    tags: ["urgent", "leadership"]
-  - condition: "has:attachment"
-    tags: ["has-attachment"]
-  - condition: "to:team@company.com"
-    tags: ["team-email"]
-```
-
-Supported conditions:
-- `from:domain.com` - Sender domain
-- `to:domain.com` - Recipient domain
-- `has:attachment` - Has attachments
-- `subject:keyword` - Subject contains keyword
-- `label:LABELNAME` - Has specific Gmail label
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `calendar_id` | string | `"primary"` | Calendar to sync (primary or specific ID) |
+| `include_declined` | boolean | `false` | Include declined events |
+| `include_private` | boolean | `true` | Include private events |
+| `event_types` | array | `[]` | Filter by event types |
+| `download_docs` | boolean | `true` | Download attached Google Docs |
+| `doc_formats` | array | `["markdown"]` | Export formats for docs |
+| `max_doc_size` | string | `"10MB"` | Maximum document size |
+| `include_shared` | boolean | `true` | Include shared documents |
+| `request_delay` | duration | `100ms` | Delay between API requests |
+| `max_requests` | integer | `100` | Maximum API requests |
 
 ### Enhanced Source Configuration (`sources.{name}:`)
 
@@ -281,43 +265,6 @@ Enhanced source settings support per-instance customization:
 | `notify_on_success` | boolean | `false` | Show success notifications |
 | `notify_on_error` | boolean | `true` | Show error notifications |
 
-<!--
-Future Source Configurations (Hidden for Development Planning)
-
-### Slack Source Settings (`sources.slack.slack:`)
-- `workspace_id` - Slack workspace ID
-- `channels` - Channels to sync (["#general", "#dev"])
-- `include_threads` - Include threaded messages (true/false)
-- `include_dms` - Include direct messages (true/false)
-- `min_importance` - Message importance filter ("starred", "mentions", "all")
-- `exclude_bots` - Exclude bot messages (true/false)
-- `min_length` - Minimum message length (10)
-- `include_files` - Include file attachments (true/false)
-- `file_types` - Allowed file types (["pdf", "doc", "img"])
-
-### Gmail Source Settings (`sources.gmail.gmail:`)
-- `labels` - Gmail labels to sync (["IMPORTANT", "STARRED"])
-- `query` - Custom Gmail search query
-- `include_unread` - Include unread emails (true/false)
-- `include_threads` - Include email threads (true/false)
-- `max_email_age` - Maximum email age ("30d")
-- `extract_links` - Extract links from emails (true/false)
-- `download_attachments` - Download email attachments (true/false)
-- `attachment_types` - Allowed attachment types (["pdf", "doc"])
-- `max_attachment_size` - Maximum attachment size ("5MB")
-
-### Jira Source Settings (`sources.jira.jira:`)
-- `instance_url` - Jira instance URL ("https://company.atlassian.net")
-- `project_keys` - Project keys to sync (["PROJ", "TEAM"])
-- `jql` - Custom JQL query for filtering
-- `issue_types` - Issue types to include (["Bug", "Story", "Task"])
-- `statuses` - Issue statuses to include (["In Progress", "Done"])
-- `assignee_filter` - Assignee filter ("me", "team", "all")
-- `include_comments` - Include issue comments (true/false)
-- `include_history` - Include issue history (true/false)
-- `include_attachments` - Include issue attachments (true/false)
--->
-
 ## Configuration Examples
 
 ### Repository-Specific Configuration
@@ -325,7 +272,7 @@ Future Source Configurations (Hidden for Development Planning)
 # Create a project-specific config in your repository
 cat > config.yaml << EOF
 sync:
-  enabled_sources: ["google"]
+  enabled_sources: ["gmail_work"]
   default_target: obsidian
   default_output_dir: ./docs/calendar
   
@@ -339,33 +286,33 @@ EOF
 # Add to .gitignore (output directory)
 echo "docs/calendar/" >> .gitignore
 
-# Now sync uses repository configuration
-pkm-sync sync  # Uses ./config.yaml instead of ~/.config/pkm-sync/config.yaml
+# Now use specific commands with repository configuration
+pkm-sync gmail  # Uses ./config.yaml instead of ~/.config/pkm-sync/config.yaml
 ```
 
 ### Enable Multiple Sources
 ```bash
 # Create config with multiple sources
-pkm-sync config init --source google
+pkm-sync config init --source gmail_work
 # Edit config to enable additional sources
 pkm-sync config edit
-# Add slack and gmail to enabled_sources array
+# Add gmail_personal and gmail_newsletters to enabled_sources array
 ```
 
 ### Per-Source Configuration
 ```yaml
 sources:
-  google:
+  gmail_work:
     enabled: true
     priority: 1
-    since: "7d"              # Google-specific time range
-    sync_interval: 24h       # Sync Google daily
+    since: "7d"              # Gmail-specific time range
+    sync_interval: 24h       # Sync Gmail daily
     
-  slack:
+  gmail_personal:
     enabled: true  
     priority: 2
-    since: "1d"              # Slack-specific time range
-    sync_interval: 1h        # Sync Slack hourly
+    since: "1d"              # Personal Gmail-specific time range
+    sync_interval: 1h        # Sync personal Gmail hourly
 ```
 
 ### Gmail Multi-Instance Configuration
@@ -518,6 +465,45 @@ sources:
 - Memory management for batches > 1000 messages  
 - Exponential backoff retry for rate limits
 - Streaming interface for very large mailboxes
+
+### Gmail Thread Grouping
+
+Gmail thread grouping reduces email clutter by intelligently grouping related messages:
+
+```yaml
+sources:
+  gmail_work:
+    enabled: true
+    type: gmail
+    gmail:
+      # Enable thread processing
+      include_threads: true
+      
+      # Thread grouping modes:
+      # - "individual": Each email as separate file (default)
+      # - "consolidated": All thread messages in one file
+      # - "summary": Key messages only in one file
+      thread_mode: "summary"
+      
+      # For summary mode: max messages to show per thread
+      thread_summary_length: 3
+      
+      query: "in:inbox to:me"
+```
+
+**Thread Mode Comparison:**
+
+| Mode | Output | Use Case |
+|------|--------|----------|
+| `individual` | `Re-Project-update.md`<br>`Re-Project-update-2.md` | Default behavior, no grouping |
+| `consolidated` | `Thread_Project-update_5-messages.md` | Complete conversation history |
+| `summary` | `Thread-Summary_Project-update_5-messages.md` | Key messages only, reduces clutter |
+
+**Thread Processing Features:**
+- **Smart message selection** - Prioritizes different senders, longer content, attachments
+- **Filename sanitization** - No spaces, command-line friendly filenames  
+- **Subject cleaning** - Removes "Re:", "Fwd:" prefixes
+- **Thread metadata** - Participants, duration, message count in frontmatter
 
 ### Advanced Gmail Filtering
 

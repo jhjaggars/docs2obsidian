@@ -9,9 +9,8 @@ import (
 	"html/template"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
-	"strings"
+	"runtime"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -31,7 +30,7 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse success template: %v", err))
 	}
-	
+
 	errorTemplate, err = template.ParseFS(templateFS, "templates/error.html")
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse error template: %v", err))
@@ -209,11 +208,11 @@ func openBrowser(url string) error {
 	var cmd string
 	var args []string
 
-	switch {
-	case strings.Contains(strings.ToLower(os.Getenv("OS")), "windows"):
+	switch runtime.GOOS {
+	case "windows":
 		cmd = "cmd"
 		args = []string{"/c", "start", url}
-	case strings.Contains(strings.ToLower(os.Getenv("OSTYPE")), "darwin") || strings.Contains(strings.ToLower(os.Getenv("PATH")), "darwin"):
+	case "darwin":
 		cmd = "open"
 		args = []string{url}
 	default:

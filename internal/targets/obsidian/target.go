@@ -319,6 +319,7 @@ func sanitizeFilename(filename string) string {
 		"<":  "",
 		">":  "",
 		"|":  "-",
+		" ":  "-",  // Replace spaces with hyphens
 	}
 
 	for old, new := range replacements {
@@ -326,9 +327,13 @@ func sanitizeFilename(filename string) string {
 	}
 
 	filename = strings.TrimSpace(filename)
-	for strings.Contains(filename, "  ") {
-		filename = strings.ReplaceAll(filename, "  ", " ")
+	// Remove multiple consecutive hyphens
+	for strings.Contains(filename, "--") {
+		filename = strings.ReplaceAll(filename, "--", "-")
 	}
+
+	// Remove leading/trailing hyphens
+	filename = strings.Trim(filename, "-")
 
 	return filename
 }

@@ -204,6 +204,8 @@ type GmailSourceConfig struct {
 	IncludeUnread       bool     `json:"include_unread" yaml:"include_unread"`             // Include unread emails
 	IncludeRead         bool     `json:"include_read" yaml:"include_read"`                 // Include read emails
 	IncludeThreads      bool     `json:"include_threads" yaml:"include_threads"`           // Include full threads
+	ThreadMode          string   `json:"thread_mode,omitempty" yaml:"thread_mode,omitempty"`         // "individual", "consolidated", "summary"
+	ThreadSummaryLength int      `json:"thread_summary_length,omitempty" yaml:"thread_summary_length,omitempty"` // Max messages in summary (default: 5)
 	MaxEmailAge         string   `json:"max_email_age" yaml:"max_email_age"`               // "30d", "1y"
 	MinEmailAge         string   `json:"min_email_age,omitempty" yaml:"min_email_age,omitempty"` // "1d" (exclude very recent)
 	
