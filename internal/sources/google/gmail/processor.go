@@ -28,10 +28,9 @@ var (
 		regexp.MustCompile(`^Cheers,?`),
 		regexp.MustCompile(`^Sent from my`),
 		regexp.MustCompile(`^Get Outlook for`),
-		regexp.MustCompile(`^\w+\s+\w+$`), // Two words (likely name)
 		regexp.MustCompile(`@\w+\.\w+`),   // Email address
 		regexp.MustCompile(`\b\d{3}[-.]?\d{3}[-.]?\d{4}\b`), // Phone number
-		regexp.MustCompile(`^[A-Z][a-z]+ [A-Z][a-z]+$`),     // Name pattern
+		regexp.MustCompile(`^[A-Z][a-z]+ [A-Z][a-z]+$`),     // Name pattern (two capitalized words)
 	}
 )
 
@@ -157,27 +156,27 @@ func (p *ContentProcessor) convertNodeToMarkdown(n *nethtml.Node, markdown *stri
 		case "h1":
 			markdown.WriteString("# ")
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n\n")
+			markdown.WriteString("\n")
 		case "h2":
 			markdown.WriteString("## ")
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n\n")
+			markdown.WriteString("\n")
 		case "h3":
 			markdown.WriteString("### ")
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n\n")
+			markdown.WriteString("\n")
 		case "h4":
 			markdown.WriteString("#### ")
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n\n")
+			markdown.WriteString("\n")
 		case "h5":
 			markdown.WriteString("##### ")
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n\n")
+			markdown.WriteString("\n")
 		case "h6":
 			markdown.WriteString("###### ")
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n\n")
+			markdown.WriteString("\n")
 		case "p":
 			p.convertChildNodes(n, markdown)
 			markdown.WriteString("\n\n")
@@ -244,12 +243,9 @@ func (p *ContentProcessor) convertNodeToMarkdown(n *nethtml.Node, markdown *stri
 			p.convertChildNodes(n, markdown)
 			markdown.WriteString("\n")
 		case "tr":
-			markdown.WriteString("| ")
-			p.convertChildNodes(n, markdown)
-			markdown.WriteString(" |\n")
+			p.convertTableRow(n, markdown)
 		case "td", "th":
 			p.convertChildNodes(n, markdown)
-			markdown.WriteString(" | ")
 		case "style", "script":
 			// Skip style and script tags completely
 			return
@@ -269,6 +265,43 @@ func (p *ContentProcessor) convertChildNodes(n *nethtml.Node, markdown *strings.
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
 		p.convertNodeToMarkdown(child, markdown)
 	}
+}
+
+// convertTableRow processes a table row with proper cell separation
+func (p *ContentProcessor) convertTableRow(n *nethtml.Node, markdown *strings.Builder) {
+	markdown.WriteString("| ")
+	
+	// Count cells first
+	var cells []*nethtml.Node
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == nethtml.ElementNode && (child.Data == "td" || child.Data == "th") {
+			cells = append(cells, child)
+		}
+	}
+	
+	// Process each cell
+	for i, cell := range cells {
+		p.convertChildNodes(cell, markdown)
+		if i < len(cells)-1 {
+			markdown.WriteString(" | ")
+		} else {
+			// Check if this row has header cells - if so, add trailing space
+			hasHeaders := false
+			for _, c := range cells {
+				if c.Data == "th" {
+					hasHeaders = true
+					break
+				}
+			}
+			if hasHeaders {
+				markdown.WriteString(" | ")
+			} else {
+				markdown.WriteString(" |")
+			}
+		}
+	}
+	
+	markdown.WriteString("\n")
 }
 
 // getAttributeValue gets the value of an HTML attribute
@@ -351,8 +384,11 @@ func (p *ContentProcessor) ExtractSignatures(content string) string {
 		if !inSignature {
 			// Check if we're near the end and this looks like signature content
 			remainingLines := len(lines) - i
-			if remainingLines <= 8 && p.looksLikeSignature(trimmed) {
-				inSignature = true
+			if remainingLines <= 8 {
+				// Safely call looksLikeSignature with nil check
+				if p != nil && p.looksLikeSignature(trimmed) {
+					inSignature = true
+				}
 			}
 		}
 		
@@ -380,48 +416,68 @@ func (p *ContentProcessor) looksLikeSignature(line string) bool {
 
 // ExtractLinks extracts URLs from email content with enhanced detection
 func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
-	var links []models.Link
+	// Collect all URL matches with their positions to maintain order
+	type urlMatch struct {
+		url   string
+		title string
+		pos   int
+	}
 	
-	// Extract standalone URLs using pre-compiled regex
-	urls := urlRegex.FindAllString(content, -1)
-	for _, url := range urls {
-		// Clean up URL (remove trailing punctuation)
+	var allMatches []urlMatch
+	
+	// Find standalone URLs with positions
+	urlMatches := urlRegex.FindAllStringIndex(content, -1)
+	for _, match := range urlMatches {
+		url := content[match[0]:match[1]]
 		url = strings.TrimRight(url, ".,!?;:")
-		
-		links = append(links, models.Link{
-			URL:   url,
-			Title: p.extractUrlTitle(url),
-			Type:  "external",
+		allMatches = append(allMatches, urlMatch{
+			url:   url,
+			title: "",
+			pos:   match[0],
 		})
 	}
 	
-	// Extract URLs from markdown link format [text](url) using pre-compiled regex
-	markdownMatches := markdownLinkRegex.FindAllStringSubmatch(content, -1)
+	// Find markdown URLs with positions and titles
+	markdownMatches := markdownLinkRegex.FindAllStringSubmatchIndex(content, -1)
 	for _, match := range markdownMatches {
-		if len(match) >= 3 {
-			url := strings.TrimRight(match[2], ".,!?;:")
-			title := match[1]
+		if len(match) >= 6 {
+			title := content[match[2]:match[3]]
+			url := content[match[4]:match[5]]
+			url = strings.TrimRight(url, ".,!?;:")
 			
-			// Check if this URL was already added
-			exists := false
-			for _, existing := range links {
-				if existing.URL == url {
-					exists = true
-					break
-				}
-			}
-			
-			if !exists {
-				links = append(links, models.Link{
-					URL:   url,
-					Title: title,
-					Type:  "external",
-				})
+			allMatches = append(allMatches, urlMatch{
+				url:   url,
+				title: title,
+				pos:   match[0],
+			})
+		}
+	}
+	
+	// Sort by position to maintain order of appearance
+	for i := 0; i < len(allMatches); i++ {
+		for j := i + 1; j < len(allMatches); j++ {
+			if allMatches[i].pos > allMatches[j].pos {
+				allMatches[i], allMatches[j] = allMatches[j], allMatches[i]
 			}
 		}
 	}
 	
-	return p.deduplicateLinks(links)
+	// Convert to Link objects and deduplicate
+	var links []models.Link
+	seen := make(map[string]bool)
+	
+	for _, match := range allMatches {
+		if !seen[match.url] {
+			seen[match.url] = true
+			links = append(links, models.Link{
+				URL:   match.url,
+				Title: match.title,
+				Type:  "external",
+			})
+		}
+	}
+	
+	return links
 }
 
 // extractUrlTitle attempts to extract a meaningful title from a URL

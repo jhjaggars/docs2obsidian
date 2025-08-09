@@ -2,6 +2,7 @@ package gmail
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -16,19 +17,31 @@ func buildQuery(config models.GmailSourceConfig, since time.Time) string {
 	// Time filter - always include since time
 	parts = append(parts, fmt.Sprintf("after:%s", since.Format("2006/01/02")))
 
-	// Max email age filter
+	// Max email age filter - exclude emails older than this
 	if config.MaxEmailAge != "" {
 		if duration, err := parseDuration(config.MaxEmailAge); err == nil {
-			before := time.Now().Add(-duration)
-			parts = append(parts, fmt.Sprintf("before:%s", before.Format("2006/01/02")))
+			// MaxEmailAge means "emails not older than X days"
+			// So we want emails after (now - maxAge)
+			maxAgeStart := time.Now().Add(-duration)
+			// Only add the after filter if it's more restrictive than the since time
+			if maxAgeStart.After(since) {
+				parts = append(parts, fmt.Sprintf("after:%s", maxAgeStart.Format("2006/01/02")))
+			}
 		}
 	}
 
-	// Min email age filter (exclude very recent emails)
+	// Min email age filter - exclude very recent emails
 	if config.MinEmailAge != "" {
 		if duration, err := parseDuration(config.MinEmailAge); err == nil {
-			before := time.Now().Add(-duration)
-			parts = append(parts, fmt.Sprintf("before:%s", before.Format("2006/01/02")))
+			// MinEmailAge means "emails older than X days"
+			// So we want emails before (now - minAge)
+			minAgeEnd := time.Now().Add(-duration)
+			// Only add the before filter if it's more restrictive than the since time
+			// (i.e., the minAgeEnd is after the since time, meaning we want to exclude recent emails)
+			slog.Debug("MinEmailAge calculation", "config.MinEmailAge", config.MinEmailAge, "duration", duration, "minAgeEnd", minAgeEnd, "since", since, "condition", minAgeEnd.After(since))
+			if minAgeEnd.After(since) {
+				parts = append(parts, fmt.Sprintf("before:%s", minAgeEnd.Format("2006/01/02")))
+			}
 		}
 	}
 
@@ -92,7 +105,12 @@ func buildQuery(config models.GmailSourceConfig, since time.Time) string {
 		parts = append(parts, "has:attachment")
 	}
 
-	return strings.Join(parts, " ")
+	finalQuery := strings.Join(parts, " ")
+
+	// Debug logging
+	slog.Debug("Gmail query built", "parts", parts, "final_query", finalQuery, "since", since.Format("2006-01-02"), "config.MaxEmailAge", config.MaxEmailAge, "config.MinEmailAge", config.MinEmailAge)
+
+	return finalQuery
 }
 
 // buildQueryWithRange constructs a Gmail search query with specific start and end times
@@ -179,11 +197,11 @@ func parseDuration(s string) (time.Duration, error) {
 			break
 		}
 	}
-	
+
 	if i == 0 {
 		return 0, fmt.Errorf("invalid duration format: %s", s)
 	}
-	
+
 	numStr = s[:i]
 	unit = s[i:]
 

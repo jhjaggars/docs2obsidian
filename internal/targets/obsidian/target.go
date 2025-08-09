@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"pkm-sync/internal/utils"
 	"pkm-sync/pkg/interfaces"
 	"pkm-sync/pkg/models"
 )
@@ -110,8 +111,8 @@ func (o *ObsidianTarget) formatContent(item *models.Item) string {
 }
 
 func (o *ObsidianTarget) FormatFilename(title string) string {
-	// Use sanitizeFilename logic similar to drive service
-	filename := sanitizeFilename(title)
+	// Use centralized sanitization utility
+	filename := utils.SanitizeFilename(title)
 	return filename + ".md"
 }
 
@@ -307,28 +308,3 @@ func extractContent(lines []string) string {
 	return content.String()
 }
 
-// sanitizeFilename removes or replaces characters that are invalid in filenames
-func sanitizeFilename(filename string) string {
-	replacements := map[string]string{
-		"/":  "-",
-		"\\": "-",
-		":":  "-",
-		"*":  "",
-		"?":  "",
-		"\"": "",
-		"<":  "",
-		">":  "",
-		"|":  "-",
-	}
-
-	for old, new := range replacements {
-		filename = strings.ReplaceAll(filename, old, new)
-	}
-
-	filename = strings.TrimSpace(filename)
-	for strings.Contains(filename, "  ") {
-		filename = strings.ReplaceAll(filename, "  ", " ")
-	}
-
-	return filename
-}

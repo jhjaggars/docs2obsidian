@@ -468,7 +468,7 @@ func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) 
 			// Note: This test can't fully verify the actual configuration being passed
 			// since createSourceWithConfig calls source.Configure() internally.
 			// But we can verify that it doesn't error and creates a valid source.
-			source, err := createSourceWithConfig("google", config)
+			source, err := createSourceWithConfig("google", config.Sources["google"])
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -528,7 +528,7 @@ func TestCreateSourceWithConfig_GoogleMaxResultsValidation(t *testing.T) {
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config)
+			source, err := createSourceWithConfig("google", config.Sources["google"])
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -587,7 +587,7 @@ func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config)
+			source, err := createSourceWithConfig("google", config.Sources["google"])
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -609,7 +609,7 @@ func TestCreateSourceWithConfig_MissingGoogleConfig(t *testing.T) {
 		},
 	}
 
-	source, err := createSourceWithConfig("google", config)
+	source, err := createSourceWithConfig("google", config.Sources["google"])
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with missing google config: %v", err)
 	}
@@ -619,13 +619,13 @@ func TestCreateSourceWithConfig_MissingGoogleConfig(t *testing.T) {
 }
 
 func TestCreateSourceWithConfig_SourceNotInConfig(t *testing.T) {
-	config := &models.Config{
-		Sources: map[string]models.SourceConfig{
-			// google source not configured
-		},
+	// Test with empty source config - should create default google source
+	emptySourceConfig := models.SourceConfig{
+		Type:    "google", // Need to specify type
+		Enabled: true,
 	}
 
-	source, err := createSourceWithConfig("google", config)
+	source, err := createSourceWithConfig("google", emptySourceConfig)
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with source not in config: %v", err)
 	}

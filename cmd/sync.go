@@ -19,41 +19,41 @@ import (
 )
 
 var (
-	sourceName       string
-	targetName       string
-	outputDir        string
-	since            string
-	dryRun           bool
-	limit            int
-	syncOutputFormat string
+	gmailSourceName   string
+	gmailTargetName   string
+	gmailOutputDir    string
+	gmailSince        string
+	gmailDryRun       bool
+	gmailLimit        int
+	gmailOutputFormat string
 )
 
-var syncCmd = &cobra.Command{
-	Use:   "sync",
-	Short: "Sync data from source to target",
-	Long: `Sync data from a source (google, slack, etc.) to a PKM target (obsidian, logseq, etc.)
+var gmailCmd = &cobra.Command{
+	Use:   "gmail",
+	Short: "Sync Gmail emails to PKM systems",
+	Long: `Sync Gmail emails to PKM targets (obsidian, logseq, etc.)
     
 Examples:
-  pkm-sync sync --source google --target obsidian --output ./vault
-  pkm-sync sync --source google --target logseq --output ./graph --since 7d
-  pkm-sync sync --source google --target obsidian --dry-run`,
-	RunE: runSyncCommand,
+  pkm-sync gmail --source gmail_work --target obsidian --output ./vault
+  pkm-sync gmail --source gmail_personal --target logseq --output ./graph --since 7d
+  pkm-sync gmail --source gmail_work --target obsidian --dry-run`,
+	RunE: runGmailCommand,
 }
 
 func init() {
-	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(gmailCmd)
 
-	// These will be overridden by config defaults in runSyncCommand
-	syncCmd.Flags().StringVar(&sourceName, "source", "", "Data source (google)")
-	syncCmd.Flags().StringVar(&targetName, "target", "", "PKM target (obsidian, logseq)")
-	syncCmd.Flags().StringVarP(&outputDir, "output", "o", "", "Output directory")
-	syncCmd.Flags().StringVar(&since, "since", "", "Sync items since (7d, 2006-01-02, today)")
-	syncCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be synced without making changes")
-	syncCmd.Flags().IntVar(&limit, "limit", 1000, "Maximum number of items to fetch (default: 1000)")
-	syncCmd.Flags().StringVar(&syncOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
+	// These will be overridden by config defaults in runGmailCommand
+	gmailCmd.Flags().StringVar(&gmailSourceName, "source", "", "Gmail source (gmail_work, gmail_personal, etc.)")
+	gmailCmd.Flags().StringVar(&gmailTargetName, "target", "", "PKM target (obsidian, logseq)")
+	gmailCmd.Flags().StringVarP(&gmailOutputDir, "output", "o", "", "Output directory")
+	gmailCmd.Flags().StringVar(&gmailSince, "since", "", "Sync emails since (7d, 2006-01-02, today)")
+	gmailCmd.Flags().BoolVar(&gmailDryRun, "dry-run", false, "Show what would be synced without making changes")
+	gmailCmd.Flags().IntVar(&gmailLimit, "limit", 1000, "Maximum number of emails to fetch (default: 1000)")
+	gmailCmd.Flags().StringVar(&gmailOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
 }
 
-func runSyncCommand(cmd *cobra.Command, args []string) error {
+func runGmailCommand(cmd *cobra.Command, args []string) error {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -61,30 +61,34 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		cfg = config.GetDefaultConfig()
 	}
 
-	// Determine which sources to sync
+	// Determine which Gmail sources to sync
 	var sourcesToSync []string
-	if sourceName != "" {
-		// CLI override: sync specific source
-		sourcesToSync = []string{sourceName}
+	if gmailSourceName != "" {
+		// CLI override: sync specific Gmail source
+		sourcesToSync = []string{gmailSourceName}
 	} else {
-		// Use enabled sources from config
-		sourcesToSync = getEnabledSources(cfg)
+		// Use enabled Gmail sources from config
+		sourcesToSync = getEnabledGmailSources(cfg)
+	}
+
+	if len(sourcesToSync) == 0 {
+		return fmt.Errorf("no Gmail sources configured. Please configure Gmail sources in your config file or use --source flag")
 	}
 
 	// Apply config defaults, then CLI overrides
 	finalTargetName := cfg.Sync.DefaultTarget
-	if targetName != "" {
-		finalTargetName = targetName
+	if gmailTargetName != "" {
+		finalTargetName = gmailTargetName
 	}
 
 	finalOutputDir := cfg.Sync.DefaultOutputDir
-	if outputDir != "" {
-		finalOutputDir = outputDir
+	if gmailOutputDir != "" {
+		finalOutputDir = gmailOutputDir
 	}
 
 	finalSince := cfg.Sync.DefaultSince
-	if since != "" {
-		finalSince = since
+	if gmailSince != "" {
+		finalSince = gmailSince
 	}
 
 	// Parse since parameter
@@ -93,7 +97,7 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid since parameter: %w", err)
 	}
 
-	fmt.Printf("Syncing from sources [%s] to %s (output: %s, since: %s)\n", 
+	fmt.Printf("Syncing Gmail from sources [%s] to %s (output: %s, since: %s)\n",
 		strings.Join(sourcesToSync, ", "), finalTargetName, finalOutputDir, finalSince)
 
 	// Create target with config
@@ -102,39 +106,46 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create target: %w", err)
 	}
 
-	// Collect all items from all sources for unified processing
+	// Collect all items from all Gmail sources for unified processing
 	var allItems []*models.Item
-	
-	// Process each source independently to support per-source customization
+
+	// Process each Gmail source independently to support per-source customization
 	for _, srcName := range sourcesToSync {
 		// Get source-specific config
 		sourceConfig, exists := cfg.Sources[srcName]
 		if !exists {
-			fmt.Printf("Warning: source '%s' not configured, skipping\n", srcName)
+			fmt.Printf("Warning: Gmail source '%s' not configured, skipping\n", srcName)
 			continue
 		}
 
 		if !sourceConfig.Enabled {
-			fmt.Printf("Source '%s' is disabled, skipping\n", srcName)
+			fmt.Printf("Gmail source '%s' is disabled, skipping\n", srcName)
+			continue
+		}
+
+		// Verify this is a Gmail source
+		if sourceConfig.Type != "gmail" {
+			fmt.Printf("Warning: source '%s' is not a Gmail source (type: %s), skipping\n", srcName, sourceConfig.Type)
 			continue
 		}
 
 		// Create source with config
 		source, err := createSourceWithConfig(srcName, sourceConfig)
 		if err != nil {
-			fmt.Printf("Warning: failed to create source '%s': %v, skipping\n", srcName, err)
+			fmt.Printf("Warning: failed to create Gmail source '%s': %v, skipping\n", srcName, err)
 			continue
 		}
 
-		// Use source-specific since time if configured
+		// Use source-specific since time if configured, but CLI flag takes precedence
 		sourceSince := finalSince
-		if sourceConfig.Since != "" {
+		if sourceConfig.Since != "" && gmailSince == "" {
+			// Only use config since if no CLI override was provided
 			sourceSince = sourceConfig.Since
 		}
 
 		sourceSinceTime, err := parseSinceTime(sourceSince)
 		if err != nil {
-			fmt.Printf("Warning: invalid since time for source '%s': %v, using default\n", srcName, err)
+			fmt.Printf("Warning: invalid since time for Gmail source '%s': %v, using default\n", srcName, err)
 			sourceSinceTime = sinceTime
 		}
 
@@ -143,18 +154,18 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		if sourceConfig.Google.MaxResults > 0 {
 			// Validate max results range
 			if sourceConfig.Google.MaxResults > 2500 {
-				fmt.Printf("Warning: max_results for source '%s' is %d (maximum allowed: 2500), using 2500\n", srcName, sourceConfig.Google.MaxResults)
+				fmt.Printf("Warning: max_results for Gmail source '%s' is %d (maximum allowed: 2500), using 2500\n", srcName, sourceConfig.Google.MaxResults)
 				maxResults = 2500
 			} else {
 				maxResults = sourceConfig.Google.MaxResults
 			}
 		}
 
-		// Fetch items from this source
-		fmt.Printf("Fetching from %s...\n", srcName)
+		// Fetch items from this Gmail source
+		fmt.Printf("Fetching emails from %s...\n", srcName)
 		items, err := source.Fetch(sourceSinceTime, maxResults)
 		if err != nil {
-			fmt.Printf("Warning: failed to fetch from source '%s': %v, skipping\n", srcName, err)
+			fmt.Printf("Warning: failed to fetch from Gmail source '%s': %v, skipping\n", srcName, err)
 			continue
 		}
 
@@ -165,28 +176,28 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		fmt.Printf("Found %d items from %s\n", len(items), srcName)
-		
+		fmt.Printf("Found %d emails from %s\n", len(items), srcName)
+
 		// Add items to the collection
 		allItems = append(allItems, items...)
 	}
 
-	fmt.Printf("Total items collected: %d\n", len(allItems))
+	fmt.Printf("Total emails collected: %d\n", len(allItems))
 
-	if dryRun {
+	if gmailDryRun {
 		// Generate preview of what would be done
 		previews, err := target.Preview(allItems, finalOutputDir)
 		if err != nil {
 			return fmt.Errorf("failed to generate preview: %w", err)
 		}
-		
-		switch syncOutputFormat {
+
+		switch gmailOutputFormat {
 		case "json":
 			return outputDryRunJSON(allItems, previews, finalTargetName, finalOutputDir, sourcesToSync)
 		case "summary":
 			return outputDryRunSummary(allItems, previews, finalTargetName, finalOutputDir, sourcesToSync)
 		default:
-			return fmt.Errorf("unknown format '%s': supported formats are 'summary' and 'json'", syncOutputFormat)
+			return fmt.Errorf("unknown format '%s': supported formats are 'summary' and 'json'", gmailOutputFormat)
 		}
 	}
 
@@ -195,7 +206,7 @@ func runSyncCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to export to target: %w", err)
 	}
 
-	fmt.Printf("Successfully exported %d items\n", len(allItems))
+	fmt.Printf("Successfully exported %d emails\n", len(allItems))
 	return nil
 }
 
@@ -254,33 +265,33 @@ func createTargetWithConfig(name string, cfg *models.Config) (interfaces.Target,
 	switch name {
 	case "obsidian":
 		target := obsidian.NewObsidianTarget()
-		
+
 		// Apply configuration
 		configMap := make(map[string]interface{})
 		if targetConfig, exists := cfg.Targets[name]; exists {
 			configMap["template_dir"] = targetConfig.Obsidian.DefaultFolder
 			configMap["daily_notes_format"] = targetConfig.Obsidian.DateFormat
 		}
-		
+
 		if err := target.Configure(configMap); err != nil {
 			return nil, err
 		}
 		return target, nil
-		
+
 	case "logseq":
 		target := logseq.NewLogseqTarget()
-		
+
 		// Apply configuration
 		configMap := make(map[string]interface{})
 		if targetConfig, exists := cfg.Targets[name]; exists {
 			configMap["default_page"] = targetConfig.Logseq.DefaultPage
 		}
-		
+
 		if err := target.Configure(configMap); err != nil {
 			return nil, err
 		}
 		return target, nil
-		
+
 	default:
 		return nil, fmt.Errorf("unknown target '%s': supported targets are 'obsidian' and 'logseq'", name)
 	}
@@ -305,7 +316,7 @@ func parseSinceTime(since string) (time.Time, error) {
 			return now.Add(-daysDuration), nil
 		}
 	}
-	
+
 	if duration, err := time.ParseDuration(since); err == nil {
 		return now.Add(-duration), nil
 	}
@@ -321,7 +332,7 @@ func parseSinceTime(since string) (time.Time, error) {
 // getEnabledSources returns list of sources that are enabled in the configuration
 func getEnabledSources(cfg *models.Config) []string {
 	var enabledSources []string
-	
+
 	// Use explicit enabled_sources list if provided
 	if len(cfg.Sync.EnabledSources) > 0 {
 		for _, srcName := range cfg.Sync.EnabledSources {
@@ -331,14 +342,38 @@ func getEnabledSources(cfg *models.Config) []string {
 		}
 		return enabledSources
 	}
-	
+
 	// Fallback: find all enabled sources in config
 	for srcName, sourceConfig := range cfg.Sources {
 		if sourceConfig.Enabled {
 			enabledSources = append(enabledSources, srcName)
 		}
 	}
-	
+
+	return enabledSources
+}
+
+// getEnabledGmailSources returns list of Gmail sources that are enabled in the configuration
+func getEnabledGmailSources(cfg *models.Config) []string {
+	var enabledSources []string
+
+	// Use explicit enabled_sources list if provided
+	if len(cfg.Sync.EnabledSources) > 0 {
+		for _, srcName := range cfg.Sync.EnabledSources {
+			if sourceConfig, exists := cfg.Sources[srcName]; exists && sourceConfig.Enabled && sourceConfig.Type == "gmail" {
+				enabledSources = append(enabledSources, srcName)
+			}
+		}
+		return enabledSources
+	}
+
+	// Fallback: find all enabled Gmail sources in config
+	for srcName, sourceConfig := range cfg.Sources {
+		if sourceConfig.Enabled && sourceConfig.Type == "gmail" {
+			enabledSources = append(enabledSources, srcName)
+		}
+	}
+
 	return enabledSources
 }
 
@@ -352,12 +387,12 @@ func getSourceOutputDirectory(baseOutputDir string, sourceConfig models.SourceCo
 
 // DryRunOutput represents the complete output structure for JSON format
 type DryRunOutput struct {
-	Target      string                     `json:"target"`
-	OutputDir   string                     `json:"output_dir"`
-	Sources     []string                   `json:"sources"`
-	TotalItems  int                        `json:"total_items"`
-	Summary     DryRunSummary              `json:"summary"`
-	Items       []*models.Item             `json:"items"`
+	Target       string                    `json:"target"`
+	OutputDir    string                    `json:"output_dir"`
+	Sources      []string                  `json:"sources"`
+	TotalItems   int                       `json:"total_items"`
+	Summary      DryRunSummary             `json:"summary"`
+	Items        []*models.Item            `json:"items"`
 	FilePreviews []*interfaces.FilePreview `json:"file_previews"`
 }
 
@@ -370,7 +405,7 @@ type DryRunSummary struct {
 
 func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
 	summary := calculateSummary(previews)
-	
+
 	output := DryRunOutput{
 		Target:       target,
 		OutputDir:    outputDir,
@@ -380,12 +415,12 @@ func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, 
 		Items:        items,
 		FilePreviews: previews,
 	}
-	
+
 	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	
+
 	fmt.Println(string(jsonData))
 	return nil
 }
@@ -393,9 +428,9 @@ func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, 
 func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
 	fmt.Printf("=== DRY RUN: Preview of sync operation ===\n")
 	fmt.Printf("Target: %s\nOutput directory: %s\nTotal items: %d\n\n", target, outputDir, len(items))
-	
+
 	summary := calculateSummary(previews)
-	
+
 	fmt.Printf("Summary:\n")
 	fmt.Printf("  📝 %d files would be created\n", summary.CreateCount)
 	fmt.Printf("  ✏️  %d files would be updated\n", summary.UpdateCount)
@@ -404,7 +439,7 @@ func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePrevie
 		fmt.Printf("  ⚠️  %d files have potential conflicts\n", summary.ConflictCount)
 	}
 	fmt.Printf("\n")
-	
+
 	// Show detailed file operations
 	fmt.Printf("Detailed file operations:\n")
 	for _, preview := range previews {
@@ -417,20 +452,20 @@ func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePrevie
 		if preview.Conflict {
 			emoji = "⚠️"
 		}
-		
+
 		fmt.Printf("  %s %s %s\n", emoji, preview.Action, preview.FilePath)
 	}
-	
+
 	// Ask if user wants to see file content previews
 	fmt.Printf("\nWould you like to see content previews? This will show the first few lines of each file that would be created/updated.\n")
 	fmt.Printf("Note: Use --format json to see complete data model including full content\n")
-	
+
 	return nil
 }
 
 func calculateSummary(previews []*interfaces.FilePreview) DryRunSummary {
 	summary := DryRunSummary{}
-	
+
 	for _, preview := range previews {
 		switch preview.Action {
 		case "create":
@@ -444,6 +479,6 @@ func calculateSummary(previews []*interfaces.FilePreview) DryRunSummary {
 			summary.ConflictCount++
 		}
 	}
-	
+
 	return summary
 }

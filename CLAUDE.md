@@ -10,8 +10,9 @@ go build -o pkm-sync ./cmd
 
 # Run the application (requires OAuth setup first)
 ./pkm-sync setup             # Verify authentication configuration
-./pkm-sync calendar          # List upcoming calendar events (legacy)
-./pkm-sync sync              # Main sync command with multi-source support
+./pkm-sync gmail             # Sync Gmail emails to PKM systems
+./pkm-sync calendar          # List and sync Google Calendar events
+./pkm-sync drive             # Export Google Drive documents to markdown
 
 # Configuration management
 ./pkm-sync config init       # Create default configuration
@@ -19,9 +20,9 @@ go build -o pkm-sync ./cmd
 ./pkm-sync config validate   # Validate configuration
 
 # Gmail-specific examples
-./pkm-sync sync --source gmail_work --output ./work-emails
-./pkm-sync sync --since 7d   # Sync last 7 days from all enabled sources
-./pkm-sync sync --dry-run    # Preview what would be synced
+./pkm-sync gmail --source gmail_work --output ./work-emails
+./pkm-sync gmail --since 7d   # Sync last 7 days from all enabled Gmail sources
+./pkm-sync gmail --dry-run    # Preview what would be synced
 
 # Custom paths
 ./pkm-sync --credentials /path/to/credentials.json setup
@@ -30,18 +31,18 @@ go build -o pkm-sync ./cmd
 
 ## Architecture Overview
 
-This is a Go CLI application that provides universal Personal Knowledge Management (PKM) synchronization. It connects multiple data sources (Google Calendar, Gmail, Slack, Jira) to PKM targets (Obsidian, Logseq) using OAuth 2.0 authentication.
+This is a Go CLI application that provides universal Personal Knowledge Management (PKM) synchronization. It connects multiple data sources (Google Calendar, Gmail, Drive) to PKM targets (Obsidian, Logseq) using OAuth 2.0 authentication.
 
 ### CLI Framework
 - Uses **Cobra** for command structure with persistent flags
 - Root command (`cmd/root.go`) handles global flags: `--credentials`, `--config-dir`
-- Main commands: `sync` (primary), `config` (management), legacy commands (`setup`, `calendar`)
+- Main commands: `gmail`, `calendar`, `drive`, `config`, `setup`
 - Global flags are processed in `PersistentPreRun` to configure paths
 
 ### Multi-Source Architecture
 - **Universal interfaces** (`pkg/interfaces/`) for Source and Target abstractions
 - **Universal data model** (`pkg/models/item.go`) for consistent data representation
-- **Source implementations** in `internal/sources/` (Google Calendar, Gmail)
+- **Source implementations** in `internal/sources/` (Google Calendar, Gmail, Drive)
 - **Target implementations** in `internal/targets/` (Obsidian, Logseq)
 - **Sync engine** (`internal/sync/`) handles data pipeline
 
@@ -79,8 +80,9 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 ## Current Implementation Status
 
 ### Sources
-- ✅ **Google Calendar + Drive** - Fully implemented in `internal/sources/google/`
-- ✅ **Gmail** - Fully implemented with multi-instance support, advanced filtering, and performance optimizations
+- ✅ **Gmail** - Fully implemented with multi-instance support, advanced filtering, thread grouping, and performance optimizations
+- ✅ **Google Calendar** - Fully implemented in `internal/sources/google/`
+- ✅ **Google Drive** - Fully implemented for document export
 - 🔧 **Slack** - Configuration ready, implementation pending
 - 🔧 **Jira** - Configuration ready, implementation pending
 
@@ -92,9 +94,36 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 - ✅ **Multi-source support** with `enabled_sources` array
 - ✅ **Per-source configuration** (intervals, priorities, filtering, output routing)
 - ✅ **Multi-instance Gmail** (work, personal, newsletters) with independent configurations
+- ✅ **Thread grouping** with configurable modes (individual, consolidated, summary)
+- ✅ **Filename sanitization** (no spaces, command-line friendly)
 - ✅ **Simplified output directory** structure with per-source subdirectories
 - ✅ **Local repository configuration** support
 - ✅ **Comprehensive validation** and management commands
+
+## Command Structure
+
+### Core Commands
+- **`gmail`** - Sync Gmail emails to PKM systems
+  - Supports multiple Gmail instances (work, personal, newsletters)
+  - Gmail-specific configuration and filtering
+  - Thread grouping: individual, consolidated, or summary modes
+  - Example: `pkm-sync gmail --source gmail_work --target obsidian`
+
+- **`calendar`** - List and sync Google Calendar events
+  - Calendar-specific functionality
+  - Example: `pkm-sync calendar --start 2025-01-01 --end 2025-01-31`
+
+- **`drive`** - Export Google Drive documents to markdown
+  - Drive-specific functionality for document export
+  - Example: `pkm-sync drive --event-id 12345 --output ./docs`
+
+### Utility Commands
+- **`setup`** - Verify authentication configuration
+  - Tests all Google services (Calendar, Drive, Gmail)
+  - Provides clear error messages and instructions
+
+- **`config`** - Manage configuration files
+  - Configuration management and validation
 
 ## OAuth Setup Requirements
 
@@ -112,81 +141,34 @@ Users must:
 
 The application uses an automatic web server-based OAuth flow that opens the user's browser and captures the authorization code automatically. If the web server fails, it falls back to the manual copy/paste flow for compatibility.
 
-## Gmail Implementation Details
+## Gmail Thread Grouping
 
-### Architecture (`internal/sources/google/gmail/`)
-- **Service wrapper** (`service.go`) - Gmail API integration with retry logic and rate limiting
-- **Query builder** (`query.go`) - Advanced Gmail search query construction
-- **Message converter** (`converter.go`) - Gmail message to universal Item format conversion
-- **Content processor** (`processor.go`) - HTML to Markdown, link extraction, quoted text removal
-- **Mock service** (`mock.go`) - Testing infrastructure with comprehensive test fixtures
+The Gmail source supports intelligent thread grouping to reduce email clutter and improve organization.
 
-### Key Features
-- **Multi-instance support**: Multiple Gmail configurations (work, personal, newsletters)
-- **Advanced filtering**: Labels, domains, time ranges, custom queries, attachment filtering
-- **Content processing**: HTML to Markdown conversion, link extraction, recipient parsing
-- **Performance optimization**: Batch processing for large mailboxes (>1000 emails)
-- **Error handling**: Exponential backoff retry, rate limit recovery, progress reporting
-- **Memory management**: Streaming interface for very large datasets
-- **Comprehensive testing**: Unit tests, integration tests, performance benchmarks
+### Thread Modes
+- **`individual`** (default) - Each email is treated as a separate item
+- **`consolidated`** - All messages in a thread are combined into a single file
+- **`summary`** - Creates summary files with key messages from each thread
 
-### Large Mailbox Optimizations
-- Automatic batch processing for requests >1000 messages
-- Configurable batch sizes (default: 100 messages per batch)
-- Progress reporting every 500 messages
-- Memory management with periodic cleanup
-- Rate limiting with configurable delays
-- Streaming interface for continuous processing
-
-### Configuration Examples
+### Configuration Example
 ```yaml
 sources:
   gmail_work:
-    enabled: true
     type: gmail
-    output_subdir: "work-emails"
     gmail:
-      name: "Work Important Emails"
-      labels: ["IMPORTANT", "STARRED"]
-      max_email_age: "90d"
-      extract_recipients: true
-      process_html_content: true
-      batch_size: 100
-      request_delay: 50ms
+      include_threads: true           # Enable thread processing
+      thread_mode: "summary"          # Use summary mode
+      thread_summary_length: 3        # Show 3 key messages per thread
+      query: "in:inbox to:me"
 ```
 
-## Development Notes
+### Thread Processing Features
+- **Smart message selection** - Prioritizes different senders, longer content, attachments
+- **Filename sanitization** - No spaces, command-line friendly filenames
+- **Thread metadata** - Participants, duration, message count
+- **Subject cleaning** - Removes "Re:", "Fwd:" prefixes
 
-### Migration from docs2obsidian
-This application evolved from `docs2obsidian` with full backward compatibility:
-- Legacy commands (`calendar`, `export`) still work
-- Old configuration paths are automatically detected
-- Universal architecture allows easy addition of new sources and targets
-
-### Adding New Sources
-1. Implement `interfaces.Source` interface
-2. Add source configuration to `models.SourceConfig`
-3. Update `createSource()` function in `cmd/sync.go`
-4. Add comprehensive tests (unit, integration, performance)
-5. Add documentation to `CONFIGURATION.md`
-
-**Gmail implementation serves as a reference for:**
-- Multi-instance source support
-- Advanced filtering and query building
-- Content processing and conversion
-- Performance optimization for large datasets
-- Comprehensive error handling and retry logic
-
-### Adding New Targets
-1. Implement `interfaces.Target` interface
-2. Add target configuration to `models.TargetConfig`
-3. Update `createTargetWithConfig()` function in `cmd/sync.go`
-4. Add documentation to `CONFIGURATION.md`
-
-### Gmail Development Guidelines
-- **Testing**: Use mock service for unit tests, create integration tests for workflows
-- **Performance**: Implement batch processing for large datasets, add progress reporting
-- **Error handling**: Use exponential backoff retry, handle rate limits gracefully
-- **Configuration**: Support multi-instance configurations with per-instance settings
-- **Content processing**: Convert to universal `Item` format, preserve metadata
-- **Documentation**: Update both `CONFIGURATION.md` and `CLAUDE.md` with examples
+### Output Examples
+- Consolidated: `Thread_PR-discussion-fix-security-issue_8-messages.md`
+- Summary: `Thread-Summary_meeting-notes-weekly-sync_5-messages.md`
+- Individual: `Re-Project-status-update.md`

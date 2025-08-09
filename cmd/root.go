@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -12,20 +13,44 @@ import (
 var (
 	credentialsPath string
 	configDir       string
+	debugMode       bool
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "pkm-sync",
 	Short: "Synchronize data between various sources and PKM systems",
-	Long: `pkm-sync integrates data sources (Google Calendar, Slack, etc.) 
-with Personal Knowledge Management systems (Obsidian, Logseq, etc.).`,
+	Long: `pkm-sync integrates data sources (Google Calendar, Gmail, Drive, etc.) 
+with Personal Knowledge Management systems (Obsidian, Logseq, etc.).
+
+Commands:
+  gmail     Sync Gmail emails to PKM systems
+  drive     Export Google Drive documents to markdown
+  calendar  List and sync Google Calendar events
+  setup     Verify authentication configuration
+  config    Manage configuration files`,
 }
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&credentialsPath, "credentials", "c", "", "Path to credentials.json file")
 	rootCmd.PersistentFlags().StringVar(&configDir, "config-dir", "", "Custom configuration directory")
-	
+	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "Enable debug logging")
+
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		// Set up logging based on debug flag
+		if debugMode {
+			// Set debug level logging
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}))
+			slog.SetDefault(logger)
+		} else {
+			// Set default info level logging
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: slog.LevelInfo,
+			}))
+			slog.SetDefault(logger)
+		}
+
 		if credentialsPath != "" {
 			config.SetCustomCredentialsPath(credentialsPath)
 		}
@@ -33,9 +58,6 @@ func init() {
 			config.SetCustomConfigDir(configDir)
 		}
 	}
-	
-	// Initialize legacy command compatibility
-	initLegacyCommands()
 }
 
 func Execute() {

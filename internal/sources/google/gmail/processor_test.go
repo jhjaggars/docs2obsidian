@@ -1,7 +1,9 @@
 package gmail
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/api/gmail/v1"
 
@@ -622,47 +624,239 @@ func TestContentProcessor_LooksLikeSignature(t *testing.T) {
 	}
 }
 
-func TestContentProcessor_DecodeHTMLEntities(t *testing.T) {
+// Thread Processing Tests
+
+func TestThreadProcessor_ProcessThreads(t *testing.T) {
 	tests := []struct {
-		name     string
-		content  string
-		expected string
+		name        string
+		config      models.GmailSourceConfig
+		items       []*models.Item
+		expectedLen int
+		expectedErr string
 	}{
 		{
-			name:     "basic entities",
-			content:  "&lt;Hello&gt; &amp; &quot;World&quot;",
-			expected: "<Hello> & \"World\"",
+			name: "individual mode (default)",
+			config: models.GmailSourceConfig{
+				IncludeThreads: false,
+			},
+			items: []*models.Item{
+				createTestItem("msg1", "Subject 1", "thread1"),
+				createTestItem("msg2", "Subject 2", "thread1"),
+			},
+			expectedLen: 2,
 		},
 		{
-			name:     "apostrophe and quote entities",
-			content:  "&apos;Hello&apos; &ldquo;World&rdquo;",
-			expected: `'Hello' "World"`,
+			name: "consolidated mode",
+			config: models.GmailSourceConfig{
+				IncludeThreads: true,
+				ThreadMode:     "consolidated",
+			},
+			items: []*models.Item{
+				createTestItem("msg1", "Subject 1", "thread1"),
+				createTestItem("msg2", "Re: Subject 1", "thread1"),
+			},
+			expectedLen: 1,
 		},
 		{
-			name:     "special characters",
-			content:  "&hellip; &mdash; &ndash; &nbsp;",
-			expected: "... — –  ",
+			name: "summary mode",
+			config: models.GmailSourceConfig{
+				IncludeThreads:        true,
+				ThreadMode:            "summary",
+				ThreadSummaryLength:   2,
+			},
+			items: []*models.Item{
+				createTestItem("msg1", "Subject 1", "thread1"),
+				createTestItem("msg2", "Re: Subject 1", "thread1"),
+				createTestItem("msg3", "Re: Subject 1", "thread1"),
+			},
+			expectedLen: 1,
 		},
 		{
-			name:     "no entities",
-			content:  "Plain text content",
-			expected: "Plain text content",
+			name: "invalid thread mode",
+			config: models.GmailSourceConfig{
+				IncludeThreads: true,
+				ThreadMode:     "invalid",
+			},
+			items: []*models.Item{
+				createTestItem("msg1", "Subject 1", "thread1"),
+			},
+			expectedErr: "unknown thread mode: invalid",
 		},
 		{
-			name:     "numeric entities",
-			content:  "Hello &#8230; World",
-			expected: "Hello  World", // Numeric entities are removed for simplicity
+			name: "mixed threads and singles",
+			config: models.GmailSourceConfig{
+				IncludeThreads: true,
+				ThreadMode:     "consolidated",
+			},
+			items: []*models.Item{
+				createTestItem("msg1", "Subject 1", "thread1"),
+				createTestItem("msg2", "Re: Subject 1", "thread1"),
+				createTestItem("msg3", "Different Subject", "thread2"),
+			},
+			expectedLen: 2, // One consolidated thread + one single message
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			processor := NewContentProcessor(models.GmailSourceConfig{})
-			result := processor.decodeHTMLEntities(tt.content)
-			
-			if result != tt.expected {
-				t.Errorf("decodeHTMLEntities(%q) = %q, want %q", tt.content, result, tt.expected)
+			processor := NewThreadProcessor(tt.config)
+			result, err := processor.ProcessThreads(tt.items)
+
+			if tt.expectedErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.expectedErr) {
+					t.Errorf("ProcessThreads() expected error containing %q, got %v", tt.expectedErr, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("ProcessThreads() unexpected error: %v", err)
+				return
+			}
+
+			if len(result) != tt.expectedLen {
+				t.Errorf("ProcessThreads() returned %d items, want %d", len(result), tt.expectedLen)
 			}
 		})
 	}
 }
+
+func TestThreadProcessor_GroupMessagesByThread(t *testing.T) {
+	config := models.GmailSourceConfig{}
+	processor := NewThreadProcessor(config)
+
+	items := []*models.Item{
+		createTestItem("msg1", "Original Subject", "thread1"),
+		createTestItem("msg2", "Re: Original Subject", "thread1"),
+		createTestItem("msg3", "Different Subject", "thread2"),
+	}
+
+	groups := processor.groupMessagesByThread(items)
+
+	if len(groups) != 2 {
+		t.Errorf("groupMessagesByThread() returned %d groups, want 2", len(groups))
+	}
+
+	// Check thread1 has 2 messages
+	if thread1, exists := groups["thread1"]; exists {
+		if thread1.MessageCount != 2 {
+			t.Errorf("Thread1 has %d messages, want 2", thread1.MessageCount)
+		}
+		if len(thread1.Messages) != 2 {
+			t.Errorf("Thread1 Messages slice has %d items, want 2", len(thread1.Messages))
+		}
+	} else {
+		t.Error("Thread1 not found in groups")
+	}
+
+	// Check thread2 has 1 message
+	if thread2, exists := groups["thread2"]; exists {
+		if thread2.MessageCount != 1 {
+			t.Errorf("Thread2 has %d messages, want 1", thread2.MessageCount)
+		}
+	} else {
+		t.Error("Thread2 not found in groups")
+	}
+}
+
+func TestThreadProcessor_NilSafety(t *testing.T) {
+	// Test with nil items
+	validProcessor := NewThreadProcessor(models.GmailSourceConfig{})
+	processed, err := validProcessor.ProcessThreads(nil)
+	if err != nil {
+		t.Errorf("ProcessThreads with nil items should not error, got %v", err)
+	}
+	if processed == nil {
+		t.Error("ProcessThreads should not return nil slice")
+	}
+	if len(processed) != 0 {
+		t.Errorf("ProcessThreads with nil items should return empty slice, got %d items", len(processed))
+	}
+}
+
+func TestThreadProcessor_ExtractEmailFromRecipient(t *testing.T) {
+	config := models.GmailSourceConfig{}
+	processor := NewThreadProcessor(config)
+
+	tests := []struct {
+		name      string
+		recipient interface{}
+		expected  string
+	}{
+		{
+			name:      "nil recipient",
+			recipient: nil,
+			expected:  "",
+		},
+		{
+			name:      "string email",
+			recipient: "test@example.com",
+			expected:  "test@example.com",
+		},
+		{
+			name: "map with email only",
+			recipient: map[string]interface{}{
+				"email": "test@example.com",
+			},
+			expected: "test@example.com",
+		},
+		{
+			name: "map with name and email",
+			recipient: map[string]interface{}{
+				"name":  "John Doe",
+				"email": "john@example.com",
+			},
+			expected: "john@example.com", // Current implementation returns just email
+		},
+		{
+			name: "map with name only",
+			recipient: map[string]interface{}{
+				"name": "John Doe",
+			},
+			expected: "John Doe",
+		},
+		{
+			name:      "nil map",
+			recipient: (map[string]interface{})(nil),
+			expected:  "",
+		},
+		{
+			name: "invalid type assertions",
+			recipient: map[string]interface{}{
+				"email": 123, // not a string
+				"name":  456, // not a string
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := processor.extractEmailFromRecipient(tt.recipient)
+			if result != tt.expected {
+				t.Errorf("extractEmailFromRecipient(%v) = %q, want %q", tt.recipient, result, tt.expected)
+			}
+		})
+	}
+}
+
+// Helper function to create test items
+func createTestItem(id, title, threadID string) *models.Item {
+	item := &models.Item{
+		ID:         id,
+		Title:      title,
+		Content:    "Test content for " + title,
+		SourceType: "gmail",
+		ItemType:   "email",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		Metadata:   make(map[string]interface{}),
+	}
+	
+	if threadID != "" {
+		item.Metadata["thread_id"] = threadID
+	}
+	
+	return item
+}
+

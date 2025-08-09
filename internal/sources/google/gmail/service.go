@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/api/gmail/v1"
@@ -52,7 +53,10 @@ func (s *Service) GetMessages(since time.Time, limit int) ([]*gmail.Message, err
 
 	// Build the query based on configuration
 	query := s.buildQuery(since)
-	
+
+	// Debug logging
+	slog.Info("Gmail query built", "source_id", s.sourceID, "query", query, "since", since.Format("2006-01-02"), "limit", limit)
+
 	// Set default limit if not specified
 	if limit <= 0 {
 		limit = 100
@@ -65,7 +69,7 @@ func (s *Service) GetMessages(since time.Time, limit int) ([]*gmail.Message, err
 
 	// List messages using the Gmail API with retry logic
 	req := s.service.Users.Messages.List("me").Q(query).MaxResults(int64(limit))
-	
+
 	resp, err := s.executeWithRetry(func() (interface{}, error) {
 		return req.Do()
 	})
@@ -74,6 +78,8 @@ func (s *Service) GetMessages(since time.Time, limit int) ([]*gmail.Message, err
 	}
 
 	listResp := resp.(*gmail.ListMessagesResponse)
+	slog.Info("Gmail API response", "source_id", s.sourceID, "messages_found", len(listResp.Messages), "query", query)
+
 	if len(listResp.Messages) == 0 {
 		return []*gmail.Message{}, nil
 	}
@@ -100,7 +106,7 @@ func (s *Service) GetMessage(messageID string) (*gmail.Message, error) {
 
 	// Get the full message including body
 	req := s.service.Users.Messages.Get("me", messageID).Format("full")
-	
+
 	message, err := req.Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get message %s: %w", messageID, err)
@@ -121,7 +127,7 @@ func (s *Service) GetMessageWithRetry(messageID string) (*gmail.Message, error) 
 
 	// Get the full message including body with retry logic
 	req := s.service.Users.Messages.Get("me", messageID).Format("full")
-	
+
 	resp, err := s.executeWithRetry(func() (interface{}, error) {
 		return req.Do()
 	})
@@ -140,13 +146,13 @@ func (s *Service) GetMessagesInRange(start, end time.Time, limit int) ([]*gmail.
 
 	// Build query with both start and end time filters
 	query := s.buildQueryWithRange(start, end)
-	
+
 	if limit <= 0 {
 		limit = 100
 	}
 
 	req := s.service.Users.Messages.List("me").Q(query).MaxResults(int64(limit))
-	
+
 	resp, err := s.executeWithRetry(func() (interface{}, error) {
 		return req.Do()
 	})
@@ -182,7 +188,7 @@ func (s *Service) buildQueryWithRange(start, end time.Time) string {
 // GetLabels retrieves all available labels for the user
 func (s *Service) GetLabels() ([]*gmail.Label, error) {
 	req := s.service.Users.Labels.List("me")
-	
+
 	resp, err := req.Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to list labels: %w", err)
@@ -194,7 +200,7 @@ func (s *Service) GetLabels() ([]*gmail.Label, error) {
 // GetProfile retrieves the user's Gmail profile information
 func (s *Service) GetProfile() (*gmail.Profile, error) {
 	req := s.service.Users.GetProfile("me")
-	
+
 	profile, err := req.Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get profile: %w", err)
@@ -247,7 +253,7 @@ func (s *Service) executeWithRetry(fn func() (interface{}, error)) (interface{},
 			if delay > 30*time.Second {
 				delay = 30 * time.Second
 			}
-			
+
 			slog.Info("Retrying Gmail API call", "delay", delay, "attempt", attempt+1, "max_retries", maxRetries)
 			time.Sleep(delay)
 		}
@@ -422,7 +428,7 @@ func (s *Service) GetAttachment(messageID, attachmentID string) (*gmail.MessageP
 	}
 
 	req := s.service.Users.Messages.Attachments.Get("me", messageID, attachmentID)
-	
+
 	resp, err := s.executeWithRetry(func() (interface{}, error) {
 		return req.Do()
 	})
@@ -493,13 +499,16 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 	resultChan := make(chan *gmail.Message, len(messageList))
 	errorChan := make(chan error, len(messageList))
 
+	// Use atomic counter to avoid data race
+	var skippedCount int32
+
 	// Start workers
 	var wg sync.WaitGroup
 	for i := 0; i < maxWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			
+
 			for msg := range messageChan {
 				// Apply rate limiting per worker
 				if s.config.RequestDelay > 0 {
@@ -509,6 +518,7 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 				fullMessage, err := s.GetMessageWithRetry(msg.Id)
 				if err != nil {
 					slog.Warn("Worker failed to get message", "worker_id", workerID, "message_id", msg.Id, "error", err)
+					atomic.AddInt32(&skippedCount, 1)
 					errorChan <- err
 				} else {
 					resultChan <- fullMessage
@@ -534,9 +544,8 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 
 	// Collect results
 	var messages []*gmail.Message
-	var skippedCount int
 
-	// Collect all results and count errors
+	// Collect all results
 	for {
 		select {
 		case msg, ok := <-resultChan:
@@ -548,16 +557,15 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 		case _, ok := <-errorChan:
 			if !ok {
 				errorChan = nil
-			} else {
-				skippedCount++
 			}
+			// Error counting is now handled atomically in the worker goroutines
 		}
-		
+
 		// Break when both channels are closed
 		if resultChan == nil && errorChan == nil {
 			break
 		}
 	}
 
-	return messages, skippedCount
+	return messages, int(atomic.LoadInt32(&skippedCount))
 }
