@@ -1,6 +1,7 @@
 package gmail
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -8,207 +9,342 @@ import (
 	"pkm-sync/pkg/models"
 )
 
-func TestThreadProcessor_SanitizeThreadSubject_Security(t *testing.T) {
+// Note: Security tests for filename sanitization are now in internal/utils/filename_test.go
+// These tests focus on thread-specific functionality
+
+func TestThreadProcessor_ProcessThreads_IndividualMode(t *testing.T) {
+	config := models.GmailSourceConfig{
+		IncludeThreads: true,
+		ThreadMode:     "individual",
+	}
+	processor := NewThreadProcessor(config)
+
+	items := []*models.Item{
+		createTestItem("msg1", "Subject 1", "thread1"),
+		createTestItem("msg2", "Re: Subject 1", "thread1"),
+		createTestItem("msg3", "Subject 2", "thread2"),
+	}
+
+	result, err := processor.ProcessThreads(items)
+	if err != nil {
+		t.Fatalf("ProcessThreads failed: %v", err)
+	}
+
+	if len(result) != 3 {
+		t.Errorf("Expected 3 items (individual mode), got %d", len(result))
+	}
+
+	// Should return original items unchanged
+	for i, item := range result {
+		if item.ID != items[i].ID {
+			t.Errorf("Item %d: expected ID %s, got %s", i, items[i].ID, item.ID)
+		}
+	}
+}
+
+func TestThreadProcessor_ProcessThreads_ConsolidatedMode(t *testing.T) {
+	config := models.GmailSourceConfig{
+		IncludeThreads: true,
+		ThreadMode:     "consolidated",
+	}
+	processor := NewThreadProcessor(config)
+
+	items := []*models.Item{
+		createTestItem("msg1", "Subject 1", "thread1"),
+		createTestItem("msg2", "Re: Subject 1", "thread1"),
+		createTestItem("msg3", "Subject 2", "thread2"),
+	}
+
+	result, err := processor.ProcessThreads(items)
+	if err != nil {
+		t.Fatalf("ProcessThreads failed: %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Errorf("Expected 2 items (2 threads), got %d", len(result))
+	}
+
+	// Check that thread items are consolidated
+	var threadItem *models.Item
+	for _, item := range result {
+		if item.ItemType == "email_thread" {
+			threadItem = item
+			break
+		}
+	}
+
+	if threadItem == nil {
+		t.Error("Expected to find a consolidated thread item")
+	} else {
+		if !strings.Contains(threadItem.Title, "Thread_") {
+			t.Errorf("Expected thread title to contain 'Thread_', got %s", threadItem.Title)
+		}
+		if !strings.Contains(threadItem.Content, "Thread: Subject 1") {
+			t.Error("Expected consolidated content to contain thread subject")
+		}
+	}
+}
+
+func TestThreadProcessor_ProcessThreads_SummaryMode(t *testing.T) {
+	config := models.GmailSourceConfig{
+		IncludeThreads:        true,
+		ThreadMode:           "summary",
+		ThreadSummaryLength:  2,
+	}
+	processor := NewThreadProcessor(config)
+
+	items := []*models.Item{
+		createTestItem("msg1", "Subject 1", "thread1"),
+		createTestItem("msg2", "Re: Subject 1", "thread1"),
+		createTestItem("msg3", "Re: Subject 1", "thread1"),
+		createTestItem("msg4", "Subject 2", "thread2"),
+	}
+
+	result, err := processor.ProcessThreads(items)
+	if err != nil {
+		t.Fatalf("ProcessThreads failed: %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Errorf("Expected 2 items (2 threads), got %d", len(result))
+	}
+
+	// Check that thread summary is created
+	var summaryItem *models.Item
+	for _, item := range result {
+		if item.ItemType == "email_thread_summary" {
+			summaryItem = item
+			break
+		}
+	}
+
+	if summaryItem == nil {
+		t.Error("Expected to find a thread summary item")
+	} else {
+		if !strings.Contains(summaryItem.Title, "Thread-Summary_") {
+			t.Errorf("Expected summary title to contain 'Thread-Summary_', got %s", summaryItem.Title)
+		}
+		if !strings.Contains(summaryItem.Content, "**Showing:** 2 key messages") {
+			t.Error("Expected summary to show configured number of messages")
+		}
+	}
+}
+
+func TestThreadProcessor_SelectKeyMessages(t *testing.T) {
 	config := models.GmailSourceConfig{}
 	processor := NewThreadProcessor(config)
+
+	// Create test messages with different characteristics
+	now := time.Now()
+	messages := []*models.Item{
+		{
+			ID:         "msg1",
+			Title:      "First message",
+			Content:    "Short content",
+			CreatedAt:  now.Add(-3 * time.Hour),
+			Metadata:   map[string]interface{}{"from": "user1@example.com"},
+		},
+		{
+			ID:         "msg2", 
+			Title:      "Second message",
+			Content:    strings.Repeat("Long content with lots of text ", 20), // >500 chars
+			CreatedAt:  now.Add(-2 * time.Hour),
+			Metadata:   map[string]interface{}{"from": "user2@example.com"},
+		},
+		{
+			ID:         "msg3",
+			Title:      "Third message",
+			Content:    "Medium content",
+			CreatedAt:  now.Add(-1 * time.Hour),
+			Metadata:   map[string]interface{}{"from": "user1@example.com"},
+			Attachments: []models.Attachment{{Name: "file.pdf"}},
+		},
+		{
+			ID:         "msg4",
+			Title:      "Fourth message", 
+			Content:    "Recent content",
+			CreatedAt:  now,
+			Metadata:   map[string]interface{}{"from": "user3@example.com"},
+		},
+	}
 
 	tests := []struct {
 		name        string
-		input       string
-		expected    string
-		description string
+		maxMessages int
+		expected    int
+		shouldIncludeFirst bool
+		shouldIncludeLast  bool
 	}{
 		{
-			name:        "path traversal - parent directory",
-			input:       "../../../etc/passwd",
-			expected:    "etc-passwd",
-			description: "Should prevent path traversal attacks",
+			name:               "select 2 messages",
+			maxMessages:        2,
+			expected:           2,
+			shouldIncludeFirst: true,
+			shouldIncludeLast:  true,
 		},
 		{
-			name:        "path traversal - current directory",
-			input:       "./sensitive/file",
-			expected:    "sensitive-file",
-			description: "Should remove current directory references",
+			name:               "select 3 messages", 
+			maxMessages:        3,
+			expected:           3,
+			shouldIncludeFirst: true,
+			shouldIncludeLast:  true,
 		},
 		{
-			name:        "path traversal - mixed",
-			input:       "../config/../secrets",
-			expected:    "config-secrets",
-			description: "Should handle multiple path traversal attempts",
+			name:               "select all messages",
+			maxMessages:        10,
+			expected:           4,
+			shouldIncludeFirst: true,
+			shouldIncludeLast:  true,
 		},
 		{
-			name:        "home directory reference",
-			input:       "~/private/data",
-			expected:    "private-data",
-			description: "Should remove home directory references",
-		},
-		{
-			name:        "dot files",
-			input:       ".hidden_file",
-			expected:    "hidden_file",
-			description: "Should handle dot files safely",
-		},
-		{
-			name:        "directory separator injection",
-			input:       "file/with/slashes",
-			expected:    "file-with-slashes",
-			description: "Should replace directory separators",
-		},
-		{
-			name:        "windows path separators",
-			input:       "file\\with\\backslashes",
-			expected:    "file-with-backslashes",
-			description: "Should replace Windows directory separators",
-		},
-		{
-			name:        "null bytes",
-			input:       "file\x00name",
-			expected:    "filename",
-			description: "Should handle null bytes",
-		},
-		{
-			name:        "control characters",
-			input:       "file\nwith\tcontrol\rchars",
-			expected:    "filewithcontrolchars",
-			description: "Should remove control characters",
+			name:               "select 1 message",
+			maxMessages:        1,
+			expected:           1,
+			shouldIncludeFirst: true,
+			shouldIncludeLast:  false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := processor.sanitizeThreadSubject(tt.input)
-			if result != tt.expected {
-				t.Errorf("sanitizeThreadSubject(%q) = %q, want %q\nDescription: %s", 
-					tt.input, result, tt.expected, tt.description)
+			result := processor.selectKeyMessages(messages, tt.maxMessages)
+			
+			if len(result) != tt.expected {
+				t.Errorf("Expected %d messages, got %d", tt.expected, len(result))
 			}
 			
-			// Additional security validation
-			if strings.Contains(result, "..") {
-				t.Errorf("Result still contains path traversal: %q", result)
+			if tt.shouldIncludeFirst && result[0].ID != "msg1" {
+				t.Error("Expected first message to be included first")
 			}
-			if strings.Contains(result, "/") || strings.Contains(result, "\\") {
-				t.Errorf("Result still contains path separators: %q", result)
+			
+			if tt.shouldIncludeLast && len(result) > 1 && result[len(result)-1].ID != "msg4" {
+				t.Error("Expected last message to be included last")
 			}
-		})
-	}
-}
-
-func TestThreadProcessor_SanitizeThreadSubject_EdgeCases(t *testing.T) {
-	config := models.GmailSourceConfig{}
-	processor := NewThreadProcessor(config)
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "email-thread",
-		},
-		{
-			name:     "only whitespace",
-			input:    "   \t\n  ",
-			expected: "email-thread", // After removing whitespace/control chars, becomes empty
-		},
-		{
-			name:     "only special characters",
-			input:    "!@#$%^&*()",
-			expected: "at-$%^-and", // After replacements: ! -> empty, @ -> "-at-", # -> "-", $%^ remain, & -> "-and-", * -> empty, () -> empty
-		},
-		{
-			name:     "only hyphens",
-			input:    "-----",
-			expected: "email-thread",
-		},
-		{
-			name:     "unicode characters",
-			input:    "Héllo Wörld",
-			expected: "Héllo-Wörld",
-		},
-		{
-			name:     "emoji in subject",
-			input:    "Meeting 📅 Tomorrow",
-			expected: "Meeting-📅-Tomorrow",
-		},
-		{
-			name:     "multiple consecutive spaces",
-			input:    "Test     Subject",
-			expected: "Test-Subject",
-		},
-		{
-			name:     "mixed case",
-			input:    "CamelCase Subject",
-			expected: "CamelCase-Subject",
-		},
-		{
-			name:     "numbers and letters",
-			input:    "Test123 Subject456",
-			expected: "Test123-Subject456",
-		},
-		{
-			name:     "leading and trailing special chars",
-			input:    "!!!Important Subject!!!",
-			expected: "Important-Subject",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := processor.sanitizeThreadSubject(tt.input)
-			if result != tt.expected {
-				t.Errorf("sanitizeThreadSubject(%q) = %q, want %q", tt.input, result, tt.expected)
+			
+			// Verify chronological order
+			for i := 1; i < len(result); i++ {
+				if result[i].CreatedAt.Before(result[i-1].CreatedAt) {
+					t.Error("Messages should be in chronological order")
+				}
 			}
 		})
 	}
 }
 
-func TestThreadProcessor_SanitizeThreadSubject_Performance(t *testing.T) {
-	config := models.GmailSourceConfig{}
+func TestThreadProcessor_ProcessThreads_NilSafety(t *testing.T) {
+	config := models.GmailSourceConfig{
+		IncludeThreads: true,
+		ThreadMode:     "consolidated",
+	}
 	processor := NewThreadProcessor(config)
 
-	// Test with very long string
-	longInput := strings.Repeat("Test Subject with Many Words ", 100)
-	result := processor.sanitizeThreadSubject(longInput)
-	
-	if len(result) > 80 {
-		t.Errorf("Long input result should be truncated to 80 chars, got %d", len(result))
+	// Test with nil items slice
+	result, err := processor.ProcessThreads(nil)
+	if err != nil {
+		t.Fatalf("ProcessThreads should handle nil items: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("Expected empty result for nil items, got %d", len(result))
+	}
+
+	// Test with slice containing nil items
+	items := []*models.Item{
+		createTestItem("msg1", "Subject 1", "thread1"),
+		nil, // This should be skipped
+		createTestItem("msg2", "Subject 2", "thread1"),
+	}
+
+	result, err = processor.ProcessThreads(items)
+	if err != nil {
+		t.Fatalf("ProcessThreads should handle nil items in slice: %v", err)
 	}
 	
-	// Test multiple consecutive hyphens (worst case for the old implementation)
-	manyHyphens := strings.Repeat("-", 1000)
-	result = processor.sanitizeThreadSubject(manyHyphens)
-	
-	if result != "email-thread" {
-		t.Errorf("Many hyphens should result in fallback, got %q", result)
+	// Should only process non-nil items
+	if len(result) != 1 { // Should consolidate 2 non-nil items into 1 thread
+		t.Errorf("Expected 1 consolidated item, got %d", len(result))
 	}
 }
 
-func TestThreadProcessor_SanitizeThreadSubject_NilSafety(t *testing.T) {
-	// Test with nil processor
-	var processor *ThreadProcessor
-	result := processor.sanitizeThreadSubject("test")
-	if result != "email-thread" {
-		t.Errorf("Nil processor should return fallback, got %q", result)
+func TestThreadProcessor_DefaultSummaryLength(t *testing.T) {
+	config := models.GmailSourceConfig{
+		IncludeThreads: true,
+		ThreadMode:     "summary",
+		// ThreadSummaryLength not set, should use default
 	}
-	
-	// Test with valid processor but edge case inputs
-	validProcessor := NewThreadProcessor(models.GmailSourceConfig{})
-	
-	tests := []string{
-		"",
-		"   ",
-		"...",
-		"///",
-		"\\\\\\",
-		"@#$%",
+	processor := NewThreadProcessor(config)
+
+	// Create more messages than default summary length
+	items := []*models.Item{
+		createTestItem("msg1", "Subject 1", "thread1"),
+		createTestItem("msg2", "Re: Subject 1", "thread1"),
+		createTestItem("msg3", "Re: Subject 1", "thread1"),
+		createTestItem("msg4", "Re: Subject 1", "thread1"),
+		createTestItem("msg5", "Re: Subject 1", "thread1"),
+		createTestItem("msg6", "Re: Subject 1", "thread1"),
+		createTestItem("msg7", "Re: Subject 1", "thread1"),
 	}
-	
-	for _, input := range tests {
-		result := validProcessor.sanitizeThreadSubject(input)
-		if result == "" {
-			t.Errorf("sanitizeThreadSubject should never return empty string for input %q", input)
+
+	result, err := processor.ProcessThreads(items)
+	if err != nil {
+		t.Fatalf("ProcessThreads failed: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("Expected 1 thread summary, got %d", len(result))
+	}
+
+	summary := result[0]
+	if !strings.Contains(summary.Content, fmt.Sprintf("**Showing:** %d key messages", DefaultThreadSummaryLength)) {
+		t.Errorf("Expected summary to show default length (%d), got content: %s", DefaultThreadSummaryLength, summary.Content)
+	}
+}
+
+func TestThreadProcessor_EmptySubjectHandling(t *testing.T) {
+	config := models.GmailSourceConfig{
+		IncludeThreads: true,
+		ThreadMode:     "consolidated",
+	}
+	processor := NewThreadProcessor(config)
+
+	items := []*models.Item{
+		{
+			ID:         "msg1",
+			Title:      "", // Empty subject
+			Content:    "Content 1",
+			SourceType: "gmail",
+			ItemType:   "email",
+			CreatedAt:  time.Now(),
+			Metadata:   map[string]interface{}{"thread_id": "thread123"},
+		},
+		{
+			ID:         "msg2",
+			Title:      "Re:", // Subject that becomes empty after cleaning
+			Content:    "Content 2", 
+			SourceType: "gmail",
+			ItemType:   "email",
+			CreatedAt:  time.Now(),
+			Metadata:   map[string]interface{}{"thread_id": "thread456"},
+		},
+	}
+
+	result, err := processor.ProcessThreads(items)
+	if err != nil {
+		t.Fatalf("ProcessThreads failed: %v", err)
+	}
+
+	// Check that thread IDs are used to prevent collisions
+	threadTitles := make(map[string]bool)
+	for _, item := range result {
+		if threadTitles[item.Title] {
+			t.Errorf("Found duplicate thread title: %s", item.Title)
+		}
+		threadTitles[item.Title] = true
+		
+		// Thread titles should contain the thread ID for empty subjects
+		if item.ItemType == "email_thread" {
+			if !strings.Contains(item.Title, "thread") {
+				t.Errorf("Expected thread title to contain thread ID, got: %s", item.Title)
+			}
 		}
 	}
 }

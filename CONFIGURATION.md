@@ -149,7 +149,7 @@ Gmail integration supports multiple instances (e.g., `gmail_work`, `gmail_person
 | `include_read` | boolean | `false` | Include read emails |
 | `include_threads` | boolean | `false` | Include full email threads |
 | `thread_mode` | string | `"individual"` | Thread grouping mode (individual, consolidated, summary) |
-| `thread_summary_length` | integer | `5` | Max messages in summary mode |
+| `thread_summary_length` | integer | `5` | Max messages in summary mode (default: 5) |
 | `max_email_age` | string | `"30d"` | Maximum email age (30d, 1y, etc.) |
 | `min_email_age` | string | `""` | Minimum email age (exclude very recent) |
 | `from_domains` | array | `[]` | Filter by sender domains (["company.com"]) |

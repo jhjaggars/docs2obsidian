@@ -759,75 +759,7 @@ func TestThreadProcessor_GroupMessagesByThread(t *testing.T) {
 	}
 }
 
-func TestThreadProcessor_SanitizeThreadSubject(t *testing.T) {
-	config := models.GmailSourceConfig{}
-	processor := NewThreadProcessor(config)
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "basic subject",
-			input:    "Hello World",
-			expected: "Hello-World",
-		},
-		{
-			name:     "with special characters",
-			input:    "Project: Test <Important>",
-			expected: "Project-Test-Important",
-		},
-		{
-			name:     "path traversal attempt",
-			input:    "../../../etc/passwd",
-			expected: "etc-passwd",
-		},
-		{
-			name:     "multiple consecutive hyphens",
-			input:    "Test --- Subject",
-			expected: "Test-Subject",
-		},
-		{
-			name:     "empty subject",
-			input:    "",
-			expected: "email-thread",
-		},
-		{
-			name:     "only special characters",
-			input:    "!@#$%^&*()",
-			expected: "at-$%^-and", // Based on actual replacement behavior
-		},
-		{
-			name:     "very long subject",
-			input:    strings.Repeat("a", 100),
-			expected: strings.Repeat("a", 80),
-		},
-		{
-			name:     "email prefix removal",
-			input:    "Re: Fwd: Original Subject",
-			expected: "Original-Subject",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := processor.sanitizeThreadSubject(tt.input)
-			if result != tt.expected {
-				t.Errorf("sanitizeThreadSubject(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestThreadProcessor_NilSafety(t *testing.T) {
-	// Test nil processor
-	var processor *ThreadProcessor
-	result := processor.sanitizeThreadSubject("test")
-	if result != "email-thread" {
-		t.Errorf("nil processor sanitizeThreadSubject should return fallback, got %q", result)
-	}
-
 	// Test with nil items
 	validProcessor := NewThreadProcessor(models.GmailSourceConfig{})
 	processed, err := validProcessor.ProcessThreads(nil)

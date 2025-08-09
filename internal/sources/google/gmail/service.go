@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/api/gmail/v1"
@@ -498,6 +499,9 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 	resultChan := make(chan *gmail.Message, len(messageList))
 	errorChan := make(chan error, len(messageList))
 
+	// Use atomic counter to avoid data race
+	var skippedCount int32
+
 	// Start workers
 	var wg sync.WaitGroup
 	for i := 0; i < maxWorkers; i++ {
@@ -514,6 +518,7 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 				fullMessage, err := s.GetMessageWithRetry(msg.Id)
 				if err != nil {
 					slog.Warn("Worker failed to get message", "worker_id", workerID, "message_id", msg.Id, "error", err)
+					atomic.AddInt32(&skippedCount, 1)
 					errorChan <- err
 				} else {
 					resultChan <- fullMessage
@@ -539,9 +544,8 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 
 	// Collect results
 	var messages []*gmail.Message
-	var skippedCount int
 
-	// Collect all results and count errors
+	// Collect all results
 	for {
 		select {
 		case msg, ok := <-resultChan:
@@ -553,9 +557,8 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 		case _, ok := <-errorChan:
 			if !ok {
 				errorChan = nil
-			} else {
-				skippedCount++
 			}
+			// Error counting is now handled atomically in the worker goroutines
 		}
 
 		// Break when both channels are closed
@@ -564,5 +567,5 @@ func (s *Service) fetchMessagesConcurrently(messageList []*gmail.Message) ([]*gm
 		}
 	}
 
-	return messages, skippedCount
+	return messages, int(atomic.LoadInt32(&skippedCount))
 }

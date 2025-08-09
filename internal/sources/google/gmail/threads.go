@@ -2,12 +2,17 @@ package gmail
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"pkm-sync/internal/utils"
 	"pkm-sync/pkg/models"
+)
+
+const (
+	// DefaultThreadSummaryLength is the default number of messages to include in thread summaries
+	DefaultThreadSummaryLength = 5
 )
 
 // ThreadGroup represents a group of emails that belong to the same thread
@@ -67,6 +72,10 @@ func (tp *ThreadProcessor) groupMessagesByThread(items []*models.Item) map[strin
 	threadGroups := make(map[string]*ThreadGroup)
 
 	for _, item := range items {
+		if item == nil {
+			continue // Skip nil items to prevent panic
+		}
+		
 		threadID := tp.extractThreadID(item)
 		if threadID == "" {
 			// No thread ID - treat as individual message
@@ -127,7 +136,7 @@ func (tp *ThreadProcessor) consolidateThreads(threadGroups map[string]*ThreadGro
 		// Create consolidated thread item
 		consolidated := &models.Item{
 			ID:         fmt.Sprintf("thread_%s", group.ThreadID),
-			Title:      fmt.Sprintf("Thread_%s_%d-messages", tp.sanitizeThreadSubject(group.Subject), group.MessageCount),
+			Title:      fmt.Sprintf("Thread_%s_%d-messages", utils.SanitizeThreadSubject(group.Subject, group.ThreadID), group.MessageCount),
 			Content:    tp.buildConsolidatedContent(group),
 			SourceType: "gmail",
 			ItemType:   "email_thread",
@@ -157,12 +166,12 @@ func (tp *ThreadProcessor) summarizeThreads(threadGroups map[string]*ThreadGroup
 		// Create thread summary
 		maxMessages := tp.config.ThreadSummaryLength
 		if maxMessages <= 0 {
-			maxMessages = 5 // Default
+			maxMessages = DefaultThreadSummaryLength
 		}
 
 		summary := &models.Item{
 			ID:         fmt.Sprintf("thread_summary_%s", group.ThreadID),
-			Title:      fmt.Sprintf("Thread-Summary_%s_%d-messages", tp.sanitizeThreadSubject(group.Subject), group.MessageCount),
+			Title:      fmt.Sprintf("Thread-Summary_%s_%d-messages", utils.SanitizeThreadSubject(group.Subject, group.ThreadID), group.MessageCount),
 			Content:    tp.buildThreadSummary(group, maxMessages),
 			SourceType: "gmail",
 			ItemType:   "email_thread_summary",
@@ -475,109 +484,6 @@ func (tp *ThreadProcessor) buildThreadTags(group *ThreadGroup) []string {
 	return tags
 }
 
-// sanitizeThreadSubject cleans up thread subject for use in filenames with security validation
-func (tp *ThreadProcessor) sanitizeThreadSubject(subject string) string {
-	// Input validation
-	if subject == "" {
-		return "email-thread"
-	}
-	
-	// Validate thread processor is not nil
-	if tp == nil {
-		return "email-thread"
-	}
-	
-	// Remove common email prefixes and clean up
-	cleaned := tp.extractThreadSubject(&models.Item{Title: subject})
-	if cleaned == "" {
-		cleaned = subject // Fallback to original if extraction fails
-	}
-	
-	// Optimized string replacements using strings.Replacer for better performance
-	// Create replacer with all replacement patterns including security ones
-	replacer := strings.NewReplacer(
-		// Security: Remove path traversal sequences (order matters - longer patterns first)
-		"../", "",
-		"./", "",
-		"..", "",
-		"~", "",
-		// Control characters
-		"\n", "",
-		"\r", "",
-		"\t", "",
-		"\x00", "",
-		// Filename-friendly replacements
-		" ", "-",
-		"/", "-",
-		"\\", "-",
-		":", "-",
-		"*", "",
-		"?", "",
-		"\"", "",
-		"<", "",
-		">", "",
-		"|", "-",
-		"[", "",
-		"]", "",
-		"(", "",
-		")", "",
-		"@", "-at-",
-		"#", "-",
-		"!", "",
-		"&", "-and-",
-		".", "", // Remove dots to handle .hidden files
-	)
-	
-	// Apply all replacements in one pass
-	cleaned = replacer.Replace(cleaned)
-
-	// Remove multiple consecutive hyphens using regex-like approach
-	// Use a more efficient approach to collapse multiple hyphens
-	var result strings.Builder
-	result.Grow(len(cleaned)) // Pre-allocate capacity
-	
-	prevWasHyphen := false
-	for _, char := range cleaned {
-		if char == '-' {
-			if !prevWasHyphen {
-				result.WriteRune(char)
-				prevWasHyphen = true
-			}
-			// Skip additional consecutive hyphens
-		} else {
-			result.WriteRune(char)
-			prevWasHyphen = false
-		}
-	}
-	cleaned = result.String()
-
-	// Remove leading/trailing hyphens and limit length
-	cleaned = strings.Trim(cleaned, "-")
-	
-	// Limit length to avoid very long filenames
-	if len(cleaned) > 80 {
-		// Ensure we don't slice beyond string length
-		if len(cleaned) >= 80 {
-			cleaned = cleaned[:80]
-		}
-		cleaned = strings.Trim(cleaned, "-")
-	}
-
-	// Security: Use filepath.Clean to prevent path traversal and validate result
-	cleaned = filepath.Base(filepath.Clean(cleaned))
-	
-	// Additional security validation: ensure it's a safe filename
-	if cleaned == "." || cleaned == ".." || strings.Contains(cleaned, string(filepath.Separator)) {
-		cleaned = "email-thread"
-	}
-
-	// Final validation - ensure we have a valid filename
-	if cleaned == "" || cleaned == "-" {
-		cleaned = "email-thread"
-	}
-
-	return cleaned
-}
 
 // min returns the smaller of two integers
 func min(a, b int) int {
