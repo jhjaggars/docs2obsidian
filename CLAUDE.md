@@ -27,6 +27,9 @@ go build -o pkm-sync ./cmd
 # Custom paths
 ./pkm-sync --credentials /path/to/credentials.json setup
 ./pkm-sync --config-dir /custom/config/dir setup
+
+# Development setup
+./scripts/install-hooks.sh   # Install Git hooks (pre-commit formatting)
 ```
 
 ## Architecture Overview
@@ -172,3 +175,46 @@ sources:
 - Consolidated: `Thread_PR-discussion-fix-security-issue_8-messages.md`
 - Summary: `Thread-Summary_meeting-notes-weekly-sync_5-messages.md`
 - Individual: `Re-Project-status-update.md`
+
+## Development Workflow
+
+### Initial Setup
+```bash
+# Clone the repository
+git clone <repository-url>
+cd pkm-sync
+
+# Install Git hooks for development
+./scripts/install-hooks.sh
+```
+
+### Git Hooks
+The repository includes development Git hooks to maintain code quality:
+
+- **pre-commit**: Automatically runs `go fmt` on staged Go files before each commit
+- Ensures consistent code formatting across all contributions
+- Prevents commits with incorrectly formatted Go code
+
+To install hooks after cloning:
+```bash
+./scripts/install-hooks.sh
+```
+
+The pre-commit hook will:
+1. Detect staged Go files (`.go` extension)
+2. Run `go fmt` on each staged file
+3. Re-add formatted files to the staging area
+4. Allow the commit to proceed
+
+### Testing
+```bash
+# Run all tests
+go test ./...
+
+# Run specific package tests
+go test ./cmd
+go test ./internal/sources/google/gmail
+
+# Run with verbose output
+go test -v ./...
+```
