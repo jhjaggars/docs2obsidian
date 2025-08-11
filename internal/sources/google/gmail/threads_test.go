@@ -87,9 +87,9 @@ func TestThreadProcessor_ProcessThreads_ConsolidatedMode(t *testing.T) {
 
 func TestThreadProcessor_ProcessThreads_SummaryMode(t *testing.T) {
 	config := models.GmailSourceConfig{
-		IncludeThreads:        true,
-		ThreadMode:           "summary",
-		ThreadSummaryLength:  2,
+		IncludeThreads:      true,
+		ThreadMode:          "summary",
+		ThreadSummaryLength: 2,
 	}
 	processor := NewThreadProcessor(config)
 
@@ -138,40 +138,40 @@ func TestThreadProcessor_SelectKeyMessages(t *testing.T) {
 	now := time.Now()
 	messages := []*models.Item{
 		{
-			ID:         "msg1",
-			Title:      "First message",
-			Content:    "Short content",
-			CreatedAt:  now.Add(-3 * time.Hour),
-			Metadata:   map[string]interface{}{"from": "user1@example.com"},
+			ID:        "msg1",
+			Title:     "First message",
+			Content:   "Short content",
+			CreatedAt: now.Add(-3 * time.Hour),
+			Metadata:  map[string]interface{}{"from": "user1@example.com"},
 		},
 		{
-			ID:         "msg2", 
-			Title:      "Second message",
-			Content:    strings.Repeat("Long content with lots of text ", 20), // >500 chars
-			CreatedAt:  now.Add(-2 * time.Hour),
-			Metadata:   map[string]interface{}{"from": "user2@example.com"},
+			ID:        "msg2",
+			Title:     "Second message",
+			Content:   strings.Repeat("Long content with lots of text ", 20), // >500 chars
+			CreatedAt: now.Add(-2 * time.Hour),
+			Metadata:  map[string]interface{}{"from": "user2@example.com"},
 		},
 		{
-			ID:         "msg3",
-			Title:      "Third message",
-			Content:    "Medium content",
-			CreatedAt:  now.Add(-1 * time.Hour),
-			Metadata:   map[string]interface{}{"from": "user1@example.com"},
+			ID:          "msg3",
+			Title:       "Third message",
+			Content:     "Medium content",
+			CreatedAt:   now.Add(-1 * time.Hour),
+			Metadata:    map[string]interface{}{"from": "user1@example.com"},
 			Attachments: []models.Attachment{{Name: "file.pdf"}},
 		},
 		{
-			ID:         "msg4",
-			Title:      "Fourth message", 
-			Content:    "Recent content",
-			CreatedAt:  now,
-			Metadata:   map[string]interface{}{"from": "user3@example.com"},
+			ID:        "msg4",
+			Title:     "Fourth message",
+			Content:   "Recent content",
+			CreatedAt: now,
+			Metadata:  map[string]interface{}{"from": "user3@example.com"},
 		},
 	}
 
 	tests := []struct {
-		name        string
-		maxMessages int
-		expected    int
+		name               string
+		maxMessages        int
+		expected           int
 		shouldIncludeFirst bool
 		shouldIncludeLast  bool
 	}{
@@ -183,7 +183,7 @@ func TestThreadProcessor_SelectKeyMessages(t *testing.T) {
 			shouldIncludeLast:  true,
 		},
 		{
-			name:               "select 3 messages", 
+			name:               "select 3 messages",
 			maxMessages:        3,
 			expected:           3,
 			shouldIncludeFirst: true,
@@ -208,19 +208,19 @@ func TestThreadProcessor_SelectKeyMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := processor.selectKeyMessages(messages, tt.maxMessages)
-			
+
 			if len(result) != tt.expected {
 				t.Errorf("Expected %d messages, got %d", tt.expected, len(result))
 			}
-			
+
 			if tt.shouldIncludeFirst && result[0].ID != "msg1" {
 				t.Error("Expected first message to be included first")
 			}
-			
+
 			if tt.shouldIncludeLast && len(result) > 1 && result[len(result)-1].ID != "msg4" {
 				t.Error("Expected last message to be included last")
 			}
-			
+
 			// Verify chronological order
 			for i := 1; i < len(result); i++ {
 				if result[i].CreatedAt.Before(result[i-1].CreatedAt) {
@@ -258,7 +258,7 @@ func TestThreadProcessor_ProcessThreads_NilSafety(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ProcessThreads should handle nil items in slice: %v", err)
 	}
-	
+
 	// Should only process non-nil items
 	if len(result) != 1 { // Should consolidate 2 non-nil items into 1 thread
 		t.Errorf("Expected 1 consolidated item, got %d", len(result))
@@ -319,7 +319,7 @@ func TestThreadProcessor_EmptySubjectHandling(t *testing.T) {
 		{
 			ID:         "msg2",
 			Title:      "Re:", // Subject that becomes empty after cleaning
-			Content:    "Content 2", 
+			Content:    "Content 2",
 			SourceType: "gmail",
 			ItemType:   "email",
 			CreatedAt:  time.Now(),
@@ -339,7 +339,7 @@ func TestThreadProcessor_EmptySubjectHandling(t *testing.T) {
 			t.Errorf("Found duplicate thread title: %s", item.Title)
 		}
 		threadTitles[item.Title] = true
-		
+
 		// Thread titles should contain the thread ID for empty subjects
 		if item.ItemType == "email_thread" {
 			if !strings.Contains(item.Title, "thread") {
@@ -359,38 +359,38 @@ func TestThreadProcessor_ExtractThreadSubject(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "remove Re: prefix",
-			item: &models.Item{Title: "Re: Original Subject"},
+			name:     "remove Re: prefix",
+			item:     &models.Item{Title: "Re: Original Subject"},
 			expected: "Original Subject",
 		},
 		{
-			name: "remove Fwd: prefix",
-			item: &models.Item{Title: "Fwd: Important Message"},
+			name:     "remove Fwd: prefix",
+			item:     &models.Item{Title: "Fwd: Important Message"},
 			expected: "Important Message",
 		},
 		{
-			name: "remove multiple prefixes",
-			item: &models.Item{Title: "RE: Fwd: Re: Final Subject"},
+			name:     "remove multiple prefixes",
+			item:     &models.Item{Title: "RE: Fwd: Re: Final Subject"},
 			expected: "Final Subject",
 		},
 		{
-			name: "case insensitive removal",
-			item: &models.Item{Title: "FWD: Test Subject"},
+			name:     "case insensitive removal",
+			item:     &models.Item{Title: "FWD: Test Subject"},
 			expected: "Test Subject",
 		},
 		{
-			name: "no prefix to remove",
-			item: &models.Item{Title: "Clean Subject"},
+			name:     "no prefix to remove",
+			item:     &models.Item{Title: "Clean Subject"},
 			expected: "Clean Subject",
 		},
 		{
-			name: "empty title",
-			item: &models.Item{Title: ""},
+			name:     "empty title",
+			item:     &models.Item{Title: ""},
 			expected: "",
 		},
 		{
-			name: "only prefix",
-			item: &models.Item{Title: "Re:"},
+			name:     "only prefix",
+			item:     &models.Item{Title: "Re:"},
 			expected: "",
 		},
 	}
@@ -466,14 +466,14 @@ func TestThreadProcessor_UpdateParticipants(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset group to initial state
 			group.Participants = []string{"user1@example.com"}
-			
+
 			processor.updateParticipants(group, tt.item)
-			
+
 			if len(group.Participants) != tt.expectedCount {
-				t.Errorf("updateParticipants() resulted in %d participants, want %d", 
+				t.Errorf("updateParticipants() resulted in %d participants, want %d",
 					len(group.Participants), tt.expectedCount)
 			}
-			
+
 			found := false
 			for _, participant := range group.Participants {
 				if participant == tt.expectedContains {
@@ -481,9 +481,9 @@ func TestThreadProcessor_UpdateParticipants(t *testing.T) {
 					break
 				}
 			}
-			
+
 			if !found {
-				t.Errorf("updateParticipants() should contain %q, got %v", 
+				t.Errorf("updateParticipants() should contain %q, got %v",
 					tt.expectedContains, group.Participants)
 			}
 		})
@@ -514,7 +514,7 @@ func TestThreadProcessor_BuildThreadMetadata_NilSafety(t *testing.T) {
 	}
 
 	metadata = processor.buildThreadMetadata(group)
-	
+
 	expectedKeys := []string{"thread_id", "message_count", "participants", "start_time", "end_time", "duration_hours"}
 	for _, key := range expectedKeys {
 		if _, exists := metadata[key]; !exists {

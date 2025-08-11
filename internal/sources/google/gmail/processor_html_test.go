@@ -18,8 +18,8 @@ func TestProcessHTMLContent_ComplexScenarios(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "nested formatting",
-			html: "<p><strong>Bold <em>and italic</em></strong> text</p>",
+			name:     "nested formatting",
+			html:     "<p><strong>Bold <em>and italic</em></strong> text</p>",
 			expected: "**Bold *and italic*** text",
 		},
 		{
@@ -140,8 +140,8 @@ git push origin main</pre>`,
 			expected: "### Project Tasks\n- Setup environment\n- Install dependencies\n- Configure database\n- Development\n- Write tests\n- Implement features",
 		},
 		{
-			name: "special characters and entities",
-			html: `<p>&ldquo;Hello&rdquo; &amp; &lt;goodbye&gt; &mdash; with &hellip; and &nbsp; spaces</p>`,
+			name:     "special characters and entities",
+			html:     `<p>&ldquo;Hello&rdquo; &amp; &lt;goodbye&gt; &mdash; with &hellip; and &nbsp; spaces</p>`,
 			expected: `"Hello" & <goodbye> — with ... and   spaces`,
 		},
 	}
@@ -150,11 +150,11 @@ git push origin main</pre>`,
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{ProcessHTMLContent: true})
 			result := processor.ProcessHTMLContent(tt.html)
-			
+
 			// Normalize whitespace for comparison
 			result = normalizeWhitespace(result)
 			expected := normalizeWhitespace(tt.expected)
-			
+
 			if result != expected {
 				t.Errorf("ProcessHTMLContent() = %q, want %q", result, expected)
 			}
@@ -249,7 +249,7 @@ john@company.com
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{StripQuotedText: true})
 			result := processor.StripQuotedText(tt.content)
-			
+
 			if result != tt.expected {
 				t.Errorf("StripQuotedText() = %q, want %q", result, tt.expected)
 			}
@@ -341,7 +341,7 @@ And this too.`,
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{ExtractSignatures: true})
 			result := processor.ExtractSignatures(tt.content)
-			
+
 			if result != tt.expected {
 				t.Errorf("ExtractSignatures() = %q, want %q", result, tt.expected)
 			}
@@ -403,18 +403,18 @@ func TestProcessEmailBody_IntegrationScenarios(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock Gmail message with HTML content
 			msg := createMockGmailMessage(tt.html)
-			
+
 			processor := NewContentProcessor(tt.config)
 			result, err := processor.ProcessEmailBody(msg)
-			
+
 			if err != nil {
 				t.Errorf("ProcessEmailBody() error = %v", err)
 				return
 			}
-			
+
 			result = normalizeWhitespace(result)
 			expected := normalizeWhitespace(tt.expected)
-			
+
 			if result != expected {
 				t.Errorf("ProcessEmailBody() = %q, want %q", result, expected)
 			}
@@ -435,7 +435,7 @@ func normalizeWhitespace(s string) string {
 func createMockGmailMessage(htmlContent string) *gmail.Message {
 	// Encode HTML content as base64
 	encodedContent := base64.URLEncoding.EncodeToString([]byte(htmlContent))
-	
+
 	return &gmail.Message{
 		Id:      "test-message-123",
 		Snippet: "Test message snippet",

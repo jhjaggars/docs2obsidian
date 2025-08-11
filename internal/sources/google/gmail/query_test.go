@@ -273,19 +273,19 @@ func TestParseDuration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := parseDuration(tt.input)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("parseDuration() expected error, got nil")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("parseDuration() unexpected error: %v", err)
 				return
 			}
-			
+
 			if result != tt.expected {
 				t.Errorf("parseDuration() = %v, want %v", result, tt.expected)
 			}
@@ -339,14 +339,14 @@ func TestValidateQuery(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateQuery(tt.query)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ValidateQuery() expected error, got nil")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("ValidateQuery() unexpected error: %v", err)
 			}
@@ -362,8 +362,8 @@ func TestBuildComplexQuery(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "basic criteria",
-			config:   models.GmailSourceConfig{},
+			name:   "basic criteria",
+			config: models.GmailSourceConfig{},
 			criteria: map[string]interface{}{
 				"from": "example.com",
 			},
@@ -380,16 +380,16 @@ func TestBuildComplexQuery(t *testing.T) {
 			expected: "(has:attachment) subject:urgent",
 		},
 		{
-			name:     "boolean criteria",
-			config:   models.GmailSourceConfig{},
+			name:   "boolean criteria",
+			config: models.GmailSourceConfig{},
 			criteria: map[string]interface{}{
 				"has_attachment": true,
 			},
 			expected: "has:attachment",
 		},
 		{
-			name:     "time criteria",
-			config:   models.GmailSourceConfig{},
+			name:   "time criteria",
+			config: models.GmailSourceConfig{},
 			criteria: map[string]interface{}{
 				"newer_than": "1d",
 				"older_than": "7d",
@@ -403,8 +403,8 @@ func TestBuildComplexQuery(t *testing.T) {
 			expected: "",
 		},
 		{
-			name:     "mixed valid and invalid criteria",
-			config:   models.GmailSourceConfig{},
+			name:   "mixed valid and invalid criteria",
+			config: models.GmailSourceConfig{},
 			criteria: map[string]interface{}{
 				"has_attachment": true,
 			},
@@ -523,7 +523,7 @@ func TestQueryValidationEnhanced(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateQuery(tt.query)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ValidateQuery() expected error, got nil")
@@ -534,7 +534,7 @@ func TestQueryValidationEnhanced(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("ValidateQuery() unexpected error: %v", err)
 			}

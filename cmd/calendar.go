@@ -34,6 +34,7 @@ Examples:
   pkm-sync calendar --format json            # Output as JSON`,
 	RunE: runCalendarCommand,
 }
+
 // Calendar command flags
 var (
 	startDate      string
@@ -47,7 +48,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(calendarCmd)
-	
+
 	// Add flags for date range and options
 	calendarCmd.Flags().StringVar(&startDate, "start", "", "Start date (defaults to beginning of current week)")
 	calendarCmd.Flags().StringVar(&endDate, "end", "", "End date (defaults to end of today)")
@@ -69,7 +70,7 @@ func getBeginningOfWeek() time.Time {
 	}
 	// Calculate days to subtract to get to Monday
 	daysToSubtract := weekday - 1
-	
+
 	// Get Monday of this week at 00:00:00
 	monday := now.AddDate(0, 0, -daysToSubtract)
 	return time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, monday.Location())
@@ -90,7 +91,7 @@ func parseDate(dateStr string) (time.Time, error) {
 	if dateStr == "" {
 		return time.Time{}, nil
 	}
-	
+
 	// Handle relative dates
 	now := time.Now()
 	switch dateStr {
@@ -103,7 +104,7 @@ func parseDate(dateStr string) (time.Time, error) {
 		yesterday := now.AddDate(0, 0, -1)
 		return time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location()), nil
 	}
-	
+
 	// Try parsing ISO 8601 date formats
 	formats := []string{
 		"2006-01-02T15:04:05",
@@ -111,13 +112,13 @@ func parseDate(dateStr string) (time.Time, error) {
 		"2006-01-02T15:04:05-07:00",
 		"2006-01-02",
 	}
-	
+
 	for _, format := range formats {
 		if t, err := time.Parse(format, dateStr); err == nil {
 			return t, nil
 		}
 	}
-	
+
 	return time.Time{}, fmt.Errorf("unable to parse date: %s. Supported formats: YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS, 'today', 'tomorrow', 'yesterday'", dateStr)
 }
 
@@ -125,7 +126,7 @@ func parseDate(dateStr string) (time.Time, error) {
 func getDateRange() (time.Time, time.Time, error) {
 	var start, end time.Time
 	var err error
-	
+
 	// Parse start date or use default (beginning of week)
 	if startDate != "" {
 		start, err = parseDate(startDate)
@@ -135,7 +136,7 @@ func getDateRange() (time.Time, time.Time, error) {
 	} else {
 		start = getBeginningOfWeek()
 	}
-	
+
 	// Parse end date or use default (end of today)
 	if endDate != "" {
 		end, err = parseDate(endDate)
@@ -149,12 +150,12 @@ func getDateRange() (time.Time, time.Time, error) {
 	} else {
 		end = getEndOfToday()
 	}
-	
+
 	// Validate date range
 	if start.After(end) {
 		return time.Time{}, time.Time{}, fmt.Errorf("start date (%s) cannot be after end date (%s)", start.Format("2006-01-02"), end.Format("2006-01-02"))
 	}
-	
+
 	return start, end, nil
 }
 
@@ -199,7 +200,7 @@ func runCalendarCommand(cmd *cobra.Command, args []string) error {
 // formatAndDisplayEvents formats and displays the calendar events
 func formatAndDisplayEvents(events []*calendar.Event, start, end time.Time, calendarService *internalcalendar.Service, driveService *drive.Service) error {
 	if len(events) == 0 {
-		fmt.Printf("No events found between %s and %s\n", 
+		fmt.Printf("No events found between %s and %s\n",
 			start.Format("2006-01-02"), end.Format("2006-01-02"))
 		return nil
 	}
@@ -218,7 +219,7 @@ func formatAndDisplayEvents(events []*calendar.Event, start, end time.Time, cale
 // displayEventsAsTable displays events in a human-readable table format
 // displayEventsAsTable displays events in a human-readable table format
 func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calendarService *internalcalendar.Service, driveService *drive.Service) error {
-	fmt.Printf("Events from %s to %s (%d events):\n\n", 
+	fmt.Printf("Events from %s to %s (%d events):\n\n",
 		start.Format("2006-01-02"), end.Format("2006-01-02"), len(events))
 
 	// Create export directory if export is enabled
@@ -238,7 +239,7 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 		} else {
 			modelEvent = calendarService.ConvertToModel(event)
 		}
-		
+
 		// Display event summary and time
 		eventTime := ""
 		if event.Start.DateTime != "" {
@@ -248,22 +249,22 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 		} else if event.Start.Date != "" {
 			eventTime = event.Start.Date + " (All day)"
 		}
-		
+
 		fmt.Printf("• %s\n", event.Summary)
 		if eventTime != "" {
 			fmt.Printf("  %s\n", eventTime)
 		}
-		
+
 		// Show additional details if requested
 		if includeDetails {
 			if event.Location != "" {
 				fmt.Printf("  📍 %s\n", event.Location)
 			}
-			
+
 			if modelEvent.MeetingURL != "" {
 				fmt.Printf("  🔗 %s\n", modelEvent.MeetingURL)
 			}
-			
+
 			if len(modelEvent.Attendees) > 0 && len(modelEvent.Attendees) <= 5 {
 				attendeeNames := make([]string, len(modelEvent.Attendees))
 				for i, attendee := range modelEvent.Attendees {
@@ -275,11 +276,11 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 				for i := 0; i < 3; i++ {
 					attendeeNames[i] = modelEvent.Attendees[i].GetDisplayName()
 				}
-				fmt.Printf("  👥 %s and %d others\n", 
-					strings.Join(attendeeNames, ", "), 
+				fmt.Printf("  👥 %s and %d others\n",
+					strings.Join(attendeeNames, ", "),
 					len(modelEvent.Attendees)-3)
 			}
-			
+
 			if event.Description != "" && len(event.Description) > 0 {
 				description := event.Description
 				if len(description) > 100 {
@@ -315,27 +316,27 @@ func displayEventsAsTable(events []*calendar.Event, start, end time.Time, calend
 	if exportDocs && totalExported > 0 {
 		fmt.Printf("📦 Total exported: %d documents to %s\n", totalExported, exportDir)
 	}
-	
+
 	return nil
 }
 
 func sanitizeEventName(name string) string {
 	replacements := map[string]string{
-		"/": "-",
-		"\\": "-", 
-		":": "-",
-		"*": "",
-		"?": "",
+		"/":  "-",
+		"\\": "-",
+		":":  "-",
+		"*":  "",
+		"?":  "",
 		"\"": "",
-		"<": "",
-		">": "",
-		"|": "-",
+		"<":  "",
+		">":  "",
+		"|":  "-",
 	}
-	
+
 	for old, new := range replacements {
 		name = strings.ReplaceAll(name, old, new)
 	}
-	
+
 	return strings.TrimSpace(name)
 }
 
@@ -352,12 +353,12 @@ func displayEventsAsJSON(events []*calendar.Event, calendarService *internalcale
 			modelEvents[i] = calendarService.ConvertToModel(event)
 		}
 	}
-	
+
 	jsonData, err := json.MarshalIndent(modelEvents, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal events to JSON: %w", err)
 	}
-	
+
 	fmt.Println(string(jsonData))
 	return nil
 }

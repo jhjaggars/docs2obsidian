@@ -291,14 +291,14 @@ func TestStripQuotedText(t *testing.T) {
 
 func TestExtractLinks(t *testing.T) {
 	content := "Visit https://example.com and http://test.org for more info."
-	
+
 	processor := NewContentProcessor(models.GmailSourceConfig{ExtractLinks: true})
 	links := processor.ExtractLinks(content)
-	
+
 	if len(links) != 2 {
 		t.Errorf("ExtractLinks() found %d links, want 2", len(links))
 	}
-	
+
 	expectedURLs := []string{"https://example.com", "http://test.org"}
 	for i, link := range links {
 		if link.URL != expectedURLs[i] {
@@ -315,7 +315,7 @@ func TestBuildTags(t *testing.T) {
 		Id:       "test",
 		LabelIds: []string{"IMPORTANT", "STARRED", "INBOX"},
 	}
-	
+
 	config := models.GmailSourceConfig{
 		Name: "Work Emails",
 		TaggingRules: []models.TaggingRule{
@@ -325,9 +325,9 @@ func TestBuildTags(t *testing.T) {
 			},
 		},
 	}
-	
+
 	tags := buildTags(msg, config)
-	
+
 	expectedTags := []string{"gmail", "important", "starred", "inbox", "high-priority", "source:work-emails"}
 	if !containsAll(tags, expectedTags) {
 		t.Errorf("buildTags() = %v, want to contain all of %v", tags, expectedTags)
@@ -336,7 +336,7 @@ func TestBuildTags(t *testing.T) {
 
 func TestMatchesCondition(t *testing.T) {
 	msg := createMessageFromCEO()
-	
+
 	tests := []struct {
 		name      string
 		condition string
@@ -465,16 +465,16 @@ func createMessageWithAttachments() *gmail.Message {
 					},
 				},
 				{
-					MimeType:  "application/pdf",
-					Filename:  "document.pdf",
+					MimeType: "application/pdf",
+					Filename: "document.pdf",
 					Body: &gmail.MessagePartBody{
 						AttachmentId: "attachment-1",
 						Size:         1024,
 					},
 				},
 				{
-					MimeType:  "image/jpeg",
-					Filename:  "image.jpg",
+					MimeType: "image/jpeg",
+					Filename: "image.jpg",
 					Body: &gmail.MessagePartBody{
 						AttachmentId: "attachment-2",
 						Size:         2048,

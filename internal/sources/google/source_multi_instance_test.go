@@ -89,14 +89,14 @@ func TestNewGoogleSourceWithConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			source := NewGoogleSourceWithConfig(tt.sourceID, tt.config)
-			
+
 			assert.NotNil(t, source)
 			assert.Equal(t, tt.expected.sourceID, source.sourceID)
 			assert.Equal(t, tt.expected.config.Type, source.config.Type)
 			assert.Equal(t, tt.expected.config.Name, source.config.Name)
 			assert.Equal(t, tt.expected.config.Priority, source.config.Priority)
 			assert.Equal(t, tt.expected.config.Since, source.config.Since)
-			
+
 			// Test type-specific configurations
 			if tt.config.Type == "gmail" {
 				assert.Equal(t, tt.expected.config.Gmail.Name, source.config.Gmail.Name)
@@ -164,16 +164,16 @@ func TestMultipleGmailInstances(t *testing.T) {
 		OutputSubdir: "work",
 		Priority:     1,
 		Gmail: models.GmailSourceConfig{
-			Name:               "Work Important Emails",
-			Labels:             []string{"IMPORTANT", "STARRED"},
-			Query:              "from:company.com OR to:company.com",
-			IncludeUnread:      true,
-			MaxEmailAge:        "90d",
-			FromDomains:        []string{"company.com"},
-			ExtractRecipients:  true,
-			ProcessHTMLContent: true,
+			Name:                "Work Important Emails",
+			Labels:              []string{"IMPORTANT", "STARRED"},
+			Query:               "from:company.com OR to:company.com",
+			IncludeUnread:       true,
+			MaxEmailAge:         "90d",
+			FromDomains:         []string{"company.com"},
+			ExtractRecipients:   true,
+			ProcessHTMLContent:  true,
 			DownloadAttachments: true,
-			AttachmentTypes:    []string{"pdf", "doc"},
+			AttachmentTypes:     []string{"pdf", "doc"},
 			TaggingRules: []models.TaggingRule{
 				{
 					Condition: "from:ceo@company.com",
@@ -208,29 +208,29 @@ func TestMultipleGmailInstances(t *testing.T) {
 	// Verify they have different configurations
 	assert.NotNil(t, workSource)
 	assert.NotNil(t, personalSource)
-	
+
 	assert.Equal(t, "gmail_work", workSource.sourceID)
 	assert.Equal(t, "gmail_personal", personalSource.sourceID)
-	
+
 	assert.Equal(t, "Work Emails", workSource.config.Name)
 	assert.Equal(t, "Personal Emails", personalSource.config.Name)
-	
+
 	assert.Equal(t, "work", workSource.config.OutputSubdir)
 	assert.Equal(t, "personal", personalSource.config.OutputSubdir)
-	
+
 	assert.Equal(t, 1, workSource.config.Priority)
 	assert.Equal(t, 2, personalSource.config.Priority)
-	
+
 	// Verify Gmail-specific configurations are different
 	assert.Equal(t, []string{"IMPORTANT", "STARRED"}, workSource.config.Gmail.Labels)
 	assert.Equal(t, []string{"STARRED"}, personalSource.config.Gmail.Labels)
-	
+
 	assert.Equal(t, []string{"company.com"}, workSource.config.Gmail.FromDomains)
 	assert.Equal(t, []string{"noreply.com"}, personalSource.config.Gmail.ExcludeFromDomains)
-	
+
 	assert.True(t, workSource.config.Gmail.DownloadAttachments)
 	assert.False(t, personalSource.config.Gmail.DownloadAttachments)
-	
+
 	assert.Len(t, workSource.config.Gmail.TaggingRules, 1)
 	assert.Len(t, personalSource.config.Gmail.TaggingRules, 0)
 }
@@ -282,18 +282,18 @@ func TestMixedGoogleSources(t *testing.T) {
 	// Verify they are configured correctly
 	assert.Equal(t, "google", calendarSource.config.Type)
 	assert.Equal(t, "gmail", gmailSource.config.Type)
-	
+
 	assert.Equal(t, "Primary Calendar", calendarSource.config.Name)
 	assert.Equal(t, "Work Emails", gmailSource.config.Name)
-	
+
 	assert.Equal(t, "calendar", calendarSource.config.OutputSubdir)
 	assert.Equal(t, "emails", gmailSource.config.OutputSubdir)
-	
+
 	// Verify type-specific configurations
 	assert.Equal(t, "primary", calendarSource.config.Google.CalendarID)
 	assert.True(t, calendarSource.config.Google.DownloadDocs)
 	assert.Equal(t, []string{"markdown", "pdf"}, calendarSource.config.Google.DocFormats)
-	
+
 	assert.Equal(t, "Work Emails", gmailSource.config.Gmail.Name)
 	assert.Equal(t, []string{"IMPORTANT"}, gmailSource.config.Gmail.Labels)
 	assert.True(t, gmailSource.config.Gmail.IncludeUnread)
@@ -380,7 +380,7 @@ func TestSourceConfigValidation(t *testing.T) {
 			} else {
 				assert.NotEmpty(t, tt.config.Type, "Valid configurations should have type")
 				assert.NotEmpty(t, tt.config.Name, "Valid configurations should have name")
-				
+
 				// Type-specific validation
 				if tt.config.Type == "gmail" {
 					assert.NotEmpty(t, tt.config.Gmail.Name, "Gmail config should have name")
@@ -401,9 +401,9 @@ func TestSourceIdentityPreservation(t *testing.T) {
 			Name: "Gmail Instance 1",
 		},
 	}
-	
+
 	config2 := models.SourceConfig{
-		Type: "gmail", 
+		Type: "gmail",
 		Name: "Instance 2",
 		Gmail: models.GmailSourceConfig{
 			Name: "Gmail Instance 2",
@@ -416,13 +416,13 @@ func TestSourceIdentityPreservation(t *testing.T) {
 	// Verify each source maintains its own identity
 	assert.Equal(t, "gmail_1", source1.sourceID)
 	assert.Equal(t, "gmail_2", source2.sourceID)
-	
+
 	assert.Equal(t, "Instance 1", source1.config.Name)
 	assert.Equal(t, "Instance 2", source2.config.Name)
-	
+
 	assert.Equal(t, "Gmail Instance 1", source1.config.Gmail.Name)
 	assert.Equal(t, "Gmail Instance 2", source2.config.Gmail.Name)
-	
+
 	// Verify they are separate instances
 	assert.NotEqual(t, source1, source2)
 	assert.NotEqual(t, &source1.config, &source2.config)

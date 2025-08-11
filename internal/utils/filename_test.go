@@ -78,10 +78,10 @@ func TestSanitizeFilename_Security(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SanitizeFilename(tt.input)
 			if result != tt.expected {
-				t.Errorf("SanitizeFilename(%q) = %q, want %q\nDescription: %s", 
+				t.Errorf("SanitizeFilename(%q) = %q, want %q\nDescription: %s",
 					tt.input, result, tt.expected, tt.description)
 			}
-			
+
 			// Additional security validation
 			if strings.Contains(result, "..") {
 				t.Errorf("Result still contains path traversal: %q", result)
@@ -151,7 +151,7 @@ func TestSanitizeFilename_EdgeCases(t *testing.T) {
 		},
 		{
 			name:     "very long filename",
-			input:    strings.Repeat("Test ", 50), // 250 chars
+			input:    strings.Repeat("Test ", 50),          // 250 chars
 			expected: strings.Repeat("Test-", 15) + "Test", // Should be trimmed to ~80 chars
 		},
 	}
@@ -162,12 +162,12 @@ func TestSanitizeFilename_EdgeCases(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("SanitizeFilename(%q) = %q, want %q", tt.input, result, tt.expected)
 			}
-			
+
 			// Ensure result is within length limits
 			if len(result) > 80 {
 				t.Errorf("Result too long: %d chars, expected <= 80", len(result))
 			}
-			
+
 			// Ensure result is never empty
 			if result == "" {
 				t.Errorf("Result should never be empty for input %q", tt.input)
@@ -225,7 +225,7 @@ func TestSanitizeThreadSubject_WithThreadID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SanitizeThreadSubject(tt.subject, tt.threadID)
 			if result != tt.expected {
-				t.Errorf("SanitizeThreadSubject(%q, %q) = %q, want %q", 
+				t.Errorf("SanitizeThreadSubject(%q, %q) = %q, want %q",
 					tt.subject, tt.threadID, result, tt.expected)
 			}
 		})
@@ -289,15 +289,15 @@ func TestSanitizeFilename_Performance(t *testing.T) {
 	// Test with very long string
 	longInput := strings.Repeat("Test Subject with Many Words ", 100)
 	result := SanitizeFilename(longInput)
-	
+
 	if len(result) > 80 {
 		t.Errorf("Long input result should be truncated to 80 chars, got %d", len(result))
 	}
-	
+
 	// Test multiple consecutive hyphens (worst case for performance)
 	manyHyphens := strings.Repeat("-", 1000)
 	result = SanitizeFilename(manyHyphens)
-	
+
 	if result != "safe-filename" {
 		t.Errorf("Many hyphens should result in fallback, got %q", result)
 	}
@@ -312,13 +312,13 @@ func TestSanitizeFilename_Consistency(t *testing.T) {
 		"",
 		"Very Long " + strings.Repeat("Subject ", 20),
 	}
-	
+
 	for _, input := range testCases {
 		first := SanitizeFilename(input)
 		for i := 0; i < 10; i++ {
 			result := SanitizeFilename(input)
 			if result != first {
-				t.Errorf("Inconsistent results for input %q: first=%q, iteration %d=%q", 
+				t.Errorf("Inconsistent results for input %q: first=%q, iteration %d=%q",
 					input, first, i, result)
 			}
 		}

@@ -1,0 +1,301 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"gopkg.in/yaml.v3"
+
+	"pkm-sync/pkg/models"
+)
+
+const ConfigFileName = "config.yaml"
+
+// LoadConfig loads configuration from the standard search paths
+func LoadConfig() (*models.Config, error) {
+	// Search for config file in order:
+	// 1. Custom config dir (if set)
+	// 2. Global config directory
+	// 3. Current directory
+
+	configPaths := getConfigSearchPaths()
+
+	for _, configPath := range configPaths {
+		if _, err := os.Stat(configPath); err == nil {
+			return loadConfigFromFile(configPath)
+		}
+	}
+
+	return nil, fmt.Errorf("no config file found in search paths: %v", configPaths)
+}
+
+// SaveConfig saves configuration to the appropriate location
+func SaveConfig(cfg *models.Config) error {
+	configPath, err := getConfigFilePath()
+	if err != nil {
+		return fmt.Errorf("failed to get config file path: %w", err)
+	}
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Marshal config to YAML
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
+// GetDefaultConfig returns the default configuration
+func GetDefaultConfig() *models.Config {
+	return &models.Config{
+		Sync: models.SyncConfig{
+			EnabledSources:   []string{"google"},
+			DefaultTarget:    "obsidian",
+			DefaultOutputDir: "./output",
+			DefaultSince:     "7d",
+			SourceTags:       false,
+		},
+		Sources: map[string]models.SourceConfig{
+			"google": {
+				Enabled: true,
+				Type:    "google",
+				Google: models.GoogleSourceConfig{
+					CalendarID:      "primary",
+					DownloadDocs:    true,
+					IncludeDeclined: false,
+					IncludePrivate:  false,
+				},
+			},
+			"google_meetings": {
+				Enabled: true,
+				Type:    "google_meetings",
+				Google: models.GoogleSourceConfig{
+					CalendarID:      "primary",
+					DownloadDocs:    true,
+					IncludeDeclined: false,
+					IncludePrivate:  false,
+				},
+			},
+		},
+		Targets: map[string]models.TargetConfig{
+			"obsidian": {
+				Type: "obsidian",
+				Obsidian: models.ObsidianTargetConfig{
+					DefaultFolder:      "Calendar",
+					IncludeFrontmatter: true,
+					DateFormat:         "2006-01-02",
+				},
+			},
+			"logseq": {
+				Type: "logseq",
+				Logseq: models.LogseqTargetConfig{
+					DefaultPage:   "Calendar",
+					UseProperties: true,
+				},
+			},
+		},
+	}
+}
+
+// CreateDefaultConfig creates and saves a default configuration
+func CreateDefaultConfig() error {
+	cfg := GetDefaultConfig()
+	return SaveConfig(cfg)
+}
+
+// getConfigSearchPaths returns the list of paths to search for config files
+func getConfigSearchPaths() []string {
+	var paths []string
+
+	// Custom config dir (if set via --config-dir flag)
+	if customConfigDir != "" {
+		paths = append(paths, filepath.Join(customConfigDir, ConfigFileName))
+	}
+
+	// Global config directory
+	if globalConfigDir, err := GetConfigDir(); err == nil {
+		paths = append(paths, filepath.Join(globalConfigDir, ConfigFileName))
+	}
+
+	// Current directory
+	paths = append(paths, ConfigFileName)
+
+	return paths
+}
+
+// getConfigFilePath returns the path where config should be saved
+func getConfigFilePath() (string, error) {
+	// Use custom config dir if set
+	if customConfigDir != "" {
+		return filepath.Join(customConfigDir, ConfigFileName), nil
+	}
+
+	// Use global config directory
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(configDir, ConfigFileName), nil
+}
+
+// loadConfigFromFile loads configuration from a specific file
+func loadConfigFromFile(configPath string) (*models.Config, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+	}
+
+	var cfg models.Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+	}
+
+	return &cfg, nil
+}
+
+// ValidateConfig performs comprehensive validation of the configuration
+func ValidateConfig(cfg *models.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("configuration is nil")
+	}
+
+	// Validate sync configuration
+	if err := validateSyncConfig(&cfg.Sync); err != nil {
+		return fmt.Errorf("sync configuration error: %w", err)
+	}
+
+	// Validate sources
+	if err := validateSources(cfg.Sources); err != nil {
+		return fmt.Errorf("sources configuration error: %w", err)
+	}
+
+	// Validate targets
+	if err := validateTargets(cfg.Targets); err != nil {
+		return fmt.Errorf("targets configuration error: %w", err)
+	}
+
+	// Validate enabled sources exist and are configured
+	for _, sourceName := range cfg.Sync.EnabledSources {
+		if sourceConfig, exists := cfg.Sources[sourceName]; !exists {
+			return fmt.Errorf("enabled source '%s' is not defined in sources", sourceName)
+		} else if !sourceConfig.Enabled {
+			return fmt.Errorf("enabled source '%s' is marked as disabled", sourceName)
+		}
+	}
+
+	// Validate default target exists
+	if cfg.Sync.DefaultTarget != "" {
+		if _, exists := cfg.Targets[cfg.Sync.DefaultTarget]; !exists {
+			return fmt.Errorf("default target '%s' is not defined in targets", cfg.Sync.DefaultTarget)
+		}
+	}
+
+	return nil
+}
+
+// validateSyncConfig validates the sync section
+func validateSyncConfig(sync *models.SyncConfig) error {
+	if sync == nil {
+		return fmt.Errorf("sync configuration is required")
+	}
+
+	// Validate default output directory
+	if sync.DefaultOutputDir == "" {
+		return fmt.Errorf("default_output_dir is required")
+	}
+
+	// Validate enabled sources list
+	if len(sync.EnabledSources) == 0 {
+		return fmt.Errorf("at least one source must be enabled")
+	}
+
+	return nil
+}
+
+// validateSources validates the sources configuration
+func validateSources(sources map[string]models.SourceConfig) error {
+	if len(sources) == 0 {
+		return fmt.Errorf("at least one source must be configured")
+	}
+
+	for sourceName, sourceConfig := range sources {
+		if err := validateSourceConfig(sourceName, sourceConfig); err != nil {
+			return fmt.Errorf("source '%s': %w", sourceName, err)
+		}
+	}
+
+	return nil
+}
+
+// validateSourceConfig validates an individual source configuration
+func validateSourceConfig(sourceName string, config models.SourceConfig) error {
+	if config.Type == "" {
+		return fmt.Errorf("type is required")
+	}
+
+	// Validate type-specific configurations
+	switch config.Type {
+	case "google":
+		if config.Google.CalendarID == "" {
+			return fmt.Errorf("calendar_id is required for google sources")
+		}
+	case "gmail":
+		if config.Gmail.Name == "" {
+			return fmt.Errorf("name is required for gmail sources")
+		}
+	case "slack":
+		// Add slack-specific validations if needed
+	case "jira":
+		// Add jira-specific validations if needed
+	default:
+		return fmt.Errorf("unsupported source type: %s", config.Type)
+	}
+
+	return nil
+}
+
+// validateTargets validates the targets configuration
+func validateTargets(targets map[string]models.TargetConfig) error {
+	if len(targets) == 0 {
+		return fmt.Errorf("at least one target must be configured")
+	}
+
+	for targetName, targetConfig := range targets {
+		if err := validateTargetConfig(targetName, targetConfig); err != nil {
+			return fmt.Errorf("target '%s': %w", targetName, err)
+		}
+	}
+
+	return nil
+}
+
+// validateTargetConfig validates an individual target configuration
+func validateTargetConfig(targetName string, config models.TargetConfig) error {
+	if config.Type == "" {
+		return fmt.Errorf("type is required")
+	}
+
+	// Validate supported target types
+	switch config.Type {
+	case "obsidian":
+		// Obsidian-specific validations could go here
+	case "logseq":
+		// Logseq-specific validations could go here
+	default:
+		return fmt.Errorf("unsupported target type: %s", config.Type)
+	}
+
+	return nil
+}

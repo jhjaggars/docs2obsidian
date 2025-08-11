@@ -22,7 +22,7 @@ type Service struct {
 
 func NewService(client *http.Client) (*Service, error) {
 	ctx := context.Background()
-	
+
 	calendarService, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Google Calendar service: %w. Ensure credentials are valid and Calendar API is enabled", err)
@@ -56,7 +56,7 @@ func (s *Service) shouldIncludeEvent(event *calendar.Event) bool {
 	if !s.passesAttendeeAllowListFilter(event) {
 		return false
 	}
-	
+
 	// Step 2: Apply self-only event filtering
 	return s.passesSelfOnlyEventFilter(event)
 }
@@ -67,7 +67,7 @@ func (s *Service) passesAttendeeAllowListFilter(event *calendar.Event) bool {
 	if len(s.attendeeAllowList) == 0 {
 		return true
 	}
-	
+
 	// Check if at least one attendee matches the allow list
 	for _, attendee := range event.Attendees {
 		if attendee.Email != "" {
@@ -79,7 +79,7 @@ func (s *Service) passesAttendeeAllowListFilter(event *calendar.Event) bool {
 			}
 		}
 	}
-	
+
 	// No attendees matched the allow list
 	return false
 }
@@ -90,15 +90,15 @@ func (s *Service) passesSelfOnlyEventFilter(event *calendar.Event) bool {
 	if !s.requireMultipleAttendees {
 		return true
 	}
-	
+
 	totalAttendeeCount := len(event.Attendees)
-	
+
 	// Events with 0 or 1 attendees are considered "self-only" events
 	if totalAttendeeCount <= 1 {
 		// If includeSelfOnlyEvents is true, include these events
 		return s.includeSelfOnlyEvents
 	}
-	
+
 	// Events with 2+ attendees always pass (these are meetings with others)
 	return true
 }
@@ -112,13 +112,13 @@ func (s *Service) filterEvents(events []*calendar.Event) []*calendar.Event {
 			filteredEvents = append(filteredEvents, event)
 		}
 	}
-	
+
 	return filteredEvents
 }
 
 func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error) {
 	t := time.Now().Format(time.RFC3339)
-	
+
 	events, err := s.calendarService.Events.List("primary").
 		ShowDeleted(false).
 		SingleEvents(true).
@@ -126,7 +126,7 @@ func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error)
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		Do()
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve events: %w", err)
 	}
@@ -137,7 +137,7 @@ func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error)
 func (s *Service) GetEventsInRange(start, end time.Time, maxResults int64) ([]*calendar.Event, error) {
 	startTime := start.Format(time.RFC3339)
 	endTime := end.Format(time.RFC3339)
-	
+
 	events, err := s.calendarService.Events.List("primary").
 		ShowDeleted(false).
 		SingleEvents(true).
@@ -146,7 +146,7 @@ func (s *Service) GetEventsInRange(start, end time.Time, maxResults int64) ([]*c
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		Do()
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve events in range: %w", err)
 	}

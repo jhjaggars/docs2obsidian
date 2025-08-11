@@ -114,8 +114,8 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 					"obsidian": {
 						Type: "obsidian",
 						Obsidian: models.ObsidianTargetConfig{
-							DefaultFolder:       "Work Emails",
-							IncludeFrontmatter:  true,
+							DefaultFolder:      "Work Emails",
+							IncludeFrontmatter: true,
 						},
 					},
 					"logseq": {
@@ -155,7 +155,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 				// Test that we can create the appropriate source
 				source, err := createSourceWithConfig(sourceID, sourceConfig)
 				if err != nil {
-					// If we can't create the source (likely due to missing auth), 
+					// If we can't create the source (likely due to missing auth),
 					// that's OK for this test - we're testing the workflow
 					t.Logf("Could not create source %s (likely missing auth): %v", sourceID, err)
 					continue
@@ -310,7 +310,7 @@ func TestGmailServiceConfigurationValidation(t *testing.T) {
 			// Test that we can create a Gmail service with this configuration
 			// Note: This will fail without proper authentication, but we're testing config validation
 			service, err := gmail.NewService(nil, tt.config, "test_source")
-			
+
 			if tt.expectError {
 				assert.Error(t, err, "Expected error for invalid configuration")
 				if tt.errorMsg != "" {

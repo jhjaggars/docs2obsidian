@@ -143,12 +143,14 @@ func createTempConfig(t *testing.T, content string) (string, func()) {
 		t.Fatalf("Failed to write temp config: %v", err)
 	}
 
-	// Set custom config dir
+	// Set custom config dir for both cmd package and internal/config package
 	oldConfigDir := configDir
 	configDir = tempDir
+	config.SetCustomConfigDir(tempDir)
 
 	cleanup := func() {
 		configDir = oldConfigDir
+		config.SetCustomConfigDir("")
 	}
 
 	return configPath, cleanup

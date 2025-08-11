@@ -13,10 +13,10 @@ import (
 
 func TestMultiInstanceGmailConfiguration(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         *models.Config
+		name            string
+		config          *models.Config
 		expectedSources []string
-		expectError    bool
+		expectError     bool
 	}{
 		{
 			name: "multiple Gmail instances with different configurations",
@@ -37,23 +37,23 @@ func TestMultiInstanceGmailConfiguration(t *testing.T) {
 						Priority:     1,
 						Since:        "30d",
 						Gmail: models.GmailSourceConfig{
-							Name:               "Work Important Emails",
-							Description:        "High-priority work communications",
-							Labels:             []string{"IMPORTANT", "STARRED"},
-							Query:              "from:company.com OR to:company.com",
-							IncludeUnread:      true,
-							IncludeRead:        false,
-							MaxEmailAge:        "90d",
-							FromDomains:        []string{"company.com", "client.com"},
-							ExtractRecipients:  true,
-							ExtractLinks:       true,
-							ProcessHTMLContent: true,
-							StripQuotedText:    true,
+							Name:                "Work Important Emails",
+							Description:         "High-priority work communications",
+							Labels:              []string{"IMPORTANT", "STARRED"},
+							Query:               "from:company.com OR to:company.com",
+							IncludeUnread:       true,
+							IncludeRead:         false,
+							MaxEmailAge:         "90d",
+							FromDomains:         []string{"company.com", "client.com"},
+							ExtractRecipients:   true,
+							ExtractLinks:        true,
+							ProcessHTMLContent:  true,
+							StripQuotedText:     true,
 							DownloadAttachments: true,
-							AttachmentTypes:    []string{"pdf", "doc", "docx"},
-							MaxAttachmentSize:  "10MB",
-							AttachmentSubdir:   "work-attachments",
-							FilenameTemplate:   "{{date}}-{{from}}-{{subject}}",
+							AttachmentTypes:     []string{"pdf", "doc", "docx"},
+							MaxAttachmentSize:   "10MB",
+							AttachmentSubdir:    "work-attachments",
+							FilenameTemplate:    "{{date}}-{{from}}-{{subject}}",
 							TaggingRules: []models.TaggingRule{
 								{
 									Condition: "from:ceo@company.com",
@@ -74,16 +74,16 @@ func TestMultiInstanceGmailConfiguration(t *testing.T) {
 						Priority:     2,
 						Since:        "14d",
 						Gmail: models.GmailSourceConfig{
-							Name:                  "Personal Starred Emails",
-							Labels:                []string{"STARRED"},
-							Query:                 "is:important -category:promotions",
-							IncludeUnread:         true,
-							MaxEmailAge:           "30d",
-							ExcludeFromDomains:    []string{"noreply.com", "notifications.com"},
-							ExtractRecipients:     false,
-							ProcessHTMLContent:    true,
-							DownloadAttachments:   false,
-							FilenameTemplate:      "{{date}}-{{subject}}",
+							Name:                "Personal Starred Emails",
+							Labels:              []string{"STARRED"},
+							Query:               "is:important -category:promotions",
+							IncludeUnread:       true,
+							MaxEmailAge:         "30d",
+							ExcludeFromDomains:  []string{"noreply.com", "notifications.com"},
+							ExtractRecipients:   false,
+							ProcessHTMLContent:  true,
+							DownloadAttachments: false,
+							FilenameTemplate:    "{{date}}-{{subject}}",
 						},
 					},
 				},
@@ -144,10 +144,10 @@ func TestMultiInstanceGmailConfiguration(t *testing.T) {
 					"logseq": {
 						Type: "logseq",
 						Logseq: models.LogseqTargetConfig{
-							DefaultPage:       "Inbox",
-							UseProperties:     true,
-							PropertyPrefix:    "gmail::",
-							BlockIndentation:  2,
+							DefaultPage:      "Inbox",
+							UseProperties:    true,
+							PropertyPrefix:   "gmail::",
+							BlockIndentation: 2,
 						},
 					},
 				},
@@ -192,7 +192,7 @@ func TestMultiInstanceGmailConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test getEnabledSources function
 			enabledSources := getEnabledSources(tt.config)
-			
+
 			if tt.expectError {
 				// For error cases, we might expect empty sources or specific behavior
 				assert.Empty(t, enabledSources)
@@ -276,7 +276,7 @@ func TestCreateSourceWithConfig(t *testing.T) {
 			expectedType: "gmail",
 		},
 		{
-			name:     "create Google Calendar source", 
+			name:     "create Google Calendar source",
 			sourceID: "google_cal",
 			sourceConfig: models.SourceConfig{
 				Enabled: true,
@@ -305,7 +305,7 @@ func TestCreateSourceWithConfig(t *testing.T) {
 			// Note: This test would require proper OAuth credentials to fully work
 			// For now, we're testing the factory function creation
 			source, err := createSourceWithConfig(tt.sourceID, tt.sourceConfig)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, source)
@@ -315,7 +315,7 @@ func TestCreateSourceWithConfig(t *testing.T) {
 				if source != nil {
 					assert.NotNil(t, source)
 				}
-				// We can't test the actual source without credentials, 
+				// We can't test the actual source without credentials,
 				// but we can test that the right error is returned
 			}
 		})
@@ -429,16 +429,16 @@ func TestGmailSourceConfigValidation(t *testing.T) {
 		{
 			name: "valid Gmail configuration",
 			config: models.GmailSourceConfig{
-				Name:               "Test Gmail",
-				Labels:             []string{"IMPORTANT", "STARRED"},
-				IncludeUnread:      true,
-				MaxEmailAge:        "30d",
-				ExtractRecipients:  true,
-				ProcessHTMLContent: true,
+				Name:                "Test Gmail",
+				Labels:              []string{"IMPORTANT", "STARRED"},
+				IncludeUnread:       true,
+				MaxEmailAge:         "30d",
+				ExtractRecipients:   true,
+				ProcessHTMLContent:  true,
 				DownloadAttachments: true,
-				AttachmentTypes:    []string{"pdf", "doc"},
-				MaxAttachmentSize:  "5MB",
-				FilenameTemplate:   "{{date}}-{{subject}}",
+				AttachmentTypes:     []string{"pdf", "doc"},
+				MaxAttachmentSize:   "5MB",
+				FilenameTemplate:    "{{date}}-{{subject}}",
 			},
 			expectError: false,
 		},
@@ -472,7 +472,7 @@ func TestGmailSourceConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Basic validation - in a real implementation, you might want 
+			// Basic validation - in a real implementation, you might want
 			// more sophisticated validation
 			if tt.config.Name == "" && tt.expectError {
 				assert.Contains(t, tt.errorMsg, "name")
@@ -513,13 +513,13 @@ func TestSourcePriorityOrdering(t *testing.T) {
 	}
 
 	enabledSources := getEnabledSources(config)
-	
+
 	// All sources should be enabled
 	assert.Len(t, enabledSources, 3)
 	assert.Contains(t, enabledSources, "gmail_high")
 	assert.Contains(t, enabledSources, "gmail_medium")
 	assert.Contains(t, enabledSources, "gmail_low")
-	
+
 	// Note: In a real implementation, you might want to sort by priority
 	// The current getEnabledSources doesn't implement priority sorting
 	// This test documents the current behavior

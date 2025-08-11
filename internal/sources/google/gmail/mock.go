@@ -63,7 +63,7 @@ func (m *MockService) GetMessage(messageID string) (*gmail.Message, error) {
 			return msg, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("message not found: %s", messageID)
 }
 
@@ -173,10 +173,10 @@ func getHeaderValue(msg *gmail.Message, headerName string) string {
 func createTestMessages() []*gmail.Message {
 	return []*gmail.Message{
 		{
-			Id:        "msg1",
-			ThreadId:  "thread1",
-			LabelIds:  []string{"INBOX", "IMPORTANT"},
-			Snippet:   "Important work email from company",
+			Id:           "msg1",
+			ThreadId:     "thread1",
+			LabelIds:     []string{"INBOX", "IMPORTANT"},
+			Snippet:      "Important work email from company",
 			SizeEstimate: 1024,
 			Payload: &gmail.MessagePart{
 				MimeType: "multipart/alternative",
@@ -193,10 +193,10 @@ func createTestMessages() []*gmail.Message {
 			},
 		},
 		{
-			Id:        "msg2",
-			ThreadId:  "thread2",
-			LabelIds:  []string{"INBOX", "STARRED"},
-			Snippet:   "Personal starred email",
+			Id:           "msg2",
+			ThreadId:     "thread2",
+			LabelIds:     []string{"INBOX", "STARRED"},
+			Snippet:      "Personal starred email",
 			SizeEstimate: 512,
 			Payload: &gmail.MessagePart{
 				MimeType: "text/plain",
@@ -213,10 +213,10 @@ func createTestMessages() []*gmail.Message {
 			},
 		},
 		{
-			Id:        "msg3",
-			ThreadId:  "thread3",
-			LabelIds:  []string{"INBOX"},
-			Snippet:   "Newsletter email",
+			Id:           "msg3",
+			ThreadId:     "thread3",
+			LabelIds:     []string{"INBOX"},
+			Snippet:      "Newsletter email",
 			SizeEstimate: 2048,
 			Payload: &gmail.MessagePart{
 				MimeType: "text/html",
@@ -233,10 +233,10 @@ func createTestMessages() []*gmail.Message {
 			},
 		},
 		{
-			Id:        "msg4",
-			ThreadId:  "thread4",
-			LabelIds:  []string{"INBOX", "UNREAD"},
-			Snippet:   "Unread work email",
+			Id:           "msg4",
+			ThreadId:     "thread4",
+			LabelIds:     []string{"INBOX", "UNREAD"},
+			Snippet:      "Unread work email",
 			SizeEstimate: 768,
 			Payload: &gmail.MessagePart{
 				MimeType: "multipart/mixed",
@@ -283,10 +283,10 @@ func createTestLabels() []*gmail.Label {
 // createTestProfile creates a sample test profile
 func createTestProfile() *gmail.Profile {
 	return &gmail.Profile{
-		EmailAddress:      "testuser@example.com",
-		MessagesTotal:     250,
-		ThreadsTotal:      125,
-		HistoryId:         12345,
+		EmailAddress:  "testuser@example.com",
+		MessagesTotal: 250,
+		ThreadsTotal:  125,
+		HistoryId:     12345,
 	}
 }
 

@@ -55,7 +55,7 @@ func FromGmailMessageWithService(msg *gmail.Message, config models.GmailSourceCo
 
 	// Extract comprehensive metadata
 	addBasicMetadata(item, msg)
-	
+
 	// Add recipient information if enabled
 	if config.ExtractRecipients {
 		addRecipientMetadata(item, msg)
@@ -141,7 +141,6 @@ func getProcessedBody(msg *gmail.Message, config models.GmailSourceConfig) (stri
 	return processor.ProcessEmailBody(msg)
 }
 
-
 // addBasicMetadata adds basic email metadata to the item
 func addBasicMetadata(item *models.Item, msg *gmail.Message) {
 	item.Metadata["message_id"] = getHeader(msg, "message-id")
@@ -149,7 +148,7 @@ func addBasicMetadata(item *models.Item, msg *gmail.Message) {
 	item.Metadata["labels"] = msg.LabelIds
 	item.Metadata["snippet"] = msg.Snippet
 	item.Metadata["size"] = msg.SizeEstimate
-	
+
 	// Add reply-to if present
 	if replyTo := getHeader(msg, "reply-to"); replyTo != "" {
 		item.Metadata["reply_to"] = replyTo
@@ -255,10 +254,10 @@ func parseEmailAddressList(addressList string) []EmailRecipient {
 // parseEmailAddressListFallback parses email addresses manually when net/mail fails
 func parseEmailAddressListFallback(addressList string) []EmailRecipient {
 	var recipients []EmailRecipient
-	
+
 	// Split by comma, but be careful about commas inside quoted names
 	addresses := splitEmailAddresses(addressList)
-	
+
 	for _, addr := range addresses {
 		if recipient := parseEmailAddress(addr); recipient.Email != "" {
 			recipients = append(recipients, recipient)
@@ -309,7 +308,6 @@ func splitEmailAddresses(addressList string) []string {
 	return addresses
 }
 
-
 // buildTags builds tags for the email based on configuration and message properties
 func buildTags(msg *gmail.Message, config models.GmailSourceConfig) []string {
 	var tags []string
@@ -358,23 +356,23 @@ func buildTags(msg *gmail.Message, config models.GmailSourceConfig) []string {
 func matchesCondition(msg *gmail.Message, condition string) bool {
 	// Simple condition matching - could be enhanced
 	condition = strings.ToLower(condition)
-	
+
 	if strings.HasPrefix(condition, "from:") {
 		fromEmail := getHeader(msg, "from")
 		targetEmail := strings.TrimPrefix(condition, "from:")
 		return strings.Contains(strings.ToLower(fromEmail), targetEmail)
 	}
-	
+
 	if strings.HasPrefix(condition, "subject:") {
 		subject := getSubject(msg)
 		targetSubject := strings.TrimPrefix(condition, "subject:")
 		return strings.Contains(strings.ToLower(subject), targetSubject)
 	}
-	
+
 	if condition == "has:attachment" {
 		return hasAttachments(msg)
 	}
-	
+
 	if strings.HasPrefix(condition, "label:") {
 		targetLabel := strings.TrimPrefix(condition, "label:")
 		for _, label := range msg.LabelIds {
@@ -383,7 +381,7 @@ func matchesCondition(msg *gmail.Message, condition string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 

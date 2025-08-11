@@ -18,63 +18,63 @@ func TestContentProcessor_ProcessHTMLContent(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "basic HTML to markdown",
-			html: "<p><strong>Hello</strong> world!</p>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "basic HTML to markdown",
+			html:     "<p><strong>Hello</strong> world!</p>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "**Hello** world!",
 		},
 		{
-			name: "headers conversion",
-			html: "<h1>Title</h1><h2>Subtitle</h2><p>Content</p>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "headers conversion",
+			html:     "<h1>Title</h1><h2>Subtitle</h2><p>Content</p>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "# Title\n## Subtitle\nContent",
 		},
 		{
-			name: "links conversion",
-			html: `<p>Visit <a href="https://example.com">our website</a></p>`,
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "links conversion",
+			html:     `<p>Visit <a href="https://example.com">our website</a></p>`,
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "Visit [our website](https://example.com)",
 		},
 		{
-			name: "lists conversion",
-			html: "<ul><li>Item 1</li><li>Item 2</li></ul>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "lists conversion",
+			html:     "<ul><li>Item 1</li><li>Item 2</li></ul>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "- Item 1\n- Item 2",
 		},
 		{
-			name: "blockquotes conversion",
-			html: "<blockquote>This is quoted text</blockquote>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "blockquotes conversion",
+			html:     "<blockquote>This is quoted text</blockquote>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "> This is quoted text",
 		},
 		{
-			name: "code blocks conversion",
-			html: "<pre>function hello() { return 'world'; }</pre>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "code blocks conversion",
+			html:     "<pre>function hello() { return 'world'; }</pre>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "```\nfunction hello() { return 'world'; }\n```",
 		},
 		{
-			name: "inline code conversion",
-			html: "<p>Use <code>console.log</code> for debugging</p>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "inline code conversion",
+			html:     "<p>Use <code>console.log</code> for debugging</p>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "Use `console.log` for debugging",
 		},
 		{
-			name: "images conversion",
-			html: `<img src="https://example.com/image.jpg" alt="Test Image">`,
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "images conversion",
+			html:     `<img src="https://example.com/image.jpg" alt="Test Image">`,
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "![Test Image](https://example.com/image.jpg)",
 		},
 		{
-			name: "remove style and script tags",
-			html: "<style>body { color: red; }</style><p>Content</p><script>alert('hi');</script>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "remove style and script tags",
+			html:     "<style>body { color: red; }</style><p>Content</p><script>alert('hi');</script>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "Content",
 		},
 		{
-			name: "HTML entities decoding",
-			html: "<p>&lt;Hello&gt; &amp; &quot;World&quot;</p>",
-			config: models.GmailSourceConfig{ProcessHTMLContent: true},
+			name:     "HTML entities decoding",
+			html:     "<p>&lt;Hello&gt; &amp; &quot;World&quot;</p>",
+			config:   models.GmailSourceConfig{ProcessHTMLContent: true},
 			expected: "<Hello> & \"World\"",
 		},
 	}
@@ -98,45 +98,45 @@ func TestContentProcessor_StripQuotedText(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "basic quoted text removal",
-			content: "New message\n\n> Previous message\n> Another line",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "basic quoted text removal",
+			content:  "New message\n\n> Previous message\n> Another line",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "New message",
 		},
 		{
-			name: "on date wrote pattern",
-			content: "My response\n\nOn Mon, Jan 1, 2024 at 10:00 AM John Doe wrote:\nOriginal message",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "on date wrote pattern",
+			content:  "My response\n\nOn Mon, Jan 1, 2024 at 10:00 AM John Doe wrote:\nOriginal message",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "My response",
 		},
 		{
-			name: "forwarded message pattern",
-			content: "Check this out\n\n---------- Forwarded message ---------\nFrom: someone@example.com",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "forwarded message pattern",
+			content:  "Check this out\n\n---------- Forwarded message ---------\nFrom: someone@example.com",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "Check this out",
 		},
 		{
-			name: "original message pattern",
-			content: "My response\n\n-----Original Message-----\nFrom: sender@example.com",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "original message pattern",
+			content:  "My response\n\n-----Original Message-----\nFrom: sender@example.com",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "My response",
 		},
 		{
-			name: "from email pattern",
-			content: "Response here\n\nFrom: sender@example.com\nSent: Monday",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "from email pattern",
+			content:  "Response here\n\nFrom: sender@example.com\nSent: Monday",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "Response here",
 		},
 		{
-			name: "signature separator",
-			content: "Message content\n--\nJohn Doe\nSoftware Engineer",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "signature separator",
+			content:  "Message content\n--\nJohn Doe\nSoftware Engineer",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "Message content",
 		},
 		{
-			name: "no quoted text",
-			content: "Just a simple message\nwith multiple lines\nno quotes here",
-			config: models.GmailSourceConfig{StripQuotedText: true},
+			name:     "no quoted text",
+			content:  "Just a simple message\nwith multiple lines\nno quotes here",
+			config:   models.GmailSourceConfig{StripQuotedText: true},
 			expected: "Just a simple message\nwith multiple lines\nno quotes here",
 		},
 	}
@@ -258,12 +258,12 @@ func TestContentProcessor_ExtractLinks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{ExtractLinks: true})
 			result := processor.ExtractLinks(tt.content)
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("ExtractLinks() returned %d links, want %d", len(result), len(tt.expected))
 				return
 			}
-			
+
 			for i, link := range result {
 				if link.URL != tt.expected[i].URL || link.Title != tt.expected[i].Title || link.Type != tt.expected[i].Type {
 					t.Errorf("ExtractLinks()[%d] = %+v, want %+v", i, link, tt.expected[i])
@@ -370,7 +370,7 @@ func TestContentProcessor_ProcessEmailAttachments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
 			result := processor.ProcessEmailAttachments(tt.msg)
-			
+
 			if len(result) != tt.expected {
 				t.Errorf("ProcessEmailAttachments() returned %d attachments, want %d", len(result), tt.expected)
 			}
@@ -428,7 +428,7 @@ func TestContentProcessor_ProcessEmailBody(t *testing.T) {
 		{
 			name: "content with quoted text removal",
 			msg: &gmail.Message{
-				Id: "msg123",
+				Id:      "msg123",
 				Snippet: "New message content",
 				Payload: &gmail.MessagePart{
 					Parts: []*gmail.MessagePart{
@@ -456,7 +456,7 @@ func TestContentProcessor_ProcessEmailBody(t *testing.T) {
 					// No text parts
 				},
 			},
-			config: models.GmailSourceConfig{},
+			config:   models.GmailSourceConfig{},
 			expected: "Email snippet fallback",
 		},
 	}
@@ -465,12 +465,12 @@ func TestContentProcessor_ProcessEmailBody(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
 			result, err := processor.ProcessEmailBody(tt.msg)
-			
+
 			if err != nil {
 				t.Errorf("ProcessEmailBody() error = %v", err)
 				return
 			}
-			
+
 			if result != tt.expected {
 				t.Errorf("ProcessEmailBody() = %q, want %q", result, tt.expected)
 			}
@@ -541,7 +541,7 @@ func TestContentProcessor_IsAllowedAttachmentType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
 			result := processor.isAllowedAttachmentType(tt.attachment)
-			
+
 			if result != tt.expected {
 				t.Errorf("isAllowedAttachmentType() = %v, want %v", result, tt.expected)
 			}
@@ -616,7 +616,7 @@ func TestContentProcessor_LooksLikeSignature(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{})
 			result := processor.looksLikeSignature(tt.line)
-			
+
 			if result != tt.expected {
 				t.Errorf("looksLikeSignature(%q) = %v, want %v", tt.line, result, tt.expected)
 			}
@@ -660,9 +660,9 @@ func TestThreadProcessor_ProcessThreads(t *testing.T) {
 		{
 			name: "summary mode",
 			config: models.GmailSourceConfig{
-				IncludeThreads:        true,
-				ThreadMode:            "summary",
-				ThreadSummaryLength:   2,
+				IncludeThreads:      true,
+				ThreadMode:          "summary",
+				ThreadSummaryLength: 2,
 			},
 			items: []*models.Item{
 				createTestItem("msg1", "Subject 1", "thread1"),
@@ -852,11 +852,10 @@ func createTestItem(id, title, threadID string) *models.Item {
 		UpdatedAt:  time.Now(),
 		Metadata:   make(map[string]interface{}),
 	}
-	
+
 	if threadID != "" {
 		item.Metadata["thread_id"] = threadID
 	}
-	
+
 	return item
 }
-

@@ -34,11 +34,11 @@ func createMockHTTPClient(responseBody string, statusCode int) *http.Client {
 
 func TestNewService(t *testing.T) {
 	tests := []struct {
-		name      string
-		client    *http.Client
-		config    models.GmailSourceConfig
-		sourceID  string
-		wantErr   bool
+		name     string
+		client   *http.Client
+		config   models.GmailSourceConfig
+		sourceID string
+		wantErr  bool
 	}{
 		{
 			name:     "valid service creation",
@@ -59,23 +59,23 @@ func TestNewService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service, err := NewService(tt.client, tt.config, tt.sourceID)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("NewService() expected error, got nil")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("NewService() unexpected error: %v", err)
 				return
 			}
-			
+
 			if service == nil {
 				t.Errorf("NewService() returned nil service")
 			}
-			
+
 			if service.sourceID != tt.sourceID {
 				t.Errorf("NewService() sourceID = %v, want %v", service.sourceID, tt.sourceID)
 			}
@@ -174,7 +174,7 @@ func TestService_buildQuery(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			service := &Service{config: tt.config}
 			result := service.buildQuery(tt.since)
-			
+
 			if result != tt.expected {
 				t.Errorf("buildQuery() = %v, want %v", result, tt.expected)
 			}
@@ -210,19 +210,19 @@ func TestService_GetMessage(t *testing.T) {
 			}
 
 			_, err := service.GetMessage(tt.messageID)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("GetMessage() expected error, got nil")
 				}
 				return
 			}
-			
+
 			// This case should not happen in our current tests
 			if err != nil {
 				t.Errorf("GetMessage() unexpected error: %v", err)
 			}
-			
+
 			// Note: This test validates error handling since we don't have
 			// a real Gmail service configured. In integration tests,
 			// we would need proper authentication and a real message ID
@@ -287,11 +287,11 @@ func (m *MockGmailService) GetMessages(query string, maxResults int64) ([]*gmail
 	if limit == 0 || limit > len(m.messages) {
 		limit = len(m.messages)
 	}
-	
+
 	for i := 0; i < limit; i++ {
 		result = append(result, m.messages[i])
 	}
-	
+
 	return result, nil
 }
 
@@ -314,7 +314,7 @@ func (m *MockGmailService) GetProfile() (*gmail.Profile, error) {
 
 func TestMockGmailService(t *testing.T) {
 	mock := NewMockGmailService()
-	
+
 	// Test GetMessages
 	messages, err := mock.GetMessages("", 10)
 	if err != nil {
@@ -323,7 +323,7 @@ func TestMockGmailService(t *testing.T) {
 	if len(messages) != 2 {
 		t.Errorf("GetMessages() returned %d messages, want 2", len(messages))
 	}
-	
+
 	// Test GetMessage
 	msg, err := mock.GetMessage("msg1")
 	if err != nil {
@@ -332,13 +332,13 @@ func TestMockGmailService(t *testing.T) {
 	if msg.Id != "msg1" {
 		t.Errorf("GetMessage() returned message with ID %s, want msg1", msg.Id)
 	}
-	
+
 	// Test GetMessage with invalid ID
 	_, err = mock.GetMessage("invalid")
 	if err == nil {
 		t.Errorf("GetMessage() with invalid ID should return error")
 	}
-	
+
 	// Test GetLabels
 	labels, err := mock.GetLabels()
 	if err != nil {
@@ -347,7 +347,7 @@ func TestMockGmailService(t *testing.T) {
 	if len(labels) != 3 {
 		t.Errorf("GetLabels() returned %d labels, want 3", len(labels))
 	}
-	
+
 	// Test GetProfile
 	profile, err := mock.GetProfile()
 	if err != nil {

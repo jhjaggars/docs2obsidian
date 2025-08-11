@@ -62,26 +62,26 @@ func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 		saveToken(token)
 		return token, nil
 	}
-	
+
 	// Check if we have a valid access token or refresh token
 	// The OAuth2 client will automatically refresh if needed
 	if token.AccessToken == "" && token.RefreshToken == "" {
 		// Token is completely invalid, need to re-authorize
 		fmt.Println("Token is invalid. Re-authorization required.")
-		
+
 		token, err = getTokenFromWeb(oauthConfig)
 		if err != nil {
 			return nil, err
 		}
 		saveToken(token)
 	}
-	
+
 	return token, nil
 }
 
 func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 	fmt.Println("Starting OAuth 2.0 authorization flow...")
-	
+
 	token, err := getTokenFromWebServer(config)
 	if err != nil {
 		fmt.Printf("Web server authorization failed: %v\n", err)
@@ -89,16 +89,16 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 		fmt.Println()
 		return getTokenFromWebManual(config)
 	}
-	
+
 	return token, nil
 }
 
 func getTokenFromWebManual(config *oauth2.Config) (*oauth2.Token, error) {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	
+
 	fmt.Println("To authorize this application, please visit this URL in your browser:")
 	fmt.Printf("%s\n\n", authURL)
-	
+
 	fmt.Println("After authorization, you will be redirected to a URL that looks like:")
 	fmt.Println("http://localhost/callback?code=AUTHORIZATION_CODE&scope=...")
 	fmt.Println()
@@ -126,7 +126,7 @@ func getTokenFromWebManual(config *oauth2.Config) (*oauth2.Token, error) {
 
 func extractAuthCode(input string) string {
 	input = strings.TrimSpace(input)
-	
+
 	if strings.Contains(input, "code=") {
 		parts := strings.Split(input, "code=")
 		if len(parts) > 1 {
@@ -137,11 +137,11 @@ func extractAuthCode(input string) string {
 			return codePart
 		}
 	}
-	
+
 	if !strings.Contains(input, "://") && !strings.Contains(input, "=") {
 		return input
 	}
-	
+
 	return ""
 }
 
@@ -156,7 +156,7 @@ func tokenFromFile() (*oauth2.Token, error) {
 		return nil, err
 	}
 	defer f.Close()
-	
+
 	token := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(token)
 	return token, err
@@ -176,4 +176,3 @@ func saveToken(token *oauth2.Token) {
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
 }
-

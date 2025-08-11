@@ -134,7 +134,7 @@ func (l *LogseqTarget) FormatMetadata(metadata map[string]interface{}) string {
 // Preview generates a preview of what files would be created/modified without actually writing them
 func (l *LogseqTarget) Preview(items []*models.Item, outputDir string) ([]*interfaces.FilePreview, error) {
 	var previews []*interfaces.FilePreview
-	
+
 	for _, item := range items {
 		preview, err := l.previewItem(item, outputDir)
 		if err != nil {
@@ -142,21 +142,21 @@ func (l *LogseqTarget) Preview(items []*models.Item, outputDir string) ([]*inter
 		}
 		previews = append(previews, preview)
 	}
-	
+
 	return previews, nil
 }
 
 func (l *LogseqTarget) previewItem(item *models.Item, outputDir string) (*interfaces.FilePreview, error) {
 	filename := l.FormatFilename(item.Title)
 	filePath := filepath.Join(outputDir, filename)
-	
+
 	// Generate content that would be written
 	content := l.formatContent(item)
-	
+
 	// Check if file already exists
 	var existingContent string
 	var action string
-	
+
 	if _, err := os.Stat(filePath); err == nil {
 		// File exists, read current content
 		if existingData, readErr := os.ReadFile(filePath); readErr == nil {
@@ -174,7 +174,7 @@ func (l *LogseqTarget) previewItem(item *models.Item, outputDir string) (*interf
 		// File doesn't exist
 		action = "create"
 	}
-	
+
 	return &interfaces.FilePreview{
 		FilePath:        filePath,
 		Action:          action,

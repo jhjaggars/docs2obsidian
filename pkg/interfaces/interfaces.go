@@ -1,8 +1,8 @@
 package interfaces
 
 import (
-	"time"
 	"pkm-sync/pkg/models"
+	"time"
 )
 
 // Source represents any data source (Google Calendar, Slack, etc.)
@@ -26,11 +26,11 @@ type Target interface {
 
 // FilePreview represents what would happen to a file during sync
 type FilePreview struct {
-	FilePath    string    // Full path where file would be created
-	Action      string    // "create", "update", "skip"
-	Content     string    // Full content that would be written
+	FilePath        string // Full path where file would be created
+	Action          string // "create", "update", "skip"
+	Content         string // Full content that would be written
 	ExistingContent string // Current content if file exists
-	Conflict    bool      // True if there would be a conflict
+	Conflict        bool   // True if there would be a conflict
 }
 
 // Syncer coordinates between sources and targets

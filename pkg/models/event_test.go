@@ -126,11 +126,11 @@ func TestAttendee_StructFields(t *testing.T) {
 		Email:       "test@example.com",
 		DisplayName: "Test User",
 	}
-	
+
 	if attendee.Email != "test@example.com" {
 		t.Errorf("Email field = %q, expected %q", attendee.Email, "test@example.com")
 	}
-	
+
 	if attendee.DisplayName != "Test User" {
 		t.Errorf("DisplayName field = %q, expected %q", attendee.DisplayName, "Test User")
 	}

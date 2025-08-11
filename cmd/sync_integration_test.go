@@ -18,11 +18,11 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	tests := []struct {
-		name                 string
-		baseOutputDir        string
-		sources              map[string]models.SourceConfig
-		expectedDirectories  map[string]string
-		expectedSubdirCount  int
+		name                string
+		baseOutputDir       string
+		sources             map[string]models.SourceConfig
+		expectedDirectories map[string]string
+		expectedSubdirCount int
 	}{
 		{
 			name:          "multiple sources with different output subdirectories",
@@ -57,9 +57,9 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 				},
 			},
 			expectedDirectories: map[string]string{
-				"gmail_work":       filepath.Join(tempDir, "work-emails"),
-				"gmail_personal":   filepath.Join(tempDir, "personal-emails"),
-				"google_calendar":  filepath.Join(tempDir, "calendar-events"),
+				"gmail_work":      filepath.Join(tempDir, "work-emails"),
+				"gmail_personal":  filepath.Join(tempDir, "personal-emails"),
+				"google_calendar": filepath.Join(tempDir, "calendar-events"),
 			},
 			expectedSubdirCount: 3,
 		},
@@ -155,25 +155,25 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 			// Test that we can create these directories
 			for sourceID, sourceConfig := range tt.sources {
 				outputDir := getSourceOutputDirectory(tt.baseOutputDir, sourceConfig)
-				
+
 				// Create the directory structure
 				err := os.MkdirAll(outputDir, 0755)
 				assert.NoError(t, err, "Failed to create output directory for source %s", sourceID)
-				
+
 				// Verify the directory exists
 				stat, err := os.Stat(outputDir)
 				assert.NoError(t, err, "Output directory does not exist for source %s", sourceID)
 				assert.True(t, stat.IsDir(), "Output path is not a directory for source %s", sourceID)
-				
+
 				// Create a test file in the directory to verify write access
 				testFile := filepath.Join(outputDir, "test.txt")
 				err = os.WriteFile(testFile, []byte("test"), 0644)
 				assert.NoError(t, err, "Failed to write test file in output directory for source %s", sourceID)
-				
+
 				// Verify the test file exists
 				_, err = os.Stat(testFile)
 				assert.NoError(t, err, "Test file does not exist for source %s", sourceID)
-				
+
 				// Clean up the test file
 				os.Remove(testFile)
 			}
@@ -183,12 +183,12 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 
 func TestPerSourceTargetHandling(t *testing.T) {
 	tests := []struct {
-		name              string
-		defaultTarget     string
-		sources           map[string]models.SourceConfig
-		targets           map[string]models.TargetConfig
-		expectedTargets   map[string]string
-		expectErrors      map[string]bool
+		name            string
+		defaultTarget   string
+		sources         map[string]models.SourceConfig
+		targets         map[string]models.TargetConfig
+		expectedTargets map[string]string
+		expectErrors    map[string]bool
 	}{
 		{
 			name:          "sources with different target overrides",
@@ -404,9 +404,9 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 
 	// 2. Test output directory calculation for each source
 	expectedOutputDirs := map[string]string{
-		"gmail_work":       filepath.Join(tempDir, "work"),
-		"gmail_personal":   filepath.Join(tempDir, "personal"),
-		"google_calendar":  filepath.Join(tempDir, "calendar"),
+		"gmail_work":      filepath.Join(tempDir, "work"),
+		"gmail_personal":  filepath.Join(tempDir, "personal"),
+		"google_calendar": filepath.Join(tempDir, "calendar"),
 	}
 
 	for _, sourceID := range enabledSources {
@@ -427,9 +427,9 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 
 	// 3. Test target assignment for each source
 	expectedTargets := map[string]string{
-		"gmail_work":       "obsidian",
-		"gmail_personal":   "logseq",
-		"google_calendar":  "obsidian", // Uses default target
+		"gmail_work":      "obsidian",
+		"gmail_personal":  "logseq",
+		"google_calendar": "obsidian", // Uses default target
 	}
 
 	for _, sourceID := range enabledSources {
@@ -452,7 +452,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 	// 4. Test source creation (without actual OAuth - just factory)
 	for _, sourceID := range enabledSources {
 		sourceConfig := config.Sources[sourceID]
-		
+
 		// Test that the source factory can create the appropriate source type
 		switch sourceConfig.Type {
 		case "gmail", "google":
@@ -475,7 +475,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 		mockFileName := "test-" + sourceID + ".md"
 		mockFilePath := filepath.Join(outputDir, mockFileName)
 		mockContent := "# Test file for " + sourceID + "\n\nThis is a test file for source: " + sourceConfig.Name
-		
+
 		err := os.WriteFile(mockFilePath, []byte(mockContent), 0644)
 		assert.NoError(t, err, "Failed to write mock file for source %s", sourceID)
 
@@ -567,7 +567,7 @@ func TestErrorHandlingInMultiInstanceWorkflow(t *testing.T) {
 	// Test handling of invalid target references
 	invalidTargetSource := config.Sources["gmail_invalid_target"]
 	assert.Equal(t, "nonexistent_target", invalidTargetSource.OutputTarget)
-	
+
 	// Verify the target doesn't exist
 	_, targetExists := config.Targets[invalidTargetSource.OutputTarget]
 	assert.False(t, targetExists, "Nonexistent target should not exist in configuration")

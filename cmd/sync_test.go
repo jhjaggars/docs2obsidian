@@ -275,10 +275,10 @@ func TestParseSinceTime_InvalidInputs(t *testing.T) {
 		"7days", // Should be "7d"
 		"1week",
 		"abc",
-		"-1d",    // Negative days should be invalid
-		"-5d",    // Negative days should be invalid
-		"d",      // Missing number
-		"3.5d",   // Float days should be invalid
+		"-1d",  // Negative days should be invalid
+		"-5d",  // Negative days should be invalid
+		"d",    // Missing number
+		"3.5d", // Float days should be invalid
 	}
 
 	for _, input := range testCases {
@@ -392,11 +392,11 @@ func TestCreateTarget_Unknown(t *testing.T) {
 
 func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) {
 	tests := []struct {
-		name               string
-		attendeeAllowList  []string
-		expectedEmails     []string
-		shouldPassConfig   bool
-		description        string
+		name              string
+		attendeeAllowList []string
+		expectedEmails    []string
+		shouldPassConfig  bool
+		description       string
 	}{
 		{
 			name:              "valid emails",

@@ -17,13 +17,13 @@ const (
 
 // ThreadGroup represents a group of emails that belong to the same thread
 type ThreadGroup struct {
-	ThreadID     string          `json:"thread_id"`
-	Subject      string          `json:"subject"`
-	Messages     []*models.Item  `json:"messages"`
-	Participants []string        `json:"participants"`
-	StartTime    time.Time       `json:"start_time"`
-	EndTime      time.Time       `json:"end_time"`
-	MessageCount int             `json:"message_count"`
+	ThreadID     string         `json:"thread_id"`
+	Subject      string         `json:"subject"`
+	Messages     []*models.Item `json:"messages"`
+	Participants []string       `json:"participants"`
+	StartTime    time.Time      `json:"start_time"`
+	EndTime      time.Time      `json:"end_time"`
+	MessageCount int            `json:"message_count"`
 }
 
 // ThreadProcessor handles thread grouping and consolidation
@@ -44,7 +44,7 @@ func (tp *ThreadProcessor) ProcessThreads(items []*models.Item) ([]*models.Item,
 	if items == nil {
 		return []*models.Item{}, nil
 	}
-	
+
 	if !tp.config.IncludeThreads {
 		// No threading - return individual messages as-is
 		return items, nil
@@ -75,7 +75,7 @@ func (tp *ThreadProcessor) groupMessagesByThread(items []*models.Item) map[strin
 		if item == nil {
 			continue // Skip nil items to prevent panic
 		}
-		
+
 		threadID := tp.extractThreadID(item)
 		if threadID == "" {
 			// No thread ID - treat as individual message
@@ -195,8 +195,8 @@ func (tp *ThreadProcessor) buildConsolidatedContent(group *ThreadGroup) string {
 	content.WriteString(fmt.Sprintf("**Thread ID:** %s  \n", group.ThreadID))
 	content.WriteString(fmt.Sprintf("**Messages:** %d  \n", group.MessageCount))
 	content.WriteString(fmt.Sprintf("**Participants:** %s  \n", strings.Join(group.Participants, ", ")))
-	content.WriteString(fmt.Sprintf("**Duration:** %s to %s  \n\n", 
-		group.StartTime.Format("2006-01-02 15:04"), 
+	content.WriteString(fmt.Sprintf("**Duration:** %s to %s  \n\n",
+		group.StartTime.Format("2006-01-02 15:04"),
 		group.EndTime.Format("2006-01-02 15:04")))
 
 	content.WriteString("---\n\n")
@@ -204,7 +204,7 @@ func (tp *ThreadProcessor) buildConsolidatedContent(group *ThreadGroup) string {
 	for i, message := range group.Messages {
 		content.WriteString(fmt.Sprintf("## Message %d: %s\n\n", i+1, message.Title))
 		content.WriteString(fmt.Sprintf("**Date:** %s  \n", message.CreatedAt.Format("2006-01-02 15:04:05")))
-		
+
 		// Add sender information if available
 		if sender := tp.extractSender(message); sender != "" {
 			content.WriteString(fmt.Sprintf("**From:** %s  \n", sender))
@@ -227,8 +227,8 @@ func (tp *ThreadProcessor) buildThreadSummary(group *ThreadGroup, maxMessages in
 	content.WriteString(fmt.Sprintf("**Total Messages:** %d  \n", group.MessageCount))
 	content.WriteString(fmt.Sprintf("**Showing:** %d key messages  \n", min(maxMessages, len(group.Messages))))
 	content.WriteString(fmt.Sprintf("**Participants:** %s  \n", strings.Join(group.Participants, ", ")))
-	content.WriteString(fmt.Sprintf("**Duration:** %s to %s  \n\n", 
-		group.StartTime.Format("2006-01-02 15:04"), 
+	content.WriteString(fmt.Sprintf("**Duration:** %s to %s  \n\n",
+		group.StartTime.Format("2006-01-02 15:04"),
 		group.EndTime.Format("2006-01-02 15:04")))
 
 	content.WriteString("---\n\n")
@@ -239,7 +239,7 @@ func (tp *ThreadProcessor) buildThreadSummary(group *ThreadGroup, maxMessages in
 	for i, message := range keyMessages {
 		content.WriteString(fmt.Sprintf("## Key Message %d: %s\n\n", i+1, message.Title))
 		content.WriteString(fmt.Sprintf("**Date:** %s  \n", message.CreatedAt.Format("2006-01-02 15:04:05")))
-		
+
 		if sender := tp.extractSender(message); sender != "" {
 			content.WriteString(fmt.Sprintf("**From:** %s  \n", sender))
 		}
@@ -282,7 +282,7 @@ func (tp *ThreadProcessor) selectKeyMessages(messages []*models.Item, maxMessage
 	// 3. Messages with attachments
 	if maxMessages > 0 && len(messages) > 2 {
 		candidates := messages[1 : len(messages)-1] // Exclude first and last
-		
+
 		// Score messages based on importance criteria
 		type scoredMessage struct {
 			item  *models.Item
@@ -291,7 +291,7 @@ func (tp *ThreadProcessor) selectKeyMessages(messages []*models.Item, maxMessage
 
 		var scored []scoredMessage
 		seenSenders := make(map[string]bool)
-		
+
 		// Track senders from first and last message
 		if sender := tp.extractSender(messages[0]); sender != "" {
 			seenSenders[sender] = true
@@ -302,17 +302,17 @@ func (tp *ThreadProcessor) selectKeyMessages(messages []*models.Item, maxMessage
 
 		for _, msg := range candidates {
 			score := 0
-			
+
 			// Different sender bonus
 			if sender := tp.extractSender(msg); sender != "" && !seenSenders[sender] {
 				score += 3
 			}
-			
+
 			// Content length bonus
 			if len(msg.Content) > 500 {
 				score += 2
 			}
-			
+
 			// Attachment bonus
 			if len(msg.Attachments) > 0 {
 				score += 1
@@ -353,12 +353,12 @@ func (tp *ThreadProcessor) extractThreadSubject(item *models.Item) string {
 	// Clean up subject line (remove Re:, Fwd:, etc.)
 	subject := item.Title
 	subject = strings.TrimSpace(subject)
-	
+
 	// Remove common prefixes iteratively to handle multiple prefixes
 	prefixes := []string{"Re:", "RE:", "Fwd:", "FWD:", "Fw:", "FW:"}
 	maxIterations := 10 // Prevent infinite loops
 	iterations := 0
-	
+
 	for iterations < maxIterations {
 		original := subject
 		for _, prefix := range prefixes {
@@ -372,20 +372,20 @@ func (tp *ThreadProcessor) extractThreadSubject(item *models.Item) string {
 		}
 		iterations++
 	}
-	
+
 	return subject
 }
 
 func (tp *ThreadProcessor) extractParticipants(item *models.Item) []string {
 	var participants []string
-	
+
 	// Extract from metadata if available
 	if from, exists := item.Metadata["from"]; exists {
 		if sender := tp.extractEmailFromRecipient(from); sender != "" {
 			participants = append(participants, sender)
 		}
 	}
-	
+
 	return participants
 }
 
@@ -418,7 +418,7 @@ func (tp *ThreadProcessor) extractEmailFromRecipient(recipient interface{}) stri
 	if recipient == nil {
 		return ""
 	}
-	
+
 	switch r := recipient.(type) {
 	case string:
 		return r
@@ -448,42 +448,41 @@ func (tp *ThreadProcessor) extractEmailFromRecipient(recipient interface{}) stri
 
 func (tp *ThreadProcessor) buildThreadMetadata(group *ThreadGroup) map[string]interface{} {
 	metadata := make(map[string]interface{})
-	
+
 	if group == nil {
 		return metadata
 	}
-	
+
 	metadata["thread_id"] = group.ThreadID
 	metadata["message_count"] = group.MessageCount
 	metadata["participants"] = group.Participants
 	metadata["start_time"] = group.StartTime
 	metadata["end_time"] = group.EndTime
-	
+
 	// Safe duration calculation
 	if !group.StartTime.IsZero() && !group.EndTime.IsZero() {
 		metadata["duration_hours"] = group.EndTime.Sub(group.StartTime).Hours()
 	} else {
 		metadata["duration_hours"] = 0.0
 	}
-	
+
 	return metadata
 }
 
 func (tp *ThreadProcessor) buildThreadTags(group *ThreadGroup) []string {
 	var tags []string
 	tags = append(tags, "gmail", "thread")
-	
+
 	if group.MessageCount > 5 {
 		tags = append(tags, "long-thread")
 	}
-	
+
 	if len(group.Participants) > 2 {
 		tags = append(tags, "multi-participant")
 	}
-	
+
 	return tags
 }
-
 
 // min returns the smaller of two integers
 func min(a, b int) int {

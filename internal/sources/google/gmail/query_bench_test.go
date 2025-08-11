@@ -54,7 +54,7 @@ func BenchmarkBuildComplexQuery(b *testing.B) {
 // BenchmarkParseDuration tests the performance of duration parsing
 func BenchmarkParseDuration(b *testing.B) {
 	durations := []string{"30d", "1y", "2w", "12h", "45m"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, d := range durations {
@@ -72,7 +72,7 @@ func BenchmarkQueryValidation(b *testing.B) {
 		"has:attachment subject:meeting from:company.com",
 		"label:IMPORTANT (subject:urgent OR subject:meeting) -from:noreply.com",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, query := range queries {

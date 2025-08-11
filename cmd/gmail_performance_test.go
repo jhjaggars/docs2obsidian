@@ -160,7 +160,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 
 			sourceConfig := config.Sources["gmail_large"]
 			outputDir := getSourceOutputDirectory(config.Sync.DefaultOutputDir, sourceConfig)
-			
+
 			// Create output directory
 			err := os.MkdirAll(outputDir, 0755)
 			assert.NoError(t, err)
@@ -199,7 +199,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 			}
 
 			duration := time.Since(startTime)
-			t.Logf("Processed %d messages in %v (%.2f messages/second)", 
+			t.Logf("Processed %d messages in %v (%.2f messages/second)",
 				processedMessages, duration, float64(processedMessages)/duration.Seconds())
 
 			// Verify output files were created
@@ -208,7 +208,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 			assert.Equal(t, processedMessages, len(files), "Should create one file per processed message")
 
 			// Verify we didn't exceed maximum duration significantly
-			assert.LessOrEqual(t, duration, tt.maxDuration+5*time.Second, 
+			assert.LessOrEqual(t, duration, tt.maxDuration+5*time.Second,
 				"Processing should complete within reasonable time")
 		})
 	}
@@ -273,12 +273,12 @@ func TestGmailMemoryUsageOptimization(t *testing.T) {
 				for i := batchStart; i < batchEnd; i++ {
 					// Simulate processing without actual Gmail message creation
 					// In a real scenario, this would convert Gmail messages to Items
-					
+
 					// Simulate memory usage for processing
 					_ = fmt.Sprintf("memory-test-%d", i)
 					_ = fmt.Sprintf("Memory Test Subject %d", i)
 					_ = fmt.Sprintf("sender%d@example.com", i)
-					
+
 					// Simulate some processing work
 					time.Sleep(time.Microsecond)
 				}
@@ -336,11 +336,11 @@ func TestGmailRateLimitingEffectiveness(t *testing.T) {
 			duration := time.Since(startTime)
 
 			if tt.expectedMin > 0 {
-				assert.GreaterOrEqual(t, duration, tt.expectedMin, 
+				assert.GreaterOrEqual(t, duration, tt.expectedMin,
 					"Rate limiting should enforce minimum duration")
 			}
 
-			t.Logf("Processed %d requests in %v with %v delay", 
+			t.Logf("Processed %d requests in %v with %v delay",
 				tt.requestCount, duration, tt.requestDelay)
 		})
 	}
@@ -357,7 +357,7 @@ func simulateRequestWithRetry(errorRate float64, maxRetries int) bool {
 		if time.Now().UnixNano()%100 >= int64(errorRate*100) {
 			return true // Success
 		}
-		
+
 		// Simulate retry delay
 		time.Sleep(time.Millisecond * time.Duration(attempt+1))
 	}

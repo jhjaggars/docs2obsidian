@@ -7,8 +7,8 @@ type Item struct {
 	ID          string                 `json:"id"`
 	Title       string                 `json:"title"`
 	Content     string                 `json:"content"`
-	SourceType  string                 `json:"source_type"`  // "google_calendar", "slack", etc.
-	ItemType    string                 `json:"item_type"`    // "event", "message", "document", etc.
+	SourceType  string                 `json:"source_type"` // "google_calendar", "slack", etc.
+	ItemType    string                 `json:"item_type"`   // "event", "message", "document", etc.
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
 	Tags        []string               `json:"tags"`
@@ -23,8 +23,8 @@ type Attachment struct {
 	MimeType  string `json:"mime_type"`
 	URL       string `json:"url"`
 	LocalPath string `json:"local_path,omitempty"`
-	Data      string `json:"data,omitempty"`      // Base64 encoded attachment data
-	Size      int64  `json:"size,omitempty"`      // Size in bytes
+	Data      string `json:"data,omitempty"` // Base64 encoded attachment data
+	Size      int64  `json:"size,omitempty"` // Size in bytes
 }
 
 type Link struct {

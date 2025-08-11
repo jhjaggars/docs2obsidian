@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pkm-sync/pkg/models"
 	"google.golang.org/api/drive/v3"
+	"pkm-sync/pkg/models"
 )
 
 type Service struct {
@@ -105,12 +105,12 @@ func (s *Service) IsGoogleDocByID(fileID string) bool {
 // GetAttachmentsFromEvent extracts Google Drive file attachments from a calendar event
 func (s *Service) GetAttachmentsFromEvent(eventDescription string) ([]string, error) {
 	var fileIDs []string
-	
+
 	// Look for Google Drive links in the event description
 	// Google Drive links typically follow patterns like:
 	// https://docs.google.com/document/d/FILE_ID/edit
 	// https://drive.google.com/file/d/FILE_ID/view
-	
+
 	lines := strings.Split(eventDescription, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -126,7 +126,7 @@ func (s *Service) GetAttachmentsFromEvent(eventDescription string) ([]string, er
 			}
 		}
 	}
-	
+
 	return fileIDs, nil
 }
 
@@ -172,7 +172,7 @@ func (s *Service) ExportAttachedDocsFromEvent(eventDescription, outputDir string
 	}
 
 	var exportedFiles []string
-	
+
 	for _, fileID := range fileIDs {
 		// Get file metadata to determine name and type
 		metadata, err := s.GetFileMetadata(fileID)
@@ -211,26 +211,26 @@ func (s *Service) ExportAttachedDocsFromEvent(eventDescription, outputDir string
 func sanitizeFilename(filename string) string {
 	// Replace common problematic characters
 	replacements := map[string]string{
-		"/": "-",
-		"\\": "-", 
-		":": "-",
-		"*": "",
-		"?": "",
+		"/":  "-",
+		"\\": "-",
+		":":  "-",
+		"*":  "",
+		"?":  "",
 		"\"": "",
-		"<": "",
-		">": "",
-		"|": "-",
+		"<":  "",
+		">":  "",
+		"|":  "-",
 	}
-	
+
 	for old, new := range replacements {
 		filename = strings.ReplaceAll(filename, old, new)
 	}
-	
+
 	// Remove multiple consecutive spaces and trim
 	filename = strings.TrimSpace(filename)
 	for strings.Contains(filename, "  ") {
 		filename = strings.ReplaceAll(filename, "  ", " ")
 	}
-	
+
 	return filename
 }

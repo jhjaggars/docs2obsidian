@@ -19,7 +19,7 @@ var (
 	whitespaceCleanupRegex = regexp.MustCompile(`\n\s*\n\s*\n`)
 	urlRegex               = regexp.MustCompile(`https?://[^\s<>")\]]+`)
 	markdownLinkRegex      = regexp.MustCompile(`\[([^\]]*)\]\(([^)]+)\)`)
-	
+
 	// Signature patterns compiled once
 	signatureRegexPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`^Best regards?,?`),
@@ -28,7 +28,7 @@ var (
 		regexp.MustCompile(`^Cheers,?`),
 		regexp.MustCompile(`^Sent from my`),
 		regexp.MustCompile(`^Get Outlook for`),
-		regexp.MustCompile(`@\w+\.\w+`),   // Email address
+		regexp.MustCompile(`@\w+\.\w+`),                     // Email address
 		regexp.MustCompile(`\b\d{3}[-.]?\d{3}[-.]?\d{4}\b`), // Phone number
 		regexp.MustCompile(`^[A-Z][a-z]+ [A-Z][a-z]+$`),     // Name pattern (two capitalized words)
 	}
@@ -134,13 +134,21 @@ func (p *ContentProcessor) ProcessHTMLContent(htmlContent string) string {
 
 	var markdown strings.Builder
 	p.convertNodeToMarkdown(doc, &markdown)
-	
+
 	result := markdown.String()
-	
-	// Clean up whitespace
+
+	// Apply additional entity processing for any that weren't handled by the parser
+	result = p.unescapeHTMLEntities(result)
+
+	// Clean up whitespace and formatting issues
 	result = whitespaceCleanupRegex.ReplaceAllString(result, "\n\n")
+
+	// Fix consecutive asterisks that can occur from malformed HTML
+	consecutiveAsterisks := regexp.MustCompile(`\*{4,}`)
+	result = consecutiveAsterisks.ReplaceAllString(result, "***")
+
 	result = strings.TrimSpace(result)
-	
+
 	return result
 }
 
@@ -148,9 +156,9 @@ func (p *ContentProcessor) ProcessHTMLContent(htmlContent string) string {
 func (p *ContentProcessor) convertNodeToMarkdown(n *nethtml.Node, markdown *strings.Builder) {
 	switch n.Type {
 	case nethtml.TextNode:
-		text := html.UnescapeString(n.Data)
+		text := p.unescapeHTMLEntities(n.Data)
 		markdown.WriteString(text)
-		
+
 	case nethtml.ElementNode:
 		switch n.Data {
 		case "h1":
@@ -199,9 +207,21 @@ func (p *ContentProcessor) convertNodeToMarkdown(n *nethtml.Node, markdown *stri
 			p.convertChildNodes(n, markdown)
 			markdown.WriteString("\n```\n")
 		case "blockquote":
-			markdown.WriteString("> ")
-			p.convertChildNodes(n, markdown)
-			markdown.WriteString("\n")
+			// Process blockquote content and add > prefix to each line
+			var blockquoteContent strings.Builder
+			p.convertChildNodes(n, &blockquoteContent)
+			content := strings.TrimSpace(blockquoteContent.String())
+			if content != "" {
+				lines := strings.Split(content, "\n")
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if line != "" {
+						markdown.WriteString("> ")
+						markdown.WriteString(line)
+						markdown.WriteString("\n")
+					}
+				}
+			}
 		case "ul":
 			markdown.WriteString("\n")
 			p.convertChildNodes(n, markdown)
@@ -253,7 +273,7 @@ func (p *ContentProcessor) convertNodeToMarkdown(n *nethtml.Node, markdown *stri
 			// For other elements, just process children
 			p.convertChildNodes(n, markdown)
 		}
-		
+
 	default:
 		// For document and other node types, process children
 		p.convertChildNodes(n, markdown)
@@ -270,7 +290,7 @@ func (p *ContentProcessor) convertChildNodes(n *nethtml.Node, markdown *strings.
 // convertTableRow processes a table row with proper cell separation
 func (p *ContentProcessor) convertTableRow(n *nethtml.Node, markdown *strings.Builder) {
 	markdown.WriteString("| ")
-	
+
 	// Count cells first
 	var cells []*nethtml.Node
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
@@ -278,7 +298,7 @@ func (p *ContentProcessor) convertTableRow(n *nethtml.Node, markdown *strings.Bu
 			cells = append(cells, child)
 		}
 	}
-	
+
 	// Process each cell
 	for i, cell := range cells {
 		p.convertChildNodes(cell, markdown)
@@ -300,7 +320,7 @@ func (p *ContentProcessor) convertTableRow(n *nethtml.Node, markdown *strings.Bu
 			}
 		}
 	}
-	
+
 	markdown.WriteString("\n")
 }
 
@@ -314,6 +334,35 @@ func (p *ContentProcessor) getAttributeValue(n *nethtml.Node, attrName string) s
 	return ""
 }
 
+// unescapeHTMLEntities handles HTML entities including common ones like &hellip;, &ldquo;, etc.
+func (p *ContentProcessor) unescapeHTMLEntities(text string) string {
+	// First apply the standard html.UnescapeString
+	text = html.UnescapeString(text)
+
+	// Handle additional entities and Unicode characters that html.UnescapeString might not handle
+	replacer := strings.NewReplacer(
+		"&hellip;", "...",
+		"&ldquo;", "\"",
+		"&rdquo;", "\"",
+		"&mdash;", "—",
+		"&ndash;", "–",
+		"&nbsp;", " ",
+		"\u00a0", " ", // non-breaking space
+		"&rsquo;", "'",
+		"&lsquo;", "'",
+		"&quot;", "\"",
+		// Unicode characters that might come from HTML parsing
+		"\u201c", "\"", // left double quotation mark
+		"\u201d", "\"", // right double quotation mark
+		"\u2018", "'", // left single quotation mark
+		"\u2019", "'", // right single quotation mark
+		"\u2026", "...", // horizontal ellipsis
+		"\u2014", "—", // em dash
+		"\u2013", "–", // en dash
+	)
+
+	return replacer.Replace(text)
+}
 
 // StripQuotedText removes quoted text from email content with enhanced detection
 func (p *ContentProcessor) StripQuotedText(content string) string {
@@ -322,32 +371,32 @@ func (p *ContentProcessor) StripQuotedText(content string) string {
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Skip lines that start with common quote indicators
 		if strings.HasPrefix(trimmed, ">") {
 			break // Stop processing at first quoted line
 		}
-		
+
 		// Check for "On [date] [person] wrote:" patterns
 		if strings.HasPrefix(trimmed, "On ") && strings.Contains(trimmed, " wrote:") {
 			break
 		}
-		
+
 		// Check for "From: [email]" patterns (often indicates forwarded content)
 		if strings.HasPrefix(trimmed, "From: ") && strings.Contains(trimmed, "@") {
 			break
 		}
-		
+
 		// Check for "-----Original Message-----" patterns
 		if strings.Contains(trimmed, "Original Message") || strings.Contains(trimmed, "original message") {
 			break
 		}
-		
+
 		// Check for forwarding indicators
 		if strings.HasPrefix(trimmed, "---------- Forwarded message") {
 			break
 		}
-		
+
 		// Check for signature separators
 		if trimmed == "--" || strings.HasPrefix(trimmed, "-- ") {
 			// This might be a signature, check if this is near the end
@@ -356,7 +405,7 @@ func (p *ContentProcessor) StripQuotedText(content string) string {
 				break
 			}
 		}
-		
+
 		result = append(result, line)
 	}
 
@@ -372,14 +421,14 @@ func (p *ContentProcessor) ExtractSignatures(content string) string {
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Common signature indicators
 		if trimmed == "--" || strings.HasPrefix(trimmed, "-- ") {
 			inSignature = true
 			signatureLines = append(signatureLines, line)
 			continue
 		}
-		
+
 		// Look for patterns that might indicate signatures
 		if !inSignature {
 			// Check if we're near the end and this looks like signature content
@@ -391,14 +440,14 @@ func (p *ContentProcessor) ExtractSignatures(content string) string {
 				}
 			}
 		}
-		
+
 		if inSignature {
 			signatureLines = append(signatureLines, line)
 		} else {
 			contentLines = append(contentLines, line)
 		}
 	}
-	
+
 	// Return just the content without signatures
 	return strings.TrimSpace(strings.Join(contentLines, "\n"))
 }
@@ -410,7 +459,7 @@ func (p *ContentProcessor) looksLikeSignature(line string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -422,9 +471,9 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 		title string
 		pos   int
 	}
-	
+
 	var allMatches []urlMatch
-	
+
 	// Find standalone URLs with positions
 	urlMatches := urlRegex.FindAllStringIndex(content, -1)
 	for _, match := range urlMatches {
@@ -436,7 +485,7 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 			pos:   match[0],
 		})
 	}
-	
+
 	// Find markdown URLs with positions and titles
 	markdownMatches := markdownLinkRegex.FindAllStringSubmatchIndex(content, -1)
 	for _, match := range markdownMatches {
@@ -444,7 +493,7 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 			title := content[match[2]:match[3]]
 			url := content[match[4]:match[5]]
 			url = strings.TrimRight(url, ".,!?;:")
-			
+
 			allMatches = append(allMatches, urlMatch{
 				url:   url,
 				title: title,
@@ -452,7 +501,7 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 			})
 		}
 	}
-	
+
 	// Sort by position to maintain order of appearance
 	for i := 0; i < len(allMatches); i++ {
 		for j := i + 1; j < len(allMatches); j++ {
@@ -461,11 +510,11 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 			}
 		}
 	}
-	
+
 	// Convert to Link objects and deduplicate
 	var links []models.Link
 	seen := make(map[string]bool)
-	
+
 	for _, match := range allMatches {
 		if !seen[match.url] {
 			seen[match.url] = true
@@ -476,7 +525,7 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 			})
 		}
 	}
-	
+
 	return links
 }
 
@@ -491,14 +540,14 @@ func (p *ContentProcessor) extractUrlTitle(url string) string {
 func (p *ContentProcessor) deduplicateLinks(links []models.Link) []models.Link {
 	seen := make(map[string]bool)
 	var result []models.Link
-	
+
 	for _, link := range links {
 		if !seen[link.URL] {
 			seen[link.URL] = true
 			result = append(result, link)
 		}
 	}
-	
+
 	return result
 }
 
@@ -510,9 +559,9 @@ func (p *ContentProcessor) ProcessEmailAttachments(msg *gmail.Message) []models.
 
 	var attachments []models.Attachment
 	p.extractAttachmentsFromPart(msg.Payload, msg.Id, &attachments)
-	
+
 	filtered := p.filterAttachments(attachments)
-	
+
 	// If we have a service, fetch the actual attachment data
 	if p.service != nil {
 		for i := range filtered {
@@ -522,7 +571,7 @@ func (p *ContentProcessor) ProcessEmailAttachments(msg *gmail.Message) []models.
 			}
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -571,7 +620,7 @@ func (p *ContentProcessor) fetchAttachmentData(messageID string, attachment *mod
 				return fmt.Errorf("failed to decode attachment data: %w", err)
 			}
 		}
-		
+
 		// Store the decoded data as base64 string for embedding in targets
 		attachment.Data = base64.StdEncoding.EncodeToString(decoded)
 		attachment.Size = int64(len(decoded))
@@ -603,14 +652,14 @@ func (p *ContentProcessor) isAllowedAttachmentType(attachment models.Attachment)
 	if len(parts) < 2 {
 		return false // No extension
 	}
-	
+
 	extension := strings.ToLower(parts[len(parts)-1])
-	
+
 	for _, allowedType := range p.config.AttachmentTypes {
 		if strings.ToLower(allowedType) == extension {
 			return true
 		}
 	}
-	
+
 	return false
 }

@@ -472,14 +472,14 @@ func TestService_filterEvents(t *testing.T) {
 
 func TestService_SetAttendeeAllowList(t *testing.T) {
 	service := &Service{}
-	
+
 	allowList := []string{"user1@example.com", "user2@example.com"}
 	service.SetAttendeeAllowList(allowList)
-	
+
 	if len(service.attendeeAllowList) != 2 {
 		t.Errorf("SetAttendeeAllowList() set %d items, expected 2", len(service.attendeeAllowList))
 	}
-	
+
 	if service.attendeeAllowList[0] != "user1@example.com" {
 		t.Errorf("SetAttendeeAllowList() first item = %s, expected user1@example.com", service.attendeeAllowList[0])
 	}
@@ -487,13 +487,13 @@ func TestService_SetAttendeeAllowList(t *testing.T) {
 
 func TestService_SetRequireMultipleAttendees(t *testing.T) {
 	service := &Service{}
-	
+
 	// Test setting to false
 	service.SetRequireMultipleAttendees(false)
 	if service.requireMultipleAttendees != false {
 		t.Errorf("SetRequireMultipleAttendees(false) = %v, expected false", service.requireMultipleAttendees)
 	}
-	
+
 	// Test setting to true
 	service.SetRequireMultipleAttendees(true)
 	if service.requireMultipleAttendees != true {
@@ -503,13 +503,13 @@ func TestService_SetRequireMultipleAttendees(t *testing.T) {
 
 func TestService_SetIncludeSelfOnlyEvents(t *testing.T) {
 	service := &Service{}
-	
+
 	// Test setting to true
 	service.SetIncludeSelfOnlyEvents(true)
 	if service.includeSelfOnlyEvents != true {
 		t.Errorf("SetIncludeSelfOnlyEvents(true) = %v, expected true", service.includeSelfOnlyEvents)
 	}
-	
+
 	// Test setting to false
 	service.SetIncludeSelfOnlyEvents(false)
 	if service.includeSelfOnlyEvents != false {
