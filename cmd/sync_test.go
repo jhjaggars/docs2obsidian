@@ -10,12 +10,12 @@ import (
 func TestGetEnabledSources_ExplicitList(t *testing.T) {
 	config := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources: []string{"google", "slack"},
+			EnabledSources: []string{"google_calendar", "slack"},
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			"slack": {
 				Enabled: true,
@@ -35,8 +35,8 @@ func TestGetEnabledSources_ExplicitList(t *testing.T) {
 	}
 
 	expectedSources := map[string]bool{
-		"google": false,
-		"slack":  false,
+		"google_calendar": false,
+		"slack":           false,
 	}
 
 	for _, source := range enabledSources {
@@ -57,12 +57,12 @@ func TestGetEnabledSources_ExplicitList(t *testing.T) {
 func TestGetEnabledSources_ExplicitListButSourceDisabled(t *testing.T) {
 	config := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources: []string{"google", "slack"},
+			EnabledSources: []string{"google_calendar", "slack"},
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			"slack": {
 				Enabled: false, // Listed in enabled_sources but disabled
@@ -73,13 +73,13 @@ func TestGetEnabledSources_ExplicitListButSourceDisabled(t *testing.T) {
 
 	enabledSources := getEnabledSources(config)
 
-	// Should only include google since slack is disabled
+	// Should only include google_calendar since slack is disabled
 	if len(enabledSources) != 1 {
 		t.Errorf("Expected 1 enabled source, got %d", len(enabledSources))
 	}
 
-	if enabledSources[0] != "google" {
-		t.Errorf("Expected google to be the only enabled source, got %s", enabledSources[0])
+	if enabledSources[0] != "google_calendar" {
+		t.Errorf("Expected google_calendar to be the only enabled source, got %s", enabledSources[0])
 	}
 }
 
@@ -89,9 +89,9 @@ func TestGetEnabledSources_FallbackToEnabled(t *testing.T) {
 			EnabledSources: []string{}, // Empty list, should fallback
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			"slack": {
 				Enabled: false,
@@ -106,7 +106,7 @@ func TestGetEnabledSources_FallbackToEnabled(t *testing.T) {
 
 	enabledSources := getEnabledSources(config)
 
-	// Should include google and gmail based on enabled flags
+	// Should include google_calendar and gmail based on enabled flags
 	if len(enabledSources) != 2 {
 		t.Errorf("Expected 2 enabled sources, got %d", len(enabledSources))
 	}
@@ -116,8 +116,8 @@ func TestGetEnabledSources_FallbackToEnabled(t *testing.T) {
 		enabledMap[source] = true
 	}
 
-	if !enabledMap["google"] {
-		t.Error("Expected google to be enabled")
+	if !enabledMap["google_calendar"] {
+		t.Error("Expected google_calendar to be enabled")
 	}
 
 	if !enabledMap["gmail"] {
@@ -147,12 +147,12 @@ func TestGetEnabledSources_EmptyConfig(t *testing.T) {
 func TestGetEnabledSources_SourceNotInConfig(t *testing.T) {
 	config := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources: []string{"google", "nonexistent"},
+			EnabledSources: []string{"google_calendar", "nonexistent"},
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			// "nonexistent" source is not defined
 		},
@@ -160,13 +160,13 @@ func TestGetEnabledSources_SourceNotInConfig(t *testing.T) {
 
 	enabledSources := getEnabledSources(config)
 
-	// Should only include google, skip nonexistent source
+	// Should only include google_calendar, skip nonexistent source
 	if len(enabledSources) != 1 {
 		t.Errorf("Expected 1 enabled source, got %d", len(enabledSources))
 	}
 
-	if enabledSources[0] != "google" {
-		t.Errorf("Expected google to be the only enabled source, got %s", enabledSources[0])
+	if enabledSources[0] != "google_calendar" {
+		t.Errorf("Expected google_calendar to be the only enabled source, got %s", enabledSources[0])
 	}
 }
 
@@ -331,9 +331,9 @@ func TestParseSinceTime_EdgeCases(t *testing.T) {
 }
 
 func TestCreateSource_Google(t *testing.T) {
-	source, err := createSource("google", &http.Client{})
+	source, err := createSource("google_calendar", &http.Client{})
 	if err != nil {
-		t.Fatalf("Failed to create google source: %v", err)
+		t.Fatalf("Failed to create google_calendar source: %v", err)
 	}
 
 	if source == nil {
@@ -347,7 +347,7 @@ func TestCreateSource_Unknown(t *testing.T) {
 		t.Error("Expected error for unknown source")
 	}
 
-	expectedError := "unknown source 'unknown': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)"
+	expectedError := "unknown source 'unknown': supported sources are 'google_calendar' (others like slack, gmail, jira are planned for future releases)"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error message %q, got %q", expectedError, err.Error())
 	}
@@ -463,9 +463,9 @@ func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) 
 		t.Run(tt.name, func(t *testing.T) {
 			config := &models.Config{
 				Sources: map[string]models.SourceConfig{
-					"google": {
+					"google_calendar": {
 						Enabled: true,
-						Type:    "google",
+						Type:    "google_calendar",
 						Google: models.GoogleSourceConfig{
 							AttendeeAllowList:        tt.attendeeAllowList,
 							RequireMultipleAttendees: true,
@@ -475,7 +475,10 @@ func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) 
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
+			// Note: This test can't fully verify the actual configuration being passed
+			// since createSourceWithConfig calls source.Configure() internally.
+			// But we can verify that it doesn't error and creates a valid source.
+			source, err := createSourceWithConfig("google_calendar", config.Sources["google_calendar"], &http.Client{})
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -524,9 +527,9 @@ func TestCreateSourceWithConfig_GoogleMaxResultsValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &models.Config{
 				Sources: map[string]models.SourceConfig{
-					"google": {
+					"google_calendar": {
 						Enabled: true,
-						Type:    "google",
+						Type:    "google_calendar",
 						Google: models.GoogleSourceConfig{
 							MaxResults:               tt.maxResults,
 							RequireMultipleAttendees: true,
@@ -536,7 +539,7 @@ func TestCreateSourceWithConfig_GoogleMaxResultsValidation(t *testing.T) {
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
+			source, err := createSourceWithConfig("google_calendar", config.Sources["google_calendar"], &http.Client{})
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -585,9 +588,9 @@ func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &models.Config{
 				Sources: map[string]models.SourceConfig{
-					"google": {
+					"google_calendar": {
 						Enabled: true,
-						Type:    "google",
+						Type:    "google_calendar",
 						Google: models.GoogleSourceConfig{
 							RequireMultipleAttendees: tt.requireMultipleAttendees,
 							IncludeSelfOnlyEvents:    tt.includeSelfOnlyEvents,
@@ -596,7 +599,7 @@ func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
+			source, err := createSourceWithConfig("google_calendar", config.Sources["google_calendar"], &http.Client{})
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -611,32 +614,32 @@ func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
 func TestCreateSourceWithConfig_MissingGoogleConfig(t *testing.T) {
 	config := &models.Config{
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 				// Google config is zero value (default)
 			},
 		},
 	}
 
-	source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
+	source, err := createSourceWithConfig("google_calendar", config.Sources["google_calendar"], &http.Client{})
 	if err != nil {
-		t.Errorf("createSourceWithConfig failed with missing google config: %v", err)
+		t.Errorf("createSourceWithConfig failed with missing google_calendar config: %v", err)
 	}
 
 	if source == nil {
-		t.Error("Expected non-nil source even with missing google config")
+		t.Error("Expected non-nil source even with missing google_calendar config")
 	}
 }
 
 func TestCreateSourceWithConfig_SourceNotInConfig(t *testing.T) {
-	// Test with empty source config - should create default google source
+	// Test with empty source config - should create default google_calendar source
 	emptySourceConfig := models.SourceConfig{
-		Type:    "google", // Need to specify type
+		Type:    "google_calendar", // Need to specify type
 		Enabled: true,
 	}
 
-	source, err := createSourceWithConfig("google", emptySourceConfig, &http.Client{})
+	source, err := createSourceWithConfig("google_calendar", emptySourceConfig, &http.Client{})
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with source not in config: %v", err)
 	}

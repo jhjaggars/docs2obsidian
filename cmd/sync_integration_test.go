@@ -47,9 +47,9 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 						Name: "Personal Instance",
 					},
 				},
-				"google_calendar": {
+				"google_calendar_calendar": {
 					Enabled:      true,
-					Type:         "google",
+					Type:         "google_calendar",
 					Name:         "Primary Calendar",
 					OutputSubdir: "calendar-events",
 					Google: models.GoogleSourceConfig{
@@ -58,9 +58,9 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 				},
 			},
 			expectedDirectories: map[string]string{
-				"gmail_work":      filepath.Join(tempDir, "work-emails"),
-				"gmail_personal":  filepath.Join(tempDir, "personal-emails"),
-				"google_calendar": filepath.Join(tempDir, "calendar-events"),
+				"gmail_work":               filepath.Join(tempDir, "work-emails"),
+				"gmail_personal":           filepath.Join(tempDir, "personal-emails"),
+				"google_calendar_calendar": filepath.Join(tempDir, "calendar-events"),
 			},
 			expectedSubdirCount: 3,
 		},
@@ -125,9 +125,9 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 						Name: "Gmail No Subdir Instance",
 					},
 				},
-				"google_no_subdir": {
+				"google_calendar_no_subdir": {
 					Enabled:      true,
-					Type:         "google",
+					Type:         "google_calendar",
 					Name:         "Google without Subdir",
 					OutputSubdir: "", // No subdirectory - should use base
 					Google: models.GoogleSourceConfig{
@@ -136,9 +136,9 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 				},
 			},
 			expectedDirectories: map[string]string{
-				"gmail_with_subdir": filepath.Join(tempDir, "gmail-emails"),
-				"gmail_no_subdir":   tempDir, // Base directory
-				"google_no_subdir":  tempDir, // Base directory
+				"gmail_with_subdir":         filepath.Join(tempDir, "gmail-emails"),
+				"gmail_no_subdir":           tempDir, // Base directory
+				"google_calendar_no_subdir": tempDir, // Base directory
 			},
 			expectedSubdirCount: 1, // Only one subdirectory created
 		},
@@ -327,7 +327,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 	// Create a comprehensive configuration that exercises all features
 	config := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources:   []string{"gmail_work", "gmail_personal", "google_calendar"},
+			EnabledSources:   []string{"gmail_work", "gmail_personal", "google_calendar_calendar"},
 			DefaultTarget:    "obsidian",
 			DefaultOutputDir: tempDir,
 			SourceTags:       true,
@@ -365,9 +365,9 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 					ProcessHTMLContent: true,
 				},
 			},
-			"google_calendar": {
+			"google_calendar_calendar": {
 				Enabled:      true,
-				Type:         "google",
+				Type:         "google_calendar",
 				Name:         "Primary Calendar",
 				Priority:     3,
 				OutputSubdir: "calendar",
@@ -402,13 +402,13 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 
 	// 1. Test enabled sources detection
 	enabledSources := getEnabledSources(config)
-	assert.ElementsMatch(t, []string{"gmail_work", "gmail_personal", "google_calendar"}, enabledSources)
+	assert.ElementsMatch(t, []string{"gmail_work", "gmail_personal", "google_calendar_calendar"}, enabledSources)
 
 	// 2. Test output directory calculation for each source
 	expectedOutputDirs := map[string]string{
-		"gmail_work":      filepath.Join(tempDir, "work"),
-		"gmail_personal":  filepath.Join(tempDir, "personal"),
-		"google_calendar": filepath.Join(tempDir, "calendar"),
+		"gmail_work":               filepath.Join(tempDir, "work"),
+		"gmail_personal":           filepath.Join(tempDir, "personal"),
+		"google_calendar_calendar": filepath.Join(tempDir, "calendar"),
 	}
 
 	for _, sourceID := range enabledSources {
@@ -429,9 +429,9 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 
 	// 3. Test target assignment for each source
 	expectedTargets := map[string]string{
-		"gmail_work":      "obsidian",
-		"gmail_personal":  "logseq",
-		"google_calendar": "obsidian", // Uses default target
+		"gmail_work":               "obsidian",
+		"gmail_personal":           "logseq",
+		"google_calendar_calendar": "obsidian", // Uses default target
 	}
 
 	for _, sourceID := range enabledSources {
@@ -458,7 +458,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 
 		// Test that the source factory can create the appropriate source type
 		switch sourceConfig.Type {
-		case "gmail", "google":
+		case "gmail", "google_calendar":
 			// Test that we can create a source with the correct configuration
 			// Note: We can't actually create the source without proper auth setup
 			assert.Equal(t, sourceConfig.Type, sourceConfig.Type, "Source type should match config")

@@ -39,7 +39,7 @@ func NewGoogleSourceWithConfig(sourceID string, config models.SourceConfig) *Goo
 }
 
 func (g *GoogleSource) Name() string {
-	return SourceTypeGoogle
+	return "google_calendar"
 }
 
 func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Client) error {

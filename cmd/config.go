@@ -61,6 +61,21 @@ var configEditCmd = &cobra.Command{
 	RunE:  runConfigEditCommand,
 }
 
+func init() {
+	rootCmd.AddCommand(configCmd)
+
+	configCmd.AddCommand(configInitCmd)
+	configCmd.AddCommand(configShowCmd)
+	configCmd.AddCommand(configPathCmd)
+	configCmd.AddCommand(configValidateCmd)
+	configCmd.AddCommand(configEditCmd)
+
+	// Flags for config init
+	configInitCmd.Flags().BoolP("force", "f", false, "Overwrite existing config file")
+	configInitCmd.Flags().StringP("output", "o", "", "Output directory for default target")
+	configInitCmd.Flags().String("target", "", "Default target (obsidian, logseq)")
+	configInitCmd.Flags().String("source", "", "Default source (google_calendar)")
+}
 func runConfigInitCommand(cmd *cobra.Command, args []string) error {
 	force, _ := cmd.Flags().GetBool("force")
 	output, _ := cmd.Flags().GetString("output")

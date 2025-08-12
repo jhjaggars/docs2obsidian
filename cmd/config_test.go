@@ -12,12 +12,12 @@ import (
 func TestGetEnabledSourcesForValidation_ExplicitList(t *testing.T) {
 	cfg := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources: []string{"google", "slack"},
+			EnabledSources: []string{"google_calendar", "slack"},
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			"slack": {
 				Enabled: true,
@@ -33,8 +33,8 @@ func TestGetEnabledSourcesForValidation_ExplicitList(t *testing.T) {
 	}
 
 	expectedSources := map[string]bool{
-		"google": false,
-		"slack":  false,
+		"google_calendar": false,
+		"slack":           false,
 	}
 
 	for _, source := range enabledSources {
@@ -58,9 +58,9 @@ func TestGetEnabledSourcesForValidation_FallbackToEnabled(t *testing.T) {
 			EnabledSources: []string{}, // Empty, should fallback
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			"slack": {
 				Enabled: false,
@@ -84,8 +84,8 @@ func TestGetEnabledSourcesForValidation_FallbackToEnabled(t *testing.T) {
 		enabledMap[source] = true
 	}
 
-	if !enabledMap["google"] {
-		t.Error("Expected google to be enabled")
+	if !enabledMap["google_calendar"] {
+		t.Error("Expected google_calendar to be enabled")
 	}
 
 	if !enabledMap["gmail"] {
@@ -162,14 +162,14 @@ func createTempConfig(t *testing.T, content string) (string, func()) {
 
 func TestConfigValidation_ValidConfig(t *testing.T) {
 	validConfig := `sync:
-  enabled_sources: ["google"]
+  enabled_sources: ["google_calendar"]
   default_target: obsidian
   default_output_dir: ./vault
 
 sources:
-  google:
+  google_calendar:
     enabled: true
-    type: google
+    type: google_calendar
 
 targets:
   obsidian:
@@ -212,13 +212,13 @@ func TestConfigValidation_InvalidConfig_NoTarget(t *testing.T) {
 	// Test that we can detect configs with missing required fields
 	cfg := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources: []string{"google"},
+			EnabledSources: []string{"google_calendar"},
 			DefaultTarget:  "", // Empty target - invalid
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 		},
 	}
@@ -238,13 +238,13 @@ func TestConfigValidation_InvalidConfig_TargetNotExists(t *testing.T) {
 	// Test config with target that doesn't exist
 	cfg := &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources: []string{"google"},
+			EnabledSources: []string{"google_calendar"},
 			DefaultTarget:  "nonexistent",
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 		},
 		Targets: map[string]models.TargetConfig{
@@ -273,9 +273,9 @@ func TestConfigValidation_InvalidConfig_NoEnabledSources(t *testing.T) {
 			DefaultTarget:  "obsidian",
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: false, // Disabled
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 		},
 		Targets: map[string]models.TargetConfig{
@@ -293,13 +293,13 @@ func TestConfigValidation_InvalidConfig_NoEnabledSources(t *testing.T) {
 
 func TestConfigValidation_SourceInEnabledButDisabled(t *testing.T) {
 	invalidConfig := `sync:
-  enabled_sources: ["google", "slack"]
+  enabled_sources: ["google_calendar", "slack"]
   default_target: obsidian
 
 sources:
-  google:
+  google_calendar:
     enabled: true
-    type: google
+    type: google_calendar
   slack:
     enabled: false  # Listed in enabled_sources but disabled
     type: slack
@@ -317,10 +317,10 @@ targets:
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Check that only google is actually enabled
+	// Check that only google_calendar is actually enabled
 	enabledSources := getEnabledSourcesForValidation(cfg)
-	if len(enabledSources) != 1 || enabledSources[0] != "google" {
-		t.Errorf("Expected only google to be enabled, got %v", enabledSources)
+	if len(enabledSources) != 1 || enabledSources[0] != "google_calendar" {
+		t.Errorf("Expected only google_calendar to be enabled, got %v", enabledSources)
 	}
 
 	// Check that slack is listed but disabled
