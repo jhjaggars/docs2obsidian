@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Allow only one concurrent run of this workflow for a given branch or PR.
+# This prevents wasting resources on outdated commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A single, consolidated job for linting, testing, and building.
+  ci:
+    name: Lint, Test, and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Use the go version from your go.mod file for consistency.
+          go-version-file: 'go.mod'
+          # Enable caching for Go build dependencies.
+          cache: true
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # This action automatically caches linters, making subsequent runs faster.
+          version: v1.60.3
+          args: --timeout=5m
+
+      - name: Run unit tests
+        # The -race flag is critical for finding concurrency issues in Go.
+        run: go test -v -race ./...
+
+      - name: Check that the project builds
+        # This command checks for compilation errors without creating an unnecessary artifact.
+        run: go build -v ./...
+
