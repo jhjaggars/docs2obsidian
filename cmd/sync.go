@@ -41,6 +41,17 @@ Examples:
 	RunE: runGmailCommand,
 }
 
+func init() {
+	rootCmd.AddCommand(gmailCmd)
+	gmailCmd.Flags().StringVar(&gmailSourceName, "source", "", "Gmail source (gmail_work, gmail_personal, etc.)")
+	gmailCmd.Flags().StringVar(&gmailTargetName, "target", "", "PKM target (obsidian, logseq)")
+	gmailCmd.Flags().StringVarP(&gmailOutputDir, "output", "o", "", "Output directory")
+	gmailCmd.Flags().StringVar(&gmailSince, "since", "", "Sync emails since (7d, 2006-01-02, today)")
+	gmailCmd.Flags().BoolVar(&gmailDryRun, "dry-run", false, "Show what would be synced without making changes")
+	gmailCmd.Flags().IntVar(&gmailLimit, "limit", 1000, "Maximum number of emails to fetch (default: 1000)")
+	gmailCmd.Flags().StringVar(&gmailOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
+}
+
 func runGmailCommand(cmd *cobra.Command, args []string) error {
 	// Load configuration
 	cfg, err := config.LoadConfig()
@@ -210,7 +221,7 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 
 func createSource(name string, client *http.Client) (interfaces.Source, error) {
 	switch name {
-	case "google":
+	case "google_calendar":
 		source := google.NewGoogleSource()
 		if err := source.Configure(nil, client); err != nil {
 			return nil, err
@@ -218,13 +229,13 @@ func createSource(name string, client *http.Client) (interfaces.Source, error) {
 
 		return source, nil
 	default:
-		return nil, fmt.Errorf("unknown source '%s': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)", name)
+		return nil, fmt.Errorf("unknown source '%s': supported sources are 'google_calendar' (others like slack, gmail, jira are planned for future releases)", name)
 	}
 }
 
 func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig, client *http.Client) (interfaces.Source, error) {
 	switch sourceConfig.Type {
-	case "google":
+	case "google_calendar":
 		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
 		if err := source.Configure(nil, client); err != nil {
 			return nil, err
@@ -239,7 +250,7 @@ func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig, c
 
 		return source, nil
 	default:
-		return nil, fmt.Errorf("unknown source type '%s': supported types are 'google', 'gmail' (others like slack, jira are planned for future releases)", sourceConfig.Type)
+		return nil, fmt.Errorf("unknown source type '%s': supported types are 'google_calendar', 'gmail' (others like slack, jira are planned for future releases)", sourceConfig.Type)
 	}
 }
 

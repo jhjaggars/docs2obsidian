@@ -59,7 +59,7 @@ func SaveConfig(cfg *models.Config) error {
 func GetDefaultConfig() *models.Config {
 	return &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources:   []string{"google"},
+			EnabledSources:   []string{"google_calendar"},
 			DefaultTarget:    "obsidian",
 			DefaultOutputDir: "./output",
 			DefaultSince:     "7d",
@@ -67,9 +67,9 @@ func GetDefaultConfig() *models.Config {
 			SourceSchedules:  make(map[string]string),
 		},
 		Sources: map[string]models.SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 				Google: models.GoogleSourceConfig{
 					CalendarID:        "primary",
 					DownloadDocs:      true,
@@ -255,9 +255,9 @@ func validateSourceConfig(_ string, config models.SourceConfig) error {
 
 	// Validate type-specific configurations
 	switch config.Type {
-	case "google":
+	case "google_calendar":
 		if config.Google.CalendarID == "" {
-			return fmt.Errorf("calendar_id is required for google sources")
+			return fmt.Errorf("calendar_id is required for google_calendar sources")
 		}
 	case "gmail":
 		if config.Gmail.Name == "" {

@@ -109,14 +109,14 @@ func TestMultiInstanceGmailConfiguration(t *testing.T) {
 			name: "mixed Google and Gmail sources",
 			config: &models.Config{
 				Sync: models.SyncConfig{
-					EnabledSources:   []string{"google_calendar", "gmail_work"},
+					EnabledSources:   []string{"google_calendar_calendar", "gmail_work"},
 					DefaultTarget:    "logseq",
 					DefaultOutputDir: "/tmp/test-output",
 				},
 				Sources: map[string]models.SourceConfig{
-					"google_calendar": {
+					"google_calendar_calendar": {
 						Enabled: true,
-						Type:    "google",
+						Type:    "google_calendar",
 						Name:    "Google Calendar",
 						Since:   "7d",
 						Google: models.GoogleSourceConfig{
@@ -153,7 +153,7 @@ func TestMultiInstanceGmailConfiguration(t *testing.T) {
 					},
 				},
 			},
-			expectedSources: []string{"google_calendar", "gmail_work"},
+			expectedSources: []string{"google_calendar_calendar", "gmail_work"},
 			expectError:     false,
 		},
 		{
@@ -278,16 +278,16 @@ func TestCreateSourceWithConfig(t *testing.T) {
 		},
 		{
 			name:     "create Google Calendar source",
-			sourceID: "google_cal",
+			sourceID: "google_calendar_cal",
 			sourceConfig: models.SourceConfig{
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 				Google: models.GoogleSourceConfig{
 					CalendarID: "primary",
 				},
 			},
 			expectError:  false,
-			expectedType: "google",
+			expectedType: "google_calendar",
 		},
 		{
 			name:     "unknown source type",

@@ -184,16 +184,20 @@ sources:
 git clone <repository-url>
 cd pkm-sync
 
-# Install Git hooks for development
+# REQUIRED: Install Git hooks for development
 ./scripts/install-hooks.sh
 ```
+
+**⚠️ Important:** The pre-commit hook installation is **required** for all contributors. It ensures code quality by running comprehensive checks (formatting, linting, testing, building) before each commit. Commits will be blocked if quality checks fail.
 
 ### Git Hooks
 The repository includes development Git hooks to maintain code quality:
 
-- **pre-commit**: Automatically runs `go fmt` on staged Go files before each commit
-- Ensures consistent code formatting across all contributions
-- Prevents commits with incorrectly formatted Go code
+- **pre-commit**: Comprehensive code quality enforcement before each commit
+- Automatically runs `go fmt` on staged Go files
+- Executes full CI pipeline (`make ci`) including linting, testing, and building
+- Prevents commits if any quality checks fail
+- Provides helpful diagnostic commands when failures occur
 
 To install hooks after cloning:
 ```bash
@@ -201,10 +205,15 @@ To install hooks after cloning:
 ```
 
 The pre-commit hook will:
-1. Detect staged Go files (`.go` extension)
-2. Run `go fmt` on each staged file
-3. Re-add formatted files to the staging area
-4. Allow the commit to proceed
+1. Format any staged Go files with `go fmt`
+2. Run the complete CI pipeline (`make ci`):
+   - **Lint**: Execute `golangci-lint` with comprehensive rules
+   - **Test**: Run all unit tests with race detection
+   - **Build**: Verify the project compiles successfully
+3. Block the commit if any step fails
+4. Provide clear feedback and diagnostic suggestions
+
+**Without pre-commit hooks:** Pull requests may fail CI checks, requiring additional commits to fix formatting and quality issues. Installing hooks prevents this by catching issues locally before they're pushed.
 
 ### Testing
 ```bash

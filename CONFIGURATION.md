@@ -79,11 +79,11 @@ sources:
       name: "Personal Emails"
       labels: ["STARRED"]
       
-  google:
+  google_calendar:
     enabled: true
-    type: google
+    type: google_calendar
     priority: 3
-    google:
+    google_calendar:
       calendar_id: primary
       include_declined: false
       download_docs: true
@@ -130,7 +130,7 @@ targets:
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `enabled` | boolean | `true` (gmail), `false` (others) | Enable this source |
-| `type` | string | varies | Source type (gmail, google, slack, jira) |
+| `type` | string | varies | Source type (gmail, google_calendar, slack, jira) |
 | `priority` | integer | varies by source | Sync order priority (1=highest) |
 | `sync_interval` | duration | inherited | Override global sync interval |
 | `since` | string | inherited | Override global since parameter |
@@ -175,7 +175,7 @@ Gmail integration supports multiple instances (e.g., `gmail_work`, `gmail_person
 | `group_by_thread` | boolean | `false` | One file per thread |
 | `tagging_rules` | array | `[]` | Custom tagging rules |
 
-### Google Calendar & Drive Source Settings (`sources.google.google:`)
+### Google Calendar & Drive Source Settings (`sources.google.google_calendar:`)
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
@@ -197,7 +197,7 @@ Enhanced source settings support per-instance customization:
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `enabled` | boolean | varies | Enable this source |
-| `type` | string | varies | Source type (google, gmail, slack, jira) |
+| `type` | string | varies | Source type (google_calendar, gmail, slack, jira) |
 | `name` | string | `""` | Human-readable instance name |
 | `output_subdir` | string | `""` | Custom subdirectory for this source |
 | `output_target` | string | `""` | Override default target for this source |

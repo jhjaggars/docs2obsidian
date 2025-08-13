@@ -53,6 +53,12 @@ Commands:
 	},
 }
 
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&credentialsPath, "credentials", "c", "", "Path to credentials.json file")
+	rootCmd.PersistentFlags().StringVar(&configDir, "config-dir", "", "Custom configuration directory")
+	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "Enable debug logging")
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

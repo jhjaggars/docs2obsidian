@@ -12,7 +12,7 @@ func TestConfigSerialization_YAML(t *testing.T) {
 	// Create a test config
 	config := &Config{
 		Sync: SyncConfig{
-			EnabledSources:   []string{"google", "slack"},
+			EnabledSources:   []string{"google_calendar", "slack"},
 			DefaultTarget:    "obsidian",
 			DefaultSince:     "7d",
 			DefaultOutputDir: "./exported",
@@ -22,9 +22,9 @@ func TestConfigSerialization_YAML(t *testing.T) {
 			SyncInterval:     time.Hour * 24,
 		},
 		Sources: map[string]SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled:  true,
-				Type:     "google",
+				Type:     "google_calendar",
 				Priority: 1,
 				Google: GoogleSourceConfig{
 					CalendarID:      "primary",
@@ -86,13 +86,13 @@ func TestConfigSerialization_YAML(t *testing.T) {
 		t.Errorf("Expected default target obsidian, got %s", deserializedConfig.Sync.DefaultTarget)
 	}
 
-	googleSource, exists := deserializedConfig.Sources["google"]
+	google_calendarSource, exists := deserializedConfig.Sources["google_calendar"]
 	if !exists {
-		t.Fatal("Expected google source to exist")
+		t.Fatal("Expected google_calendar source to exist")
 	}
 
-	if googleSource.Google.CalendarID != "primary" {
-		t.Errorf("Expected calendar ID primary, got %s", googleSource.Google.CalendarID)
+	if google_calendarSource.Google.CalendarID != "primary" {
+		t.Errorf("Expected calendar ID primary, got %s", google_calendarSource.Google.CalendarID)
 	}
 
 	obsidianTarget, exists := deserializedConfig.Targets["obsidian"]
@@ -109,13 +109,13 @@ func TestConfigSerialization_JSON(t *testing.T) {
 	// Create a minimal test config
 	config := &Config{
 		Sync: SyncConfig{
-			EnabledSources: []string{"google"},
+			EnabledSources: []string{"google_calendar"},
 			DefaultTarget:  "obsidian",
 		},
 		Sources: map[string]SourceConfig{
-			"google": {
+			"google_calendar": {
 				Enabled: true,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 		},
 		Targets: map[string]TargetConfig{
@@ -181,10 +181,10 @@ func TestSourceConfigValidation(t *testing.T) {
 		valid  bool
 	}{
 		{
-			name: "valid google source",
+			name: "valid google_calendar source",
 			config: SourceConfig{
 				Enabled:  true,
-				Type:     "google",
+				Type:     "google_calendar",
 				Priority: 1,
 				Google: GoogleSourceConfig{
 					CalendarID: "primary",
@@ -196,7 +196,7 @@ func TestSourceConfigValidation(t *testing.T) {
 			name: "disabled source",
 			config: SourceConfig{
 				Enabled: false,
-				Type:    "google",
+				Type:    "google_calendar",
 			},
 			valid: true, // Disabled sources are valid
 		},

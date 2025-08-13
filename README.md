@@ -129,7 +129,7 @@ pkm-sync config show    # Verify settings
 # OR: Local repository configuration (project-specific)
 cat > config.yaml << EOF
 sync:
-  enabled_sources: ["google"]
+  enabled_sources: ["google_calendar"]
   default_target: obsidian
   default_output_dir: ./vault
 targets:
@@ -216,14 +216,14 @@ pkm-sync looks for configuration files in this order:
 ### Example Configuration
 ```yaml
 sync:
-  enabled_sources: ["google"]
+  enabled_sources: ["google_calendar"]
   default_target: obsidian
   default_output_dir: ./vault
 
 sources:
-  google:
+  google_calendar:
     enabled: true
-    type: google
+    type: google_calendar
     google:
       calendar_id: primary
       download_docs: true

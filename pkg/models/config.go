@@ -22,7 +22,7 @@ type Config struct {
 
 type SyncConfig struct {
 	// Multi-source configuration
-	EnabledSources []string `json:"enabled_sources" yaml:"enabled_sources"` // ["google", "slack", "gmail"]
+	EnabledSources []string `json:"enabled_sources" yaml:"enabled_sources"` // ["google_calendar", "slack", "gmail"]
 	DefaultTarget  string   `json:"default_target"  yaml:"default_target"`
 
 	// Default time range for syncing
@@ -32,7 +32,7 @@ type SyncConfig struct {
 	DefaultOutputDir string `json:"default_output_dir" yaml:"default_output_dir"`
 
 	// Source-specific scheduling
-	SourceSchedules map[string]string `json:"source_schedules" yaml:"source_schedules"` // "google": "1h", "slack": "30m"
+	SourceSchedules map[string]string `json:"source_schedules" yaml:"source_schedules"` // e.g. "google_calendar": "1h"
 
 	// Global sync settings
 	AutoSync     bool          `json:"auto_sync"     yaml:"auto_sync"`

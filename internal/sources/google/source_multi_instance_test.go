@@ -55,7 +55,7 @@ func TestNewGoogleSourceWithConfig(t *testing.T) {
 			name:     "Google Calendar source configuration",
 			sourceID: "google_cal",
 			config: models.SourceConfig{
-				Type:     "google",
+				Type:     "google_calendar",
 				Name:     "Primary Calendar",
 				Priority: 2,
 				Since:    "7d",
@@ -70,7 +70,7 @@ func TestNewGoogleSourceWithConfig(t *testing.T) {
 			expected: &GoogleSource{
 				sourceID: "google_cal",
 				config: models.SourceConfig{
-					Type:     "google",
+					Type:     "google_calendar",
 					Name:     "Primary Calendar",
 					Priority: 2,
 					Since:    "7d",
@@ -106,7 +106,7 @@ func TestNewGoogleSourceWithConfig(t *testing.T) {
 				assert.Equal(t, tt.expected.config.Gmail.MaxEmailAge, source.config.Gmail.MaxEmailAge)
 				assert.Equal(t, tt.expected.config.Gmail.ExtractRecipients, source.config.Gmail.ExtractRecipients)
 				assert.Equal(t, tt.expected.config.Gmail.ProcessHTMLContent, source.config.Gmail.ProcessHTMLContent)
-			case "google":
+			case "google_calendar":
 				assert.Equal(t, tt.expected.config.Google.CalendarID, source.config.Google.CalendarID)
 				assert.Equal(t, tt.expected.config.Google.IncludeDeclined, source.config.Google.IncludeDeclined)
 				assert.Equal(t, tt.expected.config.Google.IncludePrivate, source.config.Google.IncludePrivate)
@@ -125,22 +125,22 @@ func TestGoogleSourceName(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "Gmail source should return 'google' as name",
+			name:     "Gmail source should return 'google_calendar' as name",
 			sourceID: "gmail_work",
 			config: models.SourceConfig{
 				Type: "gmail",
 				Name: "Work Emails",
 			},
-			expected: "google",
+			expected: "google_calendar",
 		},
 		{
-			name:     "Google Calendar source should return 'google' as name",
+			name:     "Google Calendar source should return 'google_calendar' as name",
 			sourceID: "google_cal",
 			config: models.SourceConfig{
-				Type: "google",
+				Type: "google_calendar",
 				Name: "Primary Calendar",
 			},
-			expected: "google",
+			expected: "google_calendar",
 		},
 	}
 
@@ -239,7 +239,7 @@ func TestMultipleGmailInstances(t *testing.T) {
 func TestMixedGoogleSources(t *testing.T) {
 	// Test that we can mix Gmail and Google Calendar sources
 	calendarConfig := models.SourceConfig{
-		Type:         "google",
+		Type:         "google_calendar",
 		Name:         "Primary Calendar",
 		OutputSubdir: "calendar",
 		Priority:     1,
@@ -281,7 +281,7 @@ func TestMixedGoogleSources(t *testing.T) {
 	gmailSource := NewGoogleSourceWithConfig("gmail_work", gmailConfig)
 
 	// Verify they are configured correctly
-	assert.Equal(t, "google", calendarSource.config.Type)
+	assert.Equal(t, "google_calendar", calendarSource.config.Type)
 	assert.Equal(t, "gmail", gmailSource.config.Type)
 
 	assert.Equal(t, "Primary Calendar", calendarSource.config.Name)
@@ -330,7 +330,7 @@ func TestSourceConfigValidation(t *testing.T) {
 		{
 			name: "valid Google Calendar configuration",
 			config: models.SourceConfig{
-				Type:     "google",
+				Type:     "google_calendar",
 				Name:     "Test Calendar",
 				Enabled:  true,
 				Priority: 1,
@@ -386,7 +386,7 @@ func TestSourceConfigValidation(t *testing.T) {
 				switch tt.config.Type {
 				case "gmail":
 					assert.NotEmpty(t, tt.config.Gmail.Name, "Gmail config should have name")
-				case "google":
+				case "google_calendar":
 					assert.NotEmpty(t, tt.config.Google.CalendarID, "Google config should have calendar ID")
 				}
 			}
