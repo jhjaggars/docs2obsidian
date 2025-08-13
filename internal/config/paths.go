@@ -31,6 +31,7 @@ func GetConfigDir() (string, error) {
 	}
 
 	var configDir string
+
 	switch runtime.GOOS {
 	case "windows":
 		configDir = filepath.Join(homeDir, "AppData", "Roaming", "pkm-sync")
@@ -74,6 +75,7 @@ func FindCredentialsFile() (string, error) {
 		if _, err := os.Stat(customCredentialsPath); err == nil {
 			return customCredentialsPath, nil
 		}
+
 		return "", fmt.Errorf("custom credentials file not found: %s", customCredentialsPath)
 	}
 

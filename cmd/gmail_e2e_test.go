@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"pkm-sync/internal/sources/google/gmail"
 	"pkm-sync/pkg/models"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGmailEndToEndSyncWorkflow(t *testing.T) {
@@ -22,6 +22,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 	// Create temporary directory for test outputs
 	tempDir, err := os.MkdirTemp("", "gmail-e2e-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
@@ -159,6 +160,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 					// If we can't create the source (likely due to missing auth),
 					// that's OK for this test - we're testing the workflow
 					t.Logf("Could not create source %s (likely missing auth): %v", sourceID, err)
+
 					continue
 				}
 
@@ -173,6 +175,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 				target, err := createTargetWithConfig(targetName, tt.config)
 				if err != nil {
 					t.Logf("Could not create target %s: %v", targetName, err)
+
 					continue
 				}
 
@@ -197,6 +200,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 func TestGmailErrorHandlingInE2EWorkflow(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "gmail-e2e-error-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test configuration with various error scenarios
@@ -314,6 +318,7 @@ func TestGmailServiceConfigurationValidation(t *testing.T) {
 
 			if tt.expectError {
 				assert.Error(t, err, "Expected error for invalid configuration")
+
 				if tt.errorMsg != "" {
 					assert.Contains(t, err.Error(), tt.errorMsg, "Error message should contain expected text")
 				}
@@ -334,6 +339,7 @@ func TestGmailQueryBuildingInE2EContext(t *testing.T) {
 func TestGmailSyncWithMockData(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "gmail-mock-sync-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create a simple configuration for mock testing

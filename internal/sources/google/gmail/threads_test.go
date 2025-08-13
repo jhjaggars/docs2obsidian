@@ -66,9 +66,11 @@ func TestThreadProcessor_ProcessThreads_ConsolidatedMode(t *testing.T) {
 
 	// Check that thread items are consolidated
 	var threadItem *models.Item
+
 	for _, item := range result {
 		if item.ItemType == "email_thread" {
 			threadItem = item
+
 			break
 		}
 	}
@@ -79,6 +81,7 @@ func TestThreadProcessor_ProcessThreads_ConsolidatedMode(t *testing.T) {
 		if !strings.Contains(threadItem.Title, "Thread_") {
 			t.Errorf("Expected thread title to contain 'Thread_', got %s", threadItem.Title)
 		}
+
 		if !strings.Contains(threadItem.Content, "Thread: Subject 1") {
 			t.Error("Expected consolidated content to contain thread subject")
 		}
@@ -111,9 +114,11 @@ func TestThreadProcessor_ProcessThreads_SummaryMode(t *testing.T) {
 
 	// Check that thread summary is created
 	var summaryItem *models.Item
+
 	for _, item := range result {
 		if item.ItemType == "email_thread_summary" {
 			summaryItem = item
+
 			break
 		}
 	}
@@ -124,6 +129,7 @@ func TestThreadProcessor_ProcessThreads_SummaryMode(t *testing.T) {
 		if !strings.Contains(summaryItem.Title, "Thread-Summary_") {
 			t.Errorf("Expected summary title to contain 'Thread-Summary_', got %s", summaryItem.Title)
 		}
+
 		if !strings.Contains(summaryItem.Content, "**Showing:** 2 key messages") {
 			t.Error("Expected summary to show configured number of messages")
 		}
@@ -243,6 +249,7 @@ func TestThreadProcessor_ProcessThreads_NilSafety(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ProcessThreads should handle nil items: %v", err)
 	}
+
 	if len(result) != 0 {
 		t.Errorf("Expected empty result for nil items, got %d", len(result))
 	}
@@ -338,6 +345,7 @@ func TestThreadProcessor_EmptySubjectHandling(t *testing.T) {
 		if threadTitles[item.Title] {
 			t.Errorf("Found duplicate thread title: %s", item.Title)
 		}
+
 		threadTitles[item.Title] = true
 
 		// Thread titles should contain the thread ID for empty subjects
@@ -475,9 +483,11 @@ func TestThreadProcessor_UpdateParticipants(t *testing.T) {
 			}
 
 			found := false
+
 			for _, participant := range group.Participants {
 				if participant == tt.expectedContains {
 					found = true
+
 					break
 				}
 			}
@@ -499,6 +509,7 @@ func TestThreadProcessor_BuildThreadMetadata_NilSafety(t *testing.T) {
 	if metadata == nil {
 		t.Error("buildThreadMetadata should not return nil map")
 	}
+
 	if len(metadata) != 0 {
 		t.Errorf("buildThreadMetadata with nil group should return empty map, got %d items", len(metadata))
 	}
@@ -543,11 +554,13 @@ func TestThreadProcessor_Concurrency(t *testing.T) {
 
 	// Process multiple times to ensure consistency
 	var results [][]*models.Item
+
 	for i := 0; i < 10; i++ {
 		result, err := processor.ProcessThreads(items)
 		if err != nil {
 			t.Fatalf("ProcessThreads failed on iteration %d: %v", i, err)
 		}
+
 		results = append(results, result)
 	}
 

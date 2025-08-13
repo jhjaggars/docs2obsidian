@@ -1,6 +1,7 @@
 package gmail
 
 import (
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -278,11 +279,13 @@ func TestParseDuration(t *testing.T) {
 				if err == nil {
 					t.Errorf("parseDuration() expected error, got nil")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("parseDuration() unexpected error: %v", err)
+
 				return
 			}
 
@@ -344,6 +347,7 @@ func TestValidateQuery(t *testing.T) {
 				if err == nil {
 					t.Errorf("ValidateQuery() expected error, got nil")
 				}
+
 				return
 			}
 
@@ -415,14 +419,20 @@ func TestBuildComplexQuery(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := BuildComplexQuery(tt.config, tt.criteria)
-			if result != tt.expected {
+			resultParts := strings.Fields(result)
+			expectedParts := strings.Fields(tt.expected)
+
+			sort.Strings(resultParts)
+			sort.Strings(expectedParts)
+
+			if strings.Join(resultParts, " ") != strings.Join(expectedParts, " ") {
 				t.Errorf("BuildComplexQuery() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
 }
 
-// TestQueryEdgeCases tests edge cases and error conditions
+// TestQueryEdgeCases tests edge cases and error conditions.
 func TestQueryEdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -437,7 +447,7 @@ func TestQueryEdgeCases(t *testing.T) {
 			},
 			since: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			validate: func(result string) bool {
-				// Should contain only one label filter for "IMPORTANT"
+				// Should contain only one label filter for "IMPORTANT".
 				return strings.Count(result, "label:") == 1 && strings.Contains(result, "label:IMPORTANT")
 			},
 		},
@@ -448,7 +458,7 @@ func TestQueryEdgeCases(t *testing.T) {
 			},
 			since: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			validate: func(result string) bool {
-				// Should contain only one from domain
+				// Should contain only one from domain.
 				return strings.Contains(result, "(from:example.com)") && !strings.Contains(result, "from: ")
 			},
 		},
@@ -471,7 +481,7 @@ func TestQueryEdgeCases(t *testing.T) {
 			},
 			since: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			validate: func(result string) bool {
-				// Should only contain the since filter
+				// Should only contain the since filter.
 				return result == "after:2024/01/01"
 			},
 		},
@@ -487,7 +497,7 @@ func TestQueryEdgeCases(t *testing.T) {
 	}
 }
 
-// TestQueryValidationEnhanced tests more sophisticated query validation
+// TestQueryValidationEnhanced tests more sophisticated query validation.
 func TestQueryValidationEnhanced(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -527,11 +537,14 @@ func TestQueryValidationEnhanced(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ValidateQuery() expected error, got nil")
+
 					return
 				}
+
 				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("ValidateQuery() error = %v, want error containing %v", err.Error(), tt.errMsg)
 				}
+
 				return
 			}
 

@@ -43,6 +43,7 @@ func TestGetEnabledSources_ExplicitList(t *testing.T) {
 		if _, exists := expectedSources[source]; !exists {
 			t.Errorf("Unexpected source in enabled list: %s", source)
 		}
+
 		expectedSources[source] = true
 	}
 
@@ -186,9 +187,11 @@ func TestParseSinceTime_RelativeDays(t *testing.T) {
 			if tc.expected && err != nil {
 				t.Errorf("Expected %s to parse successfully, got error: %v", tc.input, err)
 			}
+
 			if tc.expected && result.IsZero() {
 				t.Errorf("Expected %s to return valid time, got zero time", tc.input)
 			}
+
 			if !tc.expected && err == nil {
 				t.Errorf("Expected %s to fail parsing, but it succeeded", tc.input)
 			}
@@ -212,6 +215,7 @@ func TestParseSinceTime_RelativeHours(t *testing.T) {
 			if tc.expected && err != nil {
 				t.Errorf("Expected %s to parse successfully, got error: %v", tc.input, err)
 			}
+
 			if tc.expected && result.IsZero() {
 				t.Errorf("Expected %s to return valid time, got zero time", tc.input)
 			}
@@ -234,6 +238,7 @@ func TestParseSinceTime_SpecialValues(t *testing.T) {
 			if tc.expected && err != nil {
 				t.Errorf("Expected %s to parse successfully, got error: %v", tc.input, err)
 			}
+
 			if tc.expected && result.IsZero() {
 				t.Errorf("Expected %s to return valid time, got zero time", tc.input)
 			}
@@ -259,9 +264,11 @@ func TestParseSinceTime_AbsoluteDates(t *testing.T) {
 			if tc.expected && err != nil {
 				t.Errorf("Expected %s to parse successfully, got error: %v", tc.input, err)
 			}
+
 			if tc.expected && result.IsZero() {
 				t.Errorf("Expected %s to return valid time, got zero time", tc.input)
 			}
+
 			if !tc.expected && err == nil {
 				t.Errorf("Expected %s to fail parsing, but it succeeded", tc.input)
 			}
@@ -311,9 +318,11 @@ func TestParseSinceTime_EdgeCases(t *testing.T) {
 			if tc.expected && err != nil {
 				t.Errorf("Expected %s to parse successfully (%s), got error: %v", tc.input, tc.desc, err)
 			}
+
 			if tc.expected && result.IsZero() {
 				t.Errorf("Expected %s to return valid time (%s), got zero time", tc.input, tc.desc)
 			}
+
 			if !tc.expected && err == nil {
 				t.Errorf("Expected %s to fail parsing (%s), but it succeeded", tc.input, tc.desc)
 			}
@@ -470,6 +479,7 @@ func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) 
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
+
 			if source == nil {
 				t.Error("Expected non-nil source")
 			}
@@ -530,6 +540,7 @@ func TestCreateSourceWithConfig_GoogleMaxResultsValidation(t *testing.T) {
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
+
 			if source == nil {
 				t.Error("Expected non-nil source")
 			}
@@ -589,6 +600,7 @@ func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
+
 			if source == nil {
 				t.Error("Expected non-nil source")
 			}
@@ -611,6 +623,7 @@ func TestCreateSourceWithConfig_MissingGoogleConfig(t *testing.T) {
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with missing google config: %v", err)
 	}
+
 	if source == nil {
 		t.Error("Expected non-nil source even with missing google config")
 	}
@@ -627,6 +640,7 @@ func TestCreateSourceWithConfig_SourceNotInConfig(t *testing.T) {
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with source not in config: %v", err)
 	}
+
 	if source == nil {
 		t.Error("Expected non-nil source even when not in config")
 	}

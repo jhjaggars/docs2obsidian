@@ -2,15 +2,102 @@ version: "2"
 
 run:
   timeout: 5m
+  go: '1.24'  # Use current Go version
+
+formatters:
+  enable:
+    # - gci
+    - gofmt
+    - goimports
+  settings:
+    # gci:
+    #   sections:
+    #     - standard # Standard library imports
+    #     - default # Other third-party imports
+    #     - blank # Blank line separator
+    #     - dot # Dot imports
+    #     - prefix(pkm-sync) # Your project's packages
+    gofmt:
+      simplify: true # Use gofmt -s
+    goimports:
+      local-prefixes: [pkm-sync]
+  # exclusions: # Exclusions specific to formatters
+  #   generated: lax
+  #   paths:
+  #     - zz_generated\..+\.go$
+  #     # You might need to exclude specific files where auto-formatting causes issues
+  #     # - path/to/problematic/file.go
 
 linters:
-  # This configuration explicitly enables only the linters that are
-  # enabled by default in golangci-lint. This ensures consistent
-  # behavior between local runs and the CI environment.
-  default: none
+  default: fast  # Use the default fast linters
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
+    # Additional linters beyond defaults
+    - misspell
+    - goconst
+    - bodyclose
+    - godot
+    - lll
+    - nestif
+    - nlreturn
+    - prealloc
+    - tagalign
+    - wsl_v5
+  disable:
+    # Temporarily disabled linters (TODO: re-enable and fix issues)
+    - gochecknoinits # Found 1
+    - cyclop      # Cyclomatic complexity (18 issues)
+    - depguard    # Import restrictions (118 issues)
+    - funcorder   # Function ordering (17 issues)
+    - funlen      # Function length (41 issues)
+    - gocognit    # Cognitive complexity (5 issues)
+    - gocyclo     # Cyclomatic complexity (1 issue)
+    - godox       # TODO comments (1 issue)
+    - mnd         # Magic numbers (59 issues)
+    - testpackage # Test package naming (16 issues)
+    - wsl         # Deprecated, replaced by wsl_v5
+  settings:
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable-all: true
+      disable:
+        - shadow
+        - fieldalignment  # Can be noisy
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    unparam:
+      check-exported: false
+  exclusions:
+    paths:
+      - third_party$
+      - vendor$
+    rules:
+      # Exclude some linters from running on tests
+      - path: '_test\.go'
+        linters:
+          - gocyclo
+          - errcheck
+          - gosec
+          - lll
+          - goconst
+
+      # Exclude some linters from running on CLI commands
+      - path: 'cmd/'
+        linters:
+          - lll  # CLI help text can be long
+          - goconst
+
+severity:
+  default: error

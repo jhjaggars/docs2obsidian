@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"google.golang.org/api/gmail/v1"
-
 	"pkm-sync/pkg/models"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 func TestProcessHTMLContent_ComplexScenarios(t *testing.T) {
@@ -405,10 +405,11 @@ func TestProcessEmailBody_IntegrationScenarios(t *testing.T) {
 			msg := createMockGmailMessage(tt.html)
 
 			processor := NewContentProcessor(tt.config)
-			result, err := processor.ProcessEmailBody(msg)
 
+			result, err := processor.ProcessEmailBody(msg)
 			if err != nil {
 				t.Errorf("ProcessEmailBody() error = %v", err)
+
 				return
 			}
 
@@ -424,14 +425,14 @@ func TestProcessEmailBody_IntegrationScenarios(t *testing.T) {
 
 // Helper functions for tests
 
-// normalizeWhitespace normalizes whitespace for test comparisons
+// normalizeWhitespace normalizes whitespace for test comparisons.
 func normalizeWhitespace(s string) string {
 	// Replace multiple consecutive whitespace with single spaces
 	// and trim leading/trailing whitespace
 	return strings.TrimSpace(regexp.MustCompile(`\s+`).ReplaceAllString(s, " "))
 }
 
-// createMockGmailMessage creates a mock Gmail message with HTML content for testing
+// createMockGmailMessage creates a mock Gmail message with HTML content for testing.
 func createMockGmailMessage(htmlContent string) *gmail.Message {
 	// Encode HTML content as base64
 	encodedContent := base64.URLEncoding.EncodeToString([]byte(htmlContent))

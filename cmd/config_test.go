@@ -41,6 +41,7 @@ func TestGetEnabledSourcesForValidation_ExplicitList(t *testing.T) {
 		if _, exists := expectedSources[source]; !exists {
 			t.Errorf("Unexpected source in enabled list: %s", source)
 		}
+
 		expectedSources[source] = true
 	}
 
@@ -100,6 +101,7 @@ func TestGetConfigFilePath_Default(t *testing.T) {
 	// Save original state
 	oldConfigDir := configDir
 	configDir = ""
+
 	defer func() { configDir = oldConfigDir }()
 
 	path, err := getConfigFilePath()
@@ -120,6 +122,7 @@ func TestGetConfigFilePath_Custom(t *testing.T) {
 	// Save original state
 	oldConfigDir := configDir
 	configDir = "/custom/config"
+
 	defer func() { configDir = oldConfigDir }()
 
 	path, err := getConfigFilePath()
@@ -133,7 +136,7 @@ func TestGetConfigFilePath_Custom(t *testing.T) {
 	}
 }
 
-// Test helper function to create a temporary config file
+// Test helper function to create a temporary config file.
 func createTempConfig(t *testing.T, content string) (string, func()) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, config.ConfigFileName)
@@ -150,6 +153,7 @@ func createTempConfig(t *testing.T, content string) (string, func()) {
 
 	cleanup := func() {
 		configDir = oldConfigDir
+
 		config.SetCustomConfigDir("")
 	}
 
@@ -344,12 +348,15 @@ func TestConfigInit_BasicDefaults(t *testing.T) {
 
 	// Add source to enabled sources if not already present
 	found := false
+
 	for _, src := range cfg.Sync.EnabledSources {
 		if src == source {
 			found = true
+
 			break
 		}
 	}
+
 	if !found {
 		cfg.Sync.EnabledSources = append(cfg.Sync.EnabledSources, source)
 	}
@@ -371,12 +378,15 @@ func TestConfigInit_BasicDefaults(t *testing.T) {
 
 	// Check that slack is in enabled sources
 	slackEnabled := false
+
 	for _, src := range cfg.Sync.EnabledSources {
 		if src == source {
 			slackEnabled = true
+
 			break
 		}
 	}
+
 	if !slackEnabled {
 		t.Errorf("Expected %s to be in enabled sources", source)
 	}

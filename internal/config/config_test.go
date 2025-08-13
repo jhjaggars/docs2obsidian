@@ -19,6 +19,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	// This ensures we don't interact with the user's actual config.
 	originalCustomConfigDir := customConfigDir
 	customConfigDir = tempDir
+
 	defer func() { customConfigDir = originalCustomConfigDir }()
 
 	// --- Test SaveConfig ---
@@ -51,6 +52,7 @@ func TestLoadConfig_NoFileError(t *testing.T) {
 	tempDir := t.TempDir()
 	originalCustomConfigDir := customConfigDir
 	customConfigDir = tempDir
+
 	defer func() { customConfigDir = originalCustomConfigDir }()
 
 	// --- Execution & Assertion ---

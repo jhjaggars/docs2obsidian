@@ -32,12 +32,15 @@ func (o *ObsidianTarget) Configure(config map[string]interface{}) error {
 	if vaultPath, ok := config["vault_path"].(string); ok {
 		o.vaultPath = vaultPath
 	}
+
 	if templateDir, ok := config["template_dir"].(string); ok {
 		o.templateDir = templateDir
 	}
+
 	if format, ok := config["daily_notes_format"].(string); ok {
 		o.dailyNotesFormat = format
 	}
+
 	return nil
 }
 
@@ -47,6 +50,7 @@ func (o *ObsidianTarget) Export(items []*models.Item, outputDir string) error {
 			return fmt.Errorf("failed to export item %s: %w", item.ID, err)
 		}
 	}
+
 	return nil
 }
 
@@ -60,6 +64,7 @@ func (o *ObsidianTarget) exportItem(item *models.Item, outputDir string) error {
 	}
 
 	content := o.formatContent(item)
+
 	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
@@ -73,12 +78,15 @@ func (o *ObsidianTarget) formatContent(item *models.Item) string {
 	sb.WriteString(fmt.Sprintf("source: %s\n", item.SourceType))
 	sb.WriteString(fmt.Sprintf("type: %s\n", item.ItemType))
 	sb.WriteString(fmt.Sprintf("created: %s\n", item.CreatedAt.Format(time.RFC3339)))
+
 	if len(item.Tags) > 0 {
 		sb.WriteString("tags:\n")
+
 		for _, tag := range item.Tags {
 			sb.WriteString(fmt.Sprintf("  - %s\n", tag))
 		}
 	}
+
 	sb.WriteString("---\n\n")
 
 	// Title
@@ -93,15 +101,18 @@ func (o *ObsidianTarget) formatContent(item *models.Item) string {
 	// Attachments
 	if len(item.Attachments) > 0 {
 		sb.WriteString("## Attachments\n\n")
+
 		for _, attachment := range item.Attachments {
 			sb.WriteString(fmt.Sprintf("- [[%s]]\n", attachment.Name))
 		}
+
 		sb.WriteString("\n")
 	}
 
 	// Links
 	if len(item.Links) > 0 {
 		sb.WriteString("## Links\n\n")
+
 		for _, link := range item.Links {
 			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", link.Title, link.URL))
 		}
@@ -113,6 +124,7 @@ func (o *ObsidianTarget) formatContent(item *models.Item) string {
 func (o *ObsidianTarget) FormatFilename(title string) string {
 	// Use centralized sanitization utility
 	filename := utils.SanitizeFilename(title)
+
 	return filename + ".md"
 }
 
@@ -122,6 +134,7 @@ func (o *ObsidianTarget) GetFileExtension() string {
 
 func (o *ObsidianTarget) FormatMetadata(metadata map[string]interface{}) string {
 	var sb strings.Builder
+
 	for key, value := range metadata {
 		if key == "attendees" {
 			sb.WriteString(o.formatAttendees(value))
@@ -129,10 +142,11 @@ func (o *ObsidianTarget) FormatMetadata(metadata map[string]interface{}) string 
 			sb.WriteString(fmt.Sprintf("%s: %v\n", key, value))
 		}
 	}
+
 	return sb.String()
 }
 
-// formatAttendees formats attendees as wikilink arrays for Obsidian
+// formatAttendees formats attendees as wikilink arrays for Obsidian.
 func (o *ObsidianTarget) formatAttendees(attendeesValue interface{}) string {
 	var sb strings.Builder
 
@@ -142,7 +156,9 @@ func (o *ObsidianTarget) formatAttendees(attendeesValue interface{}) string {
 		if len(attendees) == 0 {
 			return ""
 		}
+
 		sb.WriteString("attendees:\n")
+
 		for _, attendee := range attendees {
 			displayName := attendee.GetDisplayName()
 			sb.WriteString(fmt.Sprintf("  - \"[[%s]]\"\n", displayName))
@@ -152,7 +168,9 @@ func (o *ObsidianTarget) formatAttendees(attendeesValue interface{}) string {
 		if len(attendees) == 0 {
 			return ""
 		}
+
 		sb.WriteString("attendees:\n")
+
 		for _, attendee := range attendees {
 			if attendeeMap, ok := attendee.(map[string]interface{}); ok {
 				var displayName string
@@ -163,6 +181,7 @@ func (o *ObsidianTarget) formatAttendees(attendeesValue interface{}) string {
 				} else {
 					displayName = fmt.Sprintf("%v", attendee)
 				}
+
 				sb.WriteString(fmt.Sprintf("  - \"[[%s]]\"\n", displayName))
 			} else {
 				sb.WriteString(fmt.Sprintf("  - \"[[%v]]\"\n", attendee))
@@ -176,15 +195,16 @@ func (o *ObsidianTarget) formatAttendees(attendeesValue interface{}) string {
 	return sb.String()
 }
 
-// Preview generates a preview of what files would be created/modified without actually writing them
+// Preview generates a preview of what files would be created/modified without actually writing them.
 func (o *ObsidianTarget) Preview(items []*models.Item, outputDir string) ([]*interfaces.FilePreview, error) {
-	var previews []*interfaces.FilePreview
+	previews := make([]*interfaces.FilePreview, 0, len(items))
 
 	for _, item := range items {
 		preview, err := o.previewItem(item, outputDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to preview item %s: %w", item.ID, err)
 		}
+
 		previews = append(previews, preview)
 	}
 
@@ -194,33 +214,16 @@ func (o *ObsidianTarget) Preview(items []*models.Item, outputDir string) ([]*int
 func (o *ObsidianTarget) previewItem(item *models.Item, outputDir string) (*interfaces.FilePreview, error) {
 	filename := o.FormatFilename(item.Title)
 	filePath := filepath.Join(outputDir, filename)
-
-	// Generate content that would be written
 	content := o.formatContent(item)
 
-	// Check if file already exists
-	var existingContent string
-	var action string
-	var conflict bool
+	action, existingContent, err := o.determineFileAction(filePath, content)
+	if err != nil {
+		return nil, fmt.Errorf("could not determine action for %s: %w", filePath, err)
+	}
 
-	if _, err := os.Stat(filePath); err == nil {
-		// File exists, read current content
-		if existingData, readErr := os.ReadFile(filePath); readErr == nil {
-			existingContent = string(existingData)
-			if existingContent == content {
-				action = "skip"
-			} else {
-				action = "update"
-				// Check for potential conflicts (basic check)
-				conflict = o.detectConflict(existingContent, content)
-			}
-		} else {
-			action = "update"
-			existingContent = fmt.Sprintf("[Error reading file: %v]", readErr)
-		}
-	} else {
-		// File doesn't exist
-		action = "create"
+	conflict := false
+	if action == "update" {
+		conflict = o.detectConflict(existingContent, content)
 	}
 
 	return &interfaces.FilePreview{
@@ -232,14 +235,31 @@ func (o *ObsidianTarget) previewItem(item *models.Item, outputDir string) (*inte
 	}, nil
 }
 
-// detectConflict performs basic conflict detection
-func (o *ObsidianTarget) detectConflict(existing, new string) bool {
+func (o *ObsidianTarget) determineFileAction(filePath, newContent string) (string, string, error) {
+	existingData, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "create", "", nil // File doesn't exist
+		}
+
+		return "", "", fmt.Errorf("failed to read existing file: %w", err) // Other read error
+	}
+
+	existingContent := string(existingData)
+	if existingContent == newContent {
+		return "skip", existingContent, nil
+	}
+
+	return "update", existingContent, nil
+}
+
+// detectConflict performs basic conflict detection.
+func (o *ObsidianTarget) detectConflict(existing, newContent string) bool {
 	// Simple conflict detection: check if existing file has been manually modified
 	// by looking for content that wouldn't be generated by our sync process
-
 	// If the existing file has different frontmatter structure, it might be manually edited
 	existingLines := strings.Split(existing, "\n")
-	newLines := strings.Split(new, "\n")
+	newLines := strings.Split(newContent, "\n")
 
 	// Check if frontmatter sections are very different
 	existingFrontmatter := extractFrontmatter(existingLines)
@@ -252,11 +272,11 @@ func (o *ObsidianTarget) detectConflict(existing, new string) bool {
 	}
 
 	// Check for manual content additions (content after meeting details that we wouldn't generate)
-	existingContent := extractContent(existingLines)
-	newContent := extractContent(newLines)
+	existingContentAfterFrontmatter := extractContent(existingLines)
+	newContentAfterFrontmatter := extractContent(newLines)
 
 	// If existing content is significantly longer, it might have manual additions
-	if len(existingContent) > len(newContent)+100 {
+	if len(existingContentAfterFrontmatter) > len(newContentAfterFrontmatter)+100 {
 		return true
 	}
 
@@ -265,6 +285,7 @@ func (o *ObsidianTarget) detectConflict(existing, new string) bool {
 
 func extractFrontmatter(lines []string) []string {
 	var frontmatter []string
+
 	inFrontmatter := false
 	frontmatterCount := 0
 
@@ -274,9 +295,12 @@ func extractFrontmatter(lines []string) []string {
 			if frontmatterCount == 2 {
 				break
 			}
+
 			inFrontmatter = true
+
 			continue
 		}
+
 		if inFrontmatter {
 			frontmatter = append(frontmatter, line)
 		}
@@ -287,6 +311,7 @@ func extractFrontmatter(lines []string) []string {
 
 func extractContent(lines []string) string {
 	var content strings.Builder
+
 	inFrontmatter := false
 	frontmatterCount := 0
 
@@ -295,11 +320,15 @@ func extractContent(lines []string) string {
 			frontmatterCount++
 			if frontmatterCount == 2 {
 				inFrontmatter = false
+
 				continue
 			}
+
 			inFrontmatter = true
+
 			continue
 		}
+
 		if !inFrontmatter && frontmatterCount >= 2 {
 			content.WriteString(line + "\n")
 		}

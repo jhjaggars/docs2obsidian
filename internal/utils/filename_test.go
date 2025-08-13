@@ -86,6 +86,7 @@ func TestSanitizeFilename_Security(t *testing.T) {
 			if strings.Contains(result, "..") {
 				t.Errorf("Result still contains path traversal: %q", result)
 			}
+
 			if strings.Contains(result, "/") || strings.Contains(result, "\\") {
 				t.Errorf("Result still contains path separators: %q", result)
 			}
@@ -315,6 +316,7 @@ func TestSanitizeFilename_Consistency(t *testing.T) {
 
 	for _, input := range testCases {
 		first := SanitizeFilename(input)
+
 		for i := 0; i < 10; i++ {
 			result := SanitizeFilename(input)
 			if result != first {

@@ -7,30 +7,31 @@ import (
 	"testing"
 	"time"
 
+	"pkm-sync/pkg/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"pkm-sync/pkg/models"
 )
 
-// BenchmarkGmailMessageConversion tests the performance of converting Gmail messages to Items
+// BenchmarkGmailMessageConversion tests the performance of converting Gmail messages to Items.
 func BenchmarkGmailMessageConversion(b *testing.B) {
 	// This benchmark would test message conversion performance
 	// For now, we'll skip the actual conversion test
 	b.Skip("Skipping Gmail message conversion benchmark - requires mock setup")
 }
 
-// BenchmarkGmailBatchConversion tests the performance of converting multiple messages
+// BenchmarkGmailBatchConversion tests the performance of converting multiple messages.
 func BenchmarkGmailBatchConversion(b *testing.B) {
 	// This benchmark would test batch conversion performance
 	// For now, we'll skip the actual conversion test
 	b.Skip("Skipping Gmail batch conversion benchmark - requires mock setup")
 }
 
-// BenchmarkSyncEngineProcessing tests the performance of the entire sync workflow
+// BenchmarkSyncEngineProcessing tests the performance of the entire sync workflow.
 func BenchmarkSyncEngineProcessing(b *testing.B) {
 	tempDir, err := os.MkdirTemp("", "gmail-perf-test")
 	require.NoError(b, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	config := &models.Config{
@@ -66,6 +67,7 @@ func BenchmarkSyncEngineProcessing(b *testing.B) {
 	sourceConfig := config.Sources["gmail_perf"]
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		// Test various sync workflow components
 		outputDir := getSourceOutputDirectory(config.Sync.DefaultOutputDir, sourceConfig)
@@ -87,6 +89,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 
 	tempDir, err := os.MkdirTemp("", "gmail-large-mailbox-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
@@ -172,6 +175,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 			for batch := 0; batch < batchCount; batch++ {
 				batchStart := batch * tt.batchSize
 				batchEnd := batchStart + tt.batchSize
+
 				if batchEnd > tt.messageCount {
 					batchEnd = tt.messageCount
 				}
@@ -183,6 +187,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 					content := fmt.Sprintf("# Message %d\n\nProcessed message from large mailbox test.\n", i)
 					err := os.WriteFile(filename, []byte(content), 0644)
 					assert.NoError(t, err)
+
 					processedMessages++
 				}
 
@@ -194,6 +199,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 				// Check that we haven't exceeded maximum duration
 				if time.Since(startTime) > tt.maxDuration {
 					t.Logf("Processing took longer than expected: %v > %v", time.Since(startTime), tt.maxDuration)
+
 					break
 				}
 			}
@@ -245,9 +251,9 @@ func TestGmailMemoryUsageOptimization(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This test would ideally measure actual memory usage
 			// For now, we'll test the workflow and ensure it completes successfully
-
 			tempDir, err := os.MkdirTemp("", "gmail-memory-test")
 			require.NoError(t, err)
+
 			defer func() { _ = os.RemoveAll(tempDir) }()
 
 			_ = models.GmailSourceConfig{
@@ -259,11 +265,14 @@ func TestGmailMemoryUsageOptimization(t *testing.T) {
 			}
 
 			// Simulate processing messages in batches to manage memory
+			// In a real scenario, we'd also write to target and then clear memory
+			// This simulates the batch processing approach for memory management
 			batchSize := 50
 			batchCount := (tt.messageCount + batchSize - 1) / batchSize
 
 			for batch := 0; batch < batchCount; batch++ {
 				batchStart := batch * batchSize
+
 				batchEnd := batchStart + batchSize
 				if batchEnd > tt.messageCount {
 					batchEnd = tt.messageCount
@@ -273,8 +282,6 @@ func TestGmailMemoryUsageOptimization(t *testing.T) {
 				for i := batchStart; i < batchEnd; i++ {
 					// Simulate processing without actual Gmail message creation
 					// In a real scenario, this would convert Gmail messages to Items
-
-					// Simulate memory usage for processing
 					_ = fmt.Sprintf("memory-test-%d", i)
 					_ = fmt.Sprintf("Memory Test Subject %d", i)
 					_ = fmt.Sprintf("sender%d@example.com", i)
@@ -282,9 +289,6 @@ func TestGmailMemoryUsageOptimization(t *testing.T) {
 					// Simulate some processing work
 					time.Sleep(time.Microsecond)
 				}
-
-				// In a real scenario, we'd also write to target and then clear memory
-				// This simulates the batch processing approach for memory management
 			}
 
 			t.Logf("Successfully processed %d messages in %d batches", tt.messageCount, batchCount)
@@ -349,5 +353,3 @@ func TestGmailRateLimitingEffectiveness(t *testing.T) {
 func TestGmailErrorRecoveryPerformance(t *testing.T) {
 	t.Skip("Skipping error recovery test - requires better simulation logic")
 }
-
-

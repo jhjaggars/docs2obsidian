@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"pkm-sync/pkg/models"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewGoogleSourceWithConfig(t *testing.T) {

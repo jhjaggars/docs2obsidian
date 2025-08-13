@@ -13,6 +13,7 @@ func TestStartAuthServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	if server.port <= 0 {
@@ -49,6 +50,7 @@ func TestHandleCallback_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	testCode := "test_auth_code_123"
@@ -58,6 +60,7 @@ func TestHandleCallback_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
@@ -79,6 +82,7 @@ func TestHandleCallback_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?error=access_denied", server.port)
@@ -87,6 +91,7 @@ func TestHandleCallback_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
@@ -105,6 +110,7 @@ func TestHandleCallback_MissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?state=%s", server.port, server.getState())
@@ -113,6 +119,7 @@ func TestHandleCallback_MissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
@@ -131,6 +138,7 @@ func TestHandleCallback_InvalidState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	testCode := "test_auth_code_123"
@@ -141,6 +149,7 @@ func TestHandleCallback_InvalidState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
@@ -192,12 +201,14 @@ func TestWaitForCode_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	expectedCode := "test_code_456"
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
+
 		server.authCode <- expectedCode
 	}()
 
@@ -216,6 +227,7 @@ func TestWaitForCode_Timeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	_, err = server.waitForCode(100 * time.Millisecond)
@@ -233,12 +245,14 @@ func TestWaitForCode_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	expectedError := fmt.Errorf("test error")
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
+
 		server.errCh <- expectedError
 	}()
 
@@ -261,6 +275,7 @@ func TestSuccessPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?code=test_code&state=%s", server.port, server.getState())
@@ -269,6 +284,7 @@ func TestSuccessPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.Header.Get("Content-Type") != "text/html" {
@@ -293,6 +309,7 @@ func TestErrorPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
+
 	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?error=access_denied&state=%s", server.port, server.getState())
@@ -301,6 +318,7 @@ func TestErrorPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.Header.Get("Content-Type") != "text/html" {

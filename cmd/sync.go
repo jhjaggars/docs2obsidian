@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"pkm-sync/internal/config"
 	"pkm-sync/internal/sources/google"
 	"pkm-sync/internal/targets/logseq"
 	"pkm-sync/internal/targets/obsidian"
 	"pkm-sync/pkg/interfaces"
 	"pkm-sync/pkg/models"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -39,19 +39,6 @@ Examples:
   pkm-sync gmail --source gmail_personal --target logseq --output ./graph --since 7d
   pkm-sync gmail --source gmail_work --target obsidian --dry-run`,
 	RunE: runGmailCommand,
-}
-
-func init() {
-	rootCmd.AddCommand(gmailCmd)
-
-	// These will be overridden by config defaults in runGmailCommand
-	gmailCmd.Flags().StringVar(&gmailSourceName, "source", "", "Gmail source (gmail_work, gmail_personal, etc.)")
-	gmailCmd.Flags().StringVar(&gmailTargetName, "target", "", "PKM target (obsidian, logseq)")
-	gmailCmd.Flags().StringVarP(&gmailOutputDir, "output", "o", "", "Output directory")
-	gmailCmd.Flags().StringVar(&gmailSince, "since", "", "Sync emails since (7d, 2006-01-02, today)")
-	gmailCmd.Flags().BoolVar(&gmailDryRun, "dry-run", false, "Show what would be synced without making changes")
-	gmailCmd.Flags().IntVar(&gmailLimit, "limit", 1000, "Maximum number of emails to fetch (default: 1000)")
-	gmailCmd.Flags().StringVar(&gmailOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
 }
 
 func runGmailCommand(cmd *cobra.Command, args []string) error {
@@ -116,26 +103,30 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 		sourceConfig, exists := cfg.Sources[srcName]
 		if !exists {
 			fmt.Printf("Warning: Gmail source '%s' not configured, skipping\n", srcName)
+
 			continue
 		}
 
 		if !sourceConfig.Enabled {
 			fmt.Printf("Gmail source '%s' is disabled, skipping\n", srcName)
+
 			continue
 		}
 
 		// Verify this is a Gmail source
 		if sourceConfig.Type != "gmail" {
 			fmt.Printf("Warning: source '%s' is not a Gmail source (type: %s), skipping\n", srcName, sourceConfig.Type)
+
 			continue
 		}
 
 		// Create source with config
-	source, err := createSourceWithConfig(srcName, sourceConfig, nil)
-	if err != nil {
-		fmt.Printf("Warning: failed to create Gmail source '%s': %v, skipping\n", srcName, err)
-		continue
-	}
+		source, err := createSourceWithConfig(srcName, sourceConfig, nil)
+		if err != nil {
+			fmt.Printf("Warning: failed to create Gmail source '%s': %v, skipping\n", srcName, err)
+
+			continue
+		}
 
 		// Use source-specific since time if configured, but CLI flag takes precedence
 		sourceSince := finalSince
@@ -147,15 +138,18 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 		sourceSinceTime, err := parseSinceTime(sourceSince)
 		if err != nil {
 			fmt.Printf("Warning: invalid since time for Gmail source '%s': %v, using default\n", srcName, err)
+
 			sourceSinceTime = sinceTime
 		}
 
 		// Use source-specific max results if configured, otherwise default to 1000
 		maxResults := 1000 // default value
+
 		if sourceConfig.Google.MaxResults > 0 {
 			// Validate max results range
 			if sourceConfig.Google.MaxResults > 2500 {
 				fmt.Printf("Warning: max_results for Gmail source '%s' is %d (maximum allowed: 2500), using 2500\n", srcName, sourceConfig.Google.MaxResults)
+
 				maxResults = 2500
 			} else {
 				maxResults = sourceConfig.Google.MaxResults
@@ -164,9 +158,11 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 
 		// Fetch items from this Gmail source
 		fmt.Printf("Fetching emails from %s...\n", srcName)
+
 		items, err := source.Fetch(sourceSinceTime, maxResults)
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch from Gmail source '%s': %v, skipping\n", srcName, err)
+
 			continue
 		}
 
@@ -208,6 +204,7 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Successfully exported %d emails\n", len(allItems))
+
 	return nil
 }
 
@@ -218,6 +215,7 @@ func createSource(name string, client *http.Client) (interfaces.Source, error) {
 		if err := source.Configure(nil, client); err != nil {
 			return nil, err
 		}
+
 		return source, nil
 	default:
 		return nil, fmt.Errorf("unknown source '%s': supported sources are 'google' (others like slack, gmail, jira are planned for future releases)", name)
@@ -231,12 +229,14 @@ func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig, c
 		if err := source.Configure(nil, client); err != nil {
 			return nil, err
 		}
+
 		return source, nil
 	case "gmail":
 		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
 		if err := source.Configure(nil, client); err != nil {
 			return nil, err
 		}
+
 		return source, nil
 	default:
 		return nil, fmt.Errorf("unknown source type '%s': supported types are 'google', 'gmail' (others like slack, jira are planned for future releases)", sourceConfig.Type)
@@ -250,12 +250,14 @@ func createTarget(name string) (interfaces.Target, error) {
 		if err := target.Configure(nil); err != nil {
 			return nil, err
 		}
+
 		return target, nil
 	case "logseq":
 		target := logseq.NewLogseqTarget()
 		if err := target.Configure(nil); err != nil {
 			return nil, err
 		}
+
 		return target, nil
 	default:
 		return nil, fmt.Errorf("unknown target '%s': supported targets are 'obsidian' and 'logseq'", name)
@@ -277,6 +279,7 @@ func createTargetWithConfig(name string, cfg *models.Config) (interfaces.Target,
 		if err := target.Configure(configMap); err != nil {
 			return nil, err
 		}
+
 		return target, nil
 
 	case "logseq":
@@ -291,6 +294,7 @@ func createTargetWithConfig(name string, cfg *models.Config) (interfaces.Target,
 		if err := target.Configure(configMap); err != nil {
 			return nil, err
 		}
+
 		return target, nil
 
 	default:
@@ -314,6 +318,7 @@ func parseSinceTime(since string) (time.Time, error) {
 		daysStr := strings.TrimSuffix(since, "d")
 		if daysInt, err := strconv.Atoi(daysStr); err == nil && daysInt >= 0 {
 			daysDuration := time.Duration(daysInt) * 24 * time.Hour
+
 			return now.Add(-daysDuration), nil
 		}
 	}
@@ -330,7 +335,7 @@ func parseSinceTime(since string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unable to parse since time '%s': supported formats are 'today', 'yesterday', relative durations (7d, 24h), or absolute dates (2006-01-02)", since)
 }
 
-// getEnabledSources returns list of sources that are enabled in the configuration
+// getEnabledSources returns list of sources that are enabled in the configuration.
 func getEnabledSources(cfg *models.Config) []string {
 	var enabledSources []string
 
@@ -341,6 +346,7 @@ func getEnabledSources(cfg *models.Config) []string {
 				enabledSources = append(enabledSources, srcName)
 			}
 		}
+
 		return enabledSources
 	}
 
@@ -354,7 +360,7 @@ func getEnabledSources(cfg *models.Config) []string {
 	return enabledSources
 }
 
-// getEnabledGmailSources returns list of Gmail sources that are enabled in the configuration
+// getEnabledGmailSources returns list of Gmail sources that are enabled in the configuration.
 func getEnabledGmailSources(cfg *models.Config) []string {
 	var enabledSources []string
 
@@ -365,6 +371,7 @@ func getEnabledGmailSources(cfg *models.Config) []string {
 				enabledSources = append(enabledSources, srcName)
 			}
 		}
+
 		return enabledSources
 	}
 
@@ -378,15 +385,16 @@ func getEnabledGmailSources(cfg *models.Config) []string {
 	return enabledSources
 }
 
-// getSourceOutputDirectory calculates the output directory for a source based on configuration
+// getSourceOutputDirectory calculates the output directory for a source based on configuration.
 func getSourceOutputDirectory(baseOutputDir string, sourceConfig models.SourceConfig) string {
 	if sourceConfig.OutputSubdir != "" {
 		return filepath.Join(baseOutputDir, sourceConfig.OutputSubdir)
 	}
+
 	return baseOutputDir
 }
 
-// DryRunOutput represents the complete output structure for JSON format
+// DryRunOutput represents the complete output structure for JSON format.
 type DryRunOutput struct {
 	Target       string                    `json:"target"`
 	OutputDir    string                    `json:"output_dir"`
@@ -423,10 +431,11 @@ func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, 
 	}
 
 	fmt.Println(string(jsonData))
+
 	return nil
 }
 
-func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
+func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, _ []string) error {
 	fmt.Printf("=== DRY RUN: Preview of sync operation ===\n")
 	fmt.Printf("Target: %s\nOutput directory: %s\nTotal items: %d\n\n", target, outputDir, len(items))
 
@@ -436,15 +445,19 @@ func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePrevie
 	fmt.Printf("  📝 %d files would be created\n", summary.CreateCount)
 	fmt.Printf("  ✏️  %d files would be updated\n", summary.UpdateCount)
 	fmt.Printf("  ⏭️  %d files would be skipped (no changes)\n", summary.SkipCount)
+
 	if summary.ConflictCount > 0 {
 		fmt.Printf("  ⚠️  %d files have potential conflicts\n", summary.ConflictCount)
 	}
+
 	fmt.Printf("\n")
 
 	// Show detailed file operations
 	fmt.Printf("Detailed file operations:\n")
+
 	for _, preview := range previews {
 		var emoji string
+
 		switch preview.Action {
 		case "update":
 			emoji = "✏️"
@@ -453,6 +466,7 @@ func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePrevie
 		default:
 			emoji = "📝"
 		}
+
 		if preview.Conflict {
 			emoji = "⚠️"
 		}
@@ -479,6 +493,7 @@ func calculateSummary(previews []*interfaces.FilePreview) DryRunSummary {
 		case "skip":
 			summary.SkipCount++
 		}
+
 		if preview.Conflict {
 			summary.ConflictCount++
 		}

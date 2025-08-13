@@ -1,8 +1,11 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
-// Item represents a universal data item from any source
+// Item represents a universal data item from any source.
 type Item struct {
 	ID          string                 `json:"id"`
 	Title       string                 `json:"title"`
@@ -34,13 +37,13 @@ type Link struct {
 }
 
 // FromGmailMessage creates an Item from a Gmail message (implemented in converter)
-// This is a placeholder - actual implementation is in internal/sources/google/gmail/converter.go
+// This is a placeholder - actual implementation is in internal/sources/google/gmail/converter.go.
 func FromGmailMessage(msg interface{}, config interface{}) (*Item, error) {
 	// Implementation is in internal/sources/google/gmail/converter.go to avoid import cycles
-	panic("Use gmail.FromGmailMessage instead")
+	return nil, fmt.Errorf("use gmail.FromGmailMessage instead")
 }
 
-// Migrate from existing CalendarEvent model
+// Migrate from existing CalendarEvent model.
 func FromCalendarEvent(event *CalendarEvent) *Item {
 	item := &Item{
 		ID:         event.ID,

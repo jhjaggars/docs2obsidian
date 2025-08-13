@@ -7,11 +7,12 @@ type Attendee struct {
 	DisplayName string
 }
 
-// GetDisplayName returns the display name if available, otherwise returns email
+// GetDisplayName returns the display name if available, otherwise returns email.
 func (a *Attendee) GetDisplayName() string {
 	if a.DisplayName != "" {
 		return a.DisplayName
 	}
+
 	return a.Email
 }
 
@@ -21,6 +22,9 @@ type CalendarEvent struct {
 	Description string
 	Start       time.Time
 	End         time.Time
+	StartTime   time.Time
+	EndTime     time.Time
+	IsAllDay    bool
 	Location    string
 	Attendees   []Attendee
 	MeetingURL  string
