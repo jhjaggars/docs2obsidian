@@ -43,4 +43,7 @@ echo ""
 echo "Available hooks:"
 ls -la "$HOOKS_TARGET" | grep -v "\.sample$" | grep -E "^-.*x.*" | awk '{print "  - " $9}'
 echo ""
-echo "The pre-commit hook will automatically run 'go fmt' on staged Go files."
+echo "The pre-commit hook will automatically:"
+echo "  - Run 'go fmt' on staged Go files"
+echo "  - Execute 'make ci' (lint, test, build) to ensure code quality"
+echo "  - Prevent commits if any checks fail"
