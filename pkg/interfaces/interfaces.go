@@ -46,3 +46,17 @@ type SyncOptions struct {
 	DryRun    bool
 	Overwrite bool
 }
+
+// Transformer represents a processing step that can modify items.
+type Transformer interface {
+	Name() string
+	Transform(items []*models.Item) ([]*models.Item, error)
+	Configure(config map[string]interface{}) error
+}
+
+// TransformPipeline manages a chain of transformers.
+type TransformPipeline interface {
+	AddTransformer(transformer Transformer) error
+	Transform(items []*models.Item) ([]*models.Item, error)
+	Configure(config models.TransformConfig) error
+}

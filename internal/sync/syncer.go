@@ -6,10 +6,18 @@ import (
 	"pkm-sync/pkg/interfaces"
 )
 
-type DefaultSyncer struct{}
+type DefaultSyncer struct {
+	pipeline interfaces.TransformPipeline
+}
 
 func NewSyncer() *DefaultSyncer {
 	return &DefaultSyncer{}
+}
+
+func NewSyncerWithPipeline(pipeline interfaces.TransformPipeline) *DefaultSyncer {
+	return &DefaultSyncer{
+		pipeline: pipeline,
+	}
 }
 
 func (s *DefaultSyncer) Sync(source interfaces.Source, target interfaces.Target, options interfaces.SyncOptions) error {
@@ -22,6 +30,17 @@ func (s *DefaultSyncer) Sync(source interfaces.Source, target interfaces.Target,
 	}
 
 	fmt.Printf("Found %d items\n", len(items))
+
+	// Apply transformations if pipeline is configured
+	if s.pipeline != nil {
+		transformedItems, err := s.pipeline.Transform(items)
+		if err != nil {
+			return fmt.Errorf("failed to transform items: %w", err)
+		}
+
+		items = transformedItems
+		fmt.Printf("Transformed to %d items\n", len(items))
+	}
 
 	if options.DryRun {
 		fmt.Printf("DRY RUN: Would export %d items to %s\n", len(items), options.OutputDir)

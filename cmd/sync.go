@@ -13,6 +13,7 @@ import (
 	"pkm-sync/internal/sources/google"
 	"pkm-sync/internal/targets/logseq"
 	"pkm-sync/internal/targets/obsidian"
+	"pkm-sync/internal/transform"
 	"pkm-sync/pkg/interfaces"
 	"pkm-sync/pkg/models"
 
@@ -187,10 +188,37 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Found %d emails from %s\n", len(items), srcName)
 
 		// Add items to the collection
+		// Add items to the collection
 		allItems = append(allItems, items...)
 	}
 
 	fmt.Printf("Total emails collected: %d\n", len(allItems))
+
+	// Initialize and apply transformer pipeline if configured
+	if cfg.Transformers.Enabled {
+		pipeline := transform.NewPipeline()
+
+		// Register all available transformers
+		for _, t := range transform.GetAllExampleTransformers() {
+			if err := pipeline.AddTransformer(t); err != nil {
+				return fmt.Errorf("failed to add transformer %s: %w", t.Name(), err)
+			}
+		}
+
+		// Configure the pipeline from the config file
+		if err := pipeline.Configure(cfg.Transformers); err != nil {
+			return fmt.Errorf("failed to configure transformer pipeline: %w", err)
+		}
+
+		// Transform items
+		transformedItems, err := pipeline.Transform(allItems)
+		if err != nil {
+			return fmt.Errorf("failed to transform items: %w", err)
+		}
+
+		fmt.Printf("Transformed to %d items\n", len(transformedItems))
+		allItems = transformedItems
+	}
 
 	if gmailDryRun {
 		// Generate preview of what would be done

@@ -112,6 +112,12 @@ func GetDefaultConfig() *models.Config {
 				},
 			},
 		},
+		Transformers: models.TransformConfig{
+			Enabled:       false,
+			PipelineOrder: make([]string, 0),
+			ErrorStrategy: "",
+			Transformers:  make(map[string]map[string]interface{}),
+		},
 	}
 }
 
