@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"testing"
 
 	"pkm-sync/pkg/models"
@@ -321,7 +322,7 @@ func TestParseSinceTime_EdgeCases(t *testing.T) {
 }
 
 func TestCreateSource_Google(t *testing.T) {
-	source, err := createSource("google")
+	source, err := createSource("google", &http.Client{})
 	if err != nil {
 		t.Fatalf("Failed to create google source: %v", err)
 	}
@@ -332,7 +333,7 @@ func TestCreateSource_Google(t *testing.T) {
 }
 
 func TestCreateSource_Unknown(t *testing.T) {
-	_, err := createSource("unknown")
+	_, err := createSource("unknown", &http.Client{})
 	if err == nil {
 		t.Error("Expected error for unknown source")
 	}
@@ -348,7 +349,7 @@ func TestCreateSource_FutureSources(t *testing.T) {
 
 	for _, sourceName := range futureSources {
 		t.Run(sourceName, func(t *testing.T) {
-			_, err := createSource(sourceName)
+			_, err := createSource(sourceName, &http.Client{})
 			if err == nil {
 				t.Errorf("Expected error for unimplemented source %s", sourceName)
 			}
@@ -465,10 +466,7 @@ func TestCreateSourceWithConfig_GoogleAttendeeAllowListValidation(t *testing.T) 
 				},
 			}
 
-			// Note: This test can't fully verify the actual configuration being passed
-			// since createSourceWithConfig calls source.Configure() internally.
-			// But we can verify that it doesn't error and creates a valid source.
-			source, err := createSourceWithConfig("google", config.Sources["google"])
+			source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -528,7 +526,7 @@ func TestCreateSourceWithConfig_GoogleMaxResultsValidation(t *testing.T) {
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config.Sources["google"])
+			source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -587,7 +585,7 @@ func TestCreateSourceWithConfig_GoogleBooleanOptions(t *testing.T) {
 				},
 			}
 
-			source, err := createSourceWithConfig("google", config.Sources["google"])
+			source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
 			if err != nil {
 				t.Errorf("createSourceWithConfig failed: %v", err)
 			}
@@ -609,7 +607,7 @@ func TestCreateSourceWithConfig_MissingGoogleConfig(t *testing.T) {
 		},
 	}
 
-	source, err := createSourceWithConfig("google", config.Sources["google"])
+	source, err := createSourceWithConfig("google", config.Sources["google"], &http.Client{})
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with missing google config: %v", err)
 	}
@@ -625,7 +623,7 @@ func TestCreateSourceWithConfig_SourceNotInConfig(t *testing.T) {
 		Enabled: true,
 	}
 
-	source, err := createSourceWithConfig("google", emptySourceConfig)
+	source, err := createSourceWithConfig("google", emptySourceConfig, &http.Client{})
 	if err != nil {
 		t.Errorf("createSourceWithConfig failed with source not in config: %v", err)
 	}

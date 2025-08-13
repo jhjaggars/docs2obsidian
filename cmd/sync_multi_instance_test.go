@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -304,7 +305,7 @@ func TestCreateSourceWithConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Note: This test would require proper OAuth credentials to fully work
 			// For now, we're testing the factory function creation
-			source, err := createSourceWithConfig(tt.sourceID, tt.sourceConfig)
+			source, err := createSourceWithConfig(tt.sourceID, tt.sourceConfig, &http.Client{})
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -325,7 +326,7 @@ func TestCreateSourceWithConfig(t *testing.T) {
 func TestMultiInstancePerSourceTargets(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "pkm-sync-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name         string

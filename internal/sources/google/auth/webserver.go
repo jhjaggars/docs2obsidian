@@ -165,7 +165,9 @@ func findAvailablePort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer listener.Close()
+	defer func() {
+		_ = listener.Close()
+	}()
 
 	addr := listener.Addr().(*net.TCPAddr)
 	return addr.Port, nil
@@ -176,7 +178,9 @@ func getTokenFromWebServer(config *oauth2.Config) (*oauth2.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to start auth server: %w", err)
 	}
-	defer server.shutdown()
+	defer func() {
+		_ = server.shutdown()
+	}()
 
 	config.RedirectURL = server.getRedirectURL()
 	authURL := config.AuthCodeURL(server.getState(), oauth2.AccessTypeOffline)

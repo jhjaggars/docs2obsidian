@@ -37,11 +37,14 @@ func (g *GoogleSource) Name() string {
 	return "google"
 }
 
-func (g *GoogleSource) Configure(config map[string]interface{}) error {
-	// Use existing auth logic
-	client, err := auth.GetClient()
-	if err != nil {
-		return err
+func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Client) error {
+	var err error
+	if client == nil {
+		// Use existing auth logic if no client is provided
+		client, err = auth.GetClient()
+		if err != nil {
+			return err
+		}
 	}
 	g.httpClient = client
 
@@ -97,7 +100,7 @@ func (g *GoogleSource) Fetch(since time.Time, limit int) ([]*models.Item, error)
 	// Handle Gmail sources
 	if g.config.Type == "gmail" {
 		if g.gmailService == nil {
-			return nil, fmt.Errorf("Gmail service not initialized")
+			return nil, fmt.Errorf("gmail service not initialized")
 		}
 
 		// Fetch messages from Gmail

@@ -31,7 +31,7 @@ func BenchmarkGmailBatchConversion(b *testing.B) {
 func BenchmarkSyncEngineProcessing(b *testing.B) {
 	tempDir, err := os.MkdirTemp("", "gmail-perf-test")
 	require.NoError(b, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	config := &models.Config{
 		Sync: models.SyncConfig{
@@ -87,7 +87,7 @@ func TestGmailLargeMailboxHandling(t *testing.T) {
 
 	tempDir, err := os.MkdirTemp("", "gmail-large-mailbox-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name          string
@@ -248,7 +248,7 @@ func TestGmailMemoryUsageOptimization(t *testing.T) {
 
 			tempDir, err := os.MkdirTemp("", "gmail-memory-test")
 			require.NoError(t, err)
-			defer os.RemoveAll(tempDir)
+			defer func() { _ = os.RemoveAll(tempDir) }()
 
 			_ = models.GmailSourceConfig{
 				Name:               "Memory Test Instance",
@@ -350,16 +350,4 @@ func TestGmailErrorRecoveryPerformance(t *testing.T) {
 	t.Skip("Skipping error recovery test - requires better simulation logic")
 }
 
-// simulateRequestWithRetry simulates a request that might fail and needs retry
-func simulateRequestWithRetry(errorRate float64, maxRetries int) bool {
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		// Simulate random failure based on error rate
-		if time.Now().UnixNano()%100 >= int64(errorRate*100) {
-			return true // Success
-		}
 
-		// Simulate retry delay
-		time.Sleep(time.Millisecond * time.Duration(attempt+1))
-	}
-	return false // All retries failed
-}

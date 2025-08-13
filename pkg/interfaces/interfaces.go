@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"net/http"
 	"pkm-sync/pkg/models"
 	"time"
 )
@@ -8,7 +9,7 @@ import (
 // Source represents any data source (Google Calendar, Slack, etc.)
 type Source interface {
 	Name() string
-	Configure(config map[string]interface{}) error
+	Configure(config map[string]interface{}, client *http.Client) error
 	Fetch(since time.Time, limit int) ([]*models.Item, error)
 	SupportsRealtime() bool
 }

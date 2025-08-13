@@ -1,0 +1,16 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # This configuration explicitly enables only the linters that are
+  # enabled by default in golangci-lint. This ensures consistent
+  # behavior between local runs and the CI environment.
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused

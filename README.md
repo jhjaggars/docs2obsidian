@@ -2,10 +2,6 @@
 
 A universal synchronization tool for Personal Knowledge Management (PKM) systems. Connect data sources like Google Calendar, Gmail, and Drive to PKM tools like Obsidian and Logseq.
 
-## Migrated from docs2obsidian
-
-This tool was formerly known as `docs2obsidian`. All existing functionality is preserved with full backward compatibility.
-
 ## Quick Start
 
 ### Install
@@ -36,10 +32,10 @@ pkm-sync calendar --target logseq --output ./graph
 ```
 
 ### Configuration
-Same OAuth setup as docs2obsidian - place `credentials.json` in:
-- **Linux/Unix**: `~/.config/pkm-sync/credentials.json` (or old path: `~/.config/docs2obsidian/credentials.json`)
-- **macOS**: `~/.config/pkm-sync/credentials.json` (or old paths: `~/.config/docs2obsidian/credentials.json`, `~/Library/Application Support/docs2obsidian/credentials.json`)
-- **Windows**: `%APPDATA%\pkm-sync\credentials.json` (or old path: `%APPDATA%\docs2obsidian\credentials.json`)
+For OAuth,  place `credentials.json` in:
+- **Linux/Unix**: `~/.config/pkm-sync/credentials.json`
+- **macOS**: `~/.config/pkm-sync/credentials.json`
+- **Windows**: `%APPDATA%\pkm-sync\credentials.json`
 
 ## Supported Integrations
 
@@ -60,20 +56,6 @@ Same OAuth setup as docs2obsidian - place `credentials.json` in:
 - ✅ **Priority-based sync order** (configurable)
 - ✅ **Individual source scheduling** (different intervals)
 - ✅ **Graceful error handling** (continues if one source fails)
-
-## Migration from docs2obsidian
-
-No changes needed! Your existing setup will continue to work:
-
-```bash
-# These still work exactly the same
-pkm-sync setup
-pkm-sync calendar  
-pkm-sync drive
-
-# New capabilities
-pkm-sync gmail --target logseq
-```
 
 ## Examples
 
@@ -192,8 +174,6 @@ This application uses OAuth 2.0 for Google API authentication:
    - **macOS**: `~/.config/pkm-sync/credentials.json` OR `~/Library/Application Support/pkm-sync/credentials.json`
    - **Windows**: `%APPDATA%\pkm-sync\credentials.json`
    - **Fallback**: `./credentials.json` (current directory)
-   
-   **Backward compatibility**: Old `docs2obsidian` paths are still checked automatically.
 
 3. **Verify setup**:
    ```bash
@@ -371,11 +351,6 @@ pkm-sync export     # Export Google Docs from calendar events
 - Delete the token file from your config directory and re-authenticate
 - Token locations: same as credentials.json but named `token.json`
 - Run `pkm-sync calendar` to start the OAuth flow again
-
-#### Migration Issues
-- Old `docs2obsidian` credentials are automatically found and used
-- No manual migration required
-- Both old and new config directory paths are checked
 
 ### Getting Help
 Run `pkm-sync setup` to diagnose authentication issues and get specific guidance.

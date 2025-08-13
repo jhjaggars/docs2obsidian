@@ -102,12 +102,8 @@ func getCredentialSearchPaths() []string {
 	case "darwin":
 		paths = append(paths, filepath.Join(homeDir, ".config", "pkm-sync", "credentials.json"))
 		paths = append(paths, filepath.Join(homeDir, "Library", "Application Support", "pkm-sync", "credentials.json"))
-		// Backward compatibility with old paths
-		paths = append(paths, filepath.Join(homeDir, ".config", "docs2obsidian", "credentials.json"))
-		paths = append(paths, filepath.Join(homeDir, "Library", "Application Support", "docs2obsidian", "credentials.json"))
 	default:
 		paths = append(paths, filepath.Join(homeDir, ".config", "pkm-sync", "credentials.json"))
-		paths = append(paths, filepath.Join(homeDir, ".config", "docs2obsidian", "credentials.json"))
 	}
 
 	paths = append(paths, "credentials.json")

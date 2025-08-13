@@ -289,11 +289,13 @@ func validateOutputDirectory(dir string) error {
 	if err != nil {
 		return fmt.Errorf("no write permission: %w", err)
 	}
-	file.Close()
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close test file: %w", err)
+	}
 
 	// Clean up the test file
 	if err := os.Remove(tempFile); err != nil {
-		// Not critical if we can't remove it
+		return fmt.Errorf("failed to clean up test file: %w", err)
 	}
 
 	return nil

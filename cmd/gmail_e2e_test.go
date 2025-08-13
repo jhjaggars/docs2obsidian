@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +22,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 	// Create temporary directory for test outputs
 	tempDir, err := os.MkdirTemp("", "gmail-e2e-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name          string
@@ -153,7 +154,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 				assert.NoError(t, err, "Should be able to create output directory")
 
 				// Test that we can create the appropriate source
-				source, err := createSourceWithConfig(sourceID, sourceConfig)
+				source, err := createSourceWithConfig(sourceID, sourceConfig, &http.Client{})
 				if err != nil {
 					// If we can't create the source (likely due to missing auth),
 					// that's OK for this test - we're testing the workflow
@@ -196,7 +197,7 @@ func TestGmailEndToEndSyncWorkflow(t *testing.T) {
 func TestGmailErrorHandlingInE2EWorkflow(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "gmail-e2e-error-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test configuration with various error scenarios
 	config := &models.Config{
@@ -333,7 +334,7 @@ func TestGmailQueryBuildingInE2EContext(t *testing.T) {
 func TestGmailSyncWithMockData(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "gmail-mock-sync-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create a simple configuration for mock testing
 	config := &models.Config{

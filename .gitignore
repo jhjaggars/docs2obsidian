@@ -6,7 +6,6 @@
 *.dylib
 
 # Project-specific binary
-docs2obsidian
 pkm-sync
 
 # Test binary, built with `go test -c`
