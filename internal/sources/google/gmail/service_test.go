@@ -3,8 +3,6 @@ package gmail
 import (
 	"fmt"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -12,25 +10,6 @@ import (
 
 	"pkm-sync/pkg/models"
 )
-
-// MockHTTPClient creates a mock HTTP client for testing
-func createMockHTTPClient(responseBody string, statusCode int) *http.Client {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(statusCode)
-		w.Write([]byte(responseBody))
-	}))
-
-	serverURL, _ := url.Parse(server.URL)
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy: func(req *http.Request) (*url.URL, error) {
-				return serverURL, nil
-			},
-		},
-	}
-
-	return client
-}
 
 func TestNewService(t *testing.T) {
 	tests := []struct {
@@ -74,6 +53,7 @@ func TestNewService(t *testing.T) {
 
 			if service == nil {
 				t.Errorf("NewService() returned nil service")
+				return
 			}
 
 			if service.sourceID != tt.sourceID {

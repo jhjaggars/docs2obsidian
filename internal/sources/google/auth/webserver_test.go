@@ -13,7 +13,7 @@ func TestStartAuthServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	if server.port <= 0 {
 		t.Errorf("Expected positive port number, got %d", server.port)
@@ -49,7 +49,7 @@ func TestHandleCallback_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	testCode := "test_auth_code_123"
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?code=%s&state=%s", server.port, testCode, server.getState())
@@ -58,7 +58,7 @@ func TestHandleCallback_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -79,7 +79,7 @@ func TestHandleCallback_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?error=access_denied", server.port)
 
@@ -87,7 +87,7 @@ func TestHandleCallback_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Expected status 400, got %d", resp.StatusCode)
@@ -105,7 +105,7 @@ func TestHandleCallback_MissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?state=%s", server.port, server.getState())
 
@@ -113,7 +113,7 @@ func TestHandleCallback_MissingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Expected status 400, got %d", resp.StatusCode)
@@ -131,7 +131,7 @@ func TestHandleCallback_InvalidState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	testCode := "test_auth_code_123"
 	invalidState := "invalid_state_token"
@@ -141,7 +141,7 @@ func TestHandleCallback_InvalidState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Expected status 400, got %d", resp.StatusCode)
@@ -192,7 +192,7 @@ func TestWaitForCode_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	expectedCode := "test_code_456"
 
@@ -216,7 +216,7 @@ func TestWaitForCode_Timeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	_, err = server.waitForCode(100 * time.Millisecond)
 	if err == nil {
@@ -233,7 +233,7 @@ func TestWaitForCode_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	expectedError := fmt.Errorf("test error")
 
@@ -256,22 +256,12 @@ func TestGetTokenFromWebServer_Integration(t *testing.T) {
 	t.Skip("Skipping integration test to avoid network calls in unit tests")
 }
 
-func TestOpenBrowser(t *testing.T) {
-	url := "https://example.com"
-
-	err := openBrowser(url)
-
-	if err != nil {
-		t.Logf("Browser open failed (expected in CI/test environment): %v", err)
-	}
-}
-
 func TestSuccessPageContent(t *testing.T) {
 	server, err := startAuthServer()
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?code=test_code&state=%s", server.port, server.getState())
 
@@ -279,7 +269,7 @@ func TestSuccessPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.Header.Get("Content-Type") != "text/html" {
 		t.Error("Expected Content-Type to be text/html")
@@ -303,7 +293,7 @@ func TestErrorPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start auth server: %v", err)
 	}
-	defer server.shutdown()
+	defer func() { _ = server.shutdown() }()
 
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback?error=access_denied&state=%s", server.port, server.getState())
 
@@ -311,7 +301,7 @@ func TestErrorPageContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to call callback endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.Header.Get("Content-Type") != "text/html" {
 		t.Error("Expected Content-Type to be text/html")

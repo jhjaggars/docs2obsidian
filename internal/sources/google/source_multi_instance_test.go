@@ -98,14 +98,15 @@ func TestNewGoogleSourceWithConfig(t *testing.T) {
 			assert.Equal(t, tt.expected.config.Since, source.config.Since)
 
 			// Test type-specific configurations
-			if tt.config.Type == "gmail" {
+			switch tt.config.Type {
+			case "gmail":
 				assert.Equal(t, tt.expected.config.Gmail.Name, source.config.Gmail.Name)
 				assert.Equal(t, tt.expected.config.Gmail.Labels, source.config.Gmail.Labels)
 				assert.Equal(t, tt.expected.config.Gmail.IncludeUnread, source.config.Gmail.IncludeUnread)
 				assert.Equal(t, tt.expected.config.Gmail.MaxEmailAge, source.config.Gmail.MaxEmailAge)
 				assert.Equal(t, tt.expected.config.Gmail.ExtractRecipients, source.config.Gmail.ExtractRecipients)
 				assert.Equal(t, tt.expected.config.Gmail.ProcessHTMLContent, source.config.Gmail.ProcessHTMLContent)
-			} else if tt.config.Type == "google" {
+			case "google":
 				assert.Equal(t, tt.expected.config.Google.CalendarID, source.config.Google.CalendarID)
 				assert.Equal(t, tt.expected.config.Google.IncludeDeclined, source.config.Google.IncludeDeclined)
 				assert.Equal(t, tt.expected.config.Google.IncludePrivate, source.config.Google.IncludePrivate)
@@ -382,9 +383,10 @@ func TestSourceConfigValidation(t *testing.T) {
 				assert.NotEmpty(t, tt.config.Name, "Valid configurations should have name")
 
 				// Type-specific validation
-				if tt.config.Type == "gmail" {
+				switch tt.config.Type {
+				case "gmail":
 					assert.NotEmpty(t, tt.config.Gmail.Name, "Gmail config should have name")
-				} else if tt.config.Type == "google" {
+				case "google":
 					assert.NotEmpty(t, tt.config.Google.CalendarID, "Google config should have calendar ID")
 				}
 			}

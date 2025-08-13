@@ -30,10 +30,10 @@ jobs:
           cache: true
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           # This action automatically caches linters, making subsequent runs faster.
-          version: v1.60.3
+          # By not specifying a version, it will use the latest compatible one.
           args: --timeout=5m
 
       - name: Run unit tests

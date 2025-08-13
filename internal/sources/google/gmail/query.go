@@ -237,9 +237,10 @@ func ValidateQuery(query string) error {
 	// Basic validation - check for balanced parentheses
 	openParens := 0
 	for _, char := range query {
-		if char == '(' {
+		switch char {
+		case '(':
 			openParens++
-		} else if char == ')' {
+		case ')':
 			openParens--
 			if openParens < 0 {
 				return fmt.Errorf("unmatched closing parenthesis in query")

@@ -1,6 +1,7 @@
 package drive
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
 	"pkm-sync/pkg/models"
 )
 
@@ -17,7 +19,7 @@ type Service struct {
 }
 
 func NewService(httpClient *http.Client) (*Service, error) {
-	driveService, err := drive.New(httpClient)
+	driveService, err := drive.NewService(context.Background(), option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve Drive client: %w", err)
 	}
@@ -37,12 +39,6 @@ func (s *Service) GetFileMetadata(fileID string) (*models.DriveFile, error) {
 		Name:        file.Name,
 		MimeType:    file.MimeType,
 		WebViewLink: file.WebViewLink,
-	}
-
-	if file.ModifiedTime != "" {
-		// Parse RFC3339 time format used by Drive API
-		// modifiedTime, _ := time.Parse(time.RFC3339, file.ModifiedTime)
-		// driveFile.ModifiedTime = modifiedTime
 	}
 
 	for _, owner := range file.Owners {
@@ -70,7 +66,9 @@ func (s *Service) ExportDocAsMarkdown(fileID string, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("unable to export document: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
@@ -82,7 +80,9 @@ func (s *Service) ExportDocAsMarkdown(fileID string, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create output file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	// Copy content to file
 	_, err = io.Copy(outFile, resp.Body)

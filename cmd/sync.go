@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -130,11 +131,11 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		// Create source with config
-		source, err := createSourceWithConfig(srcName, sourceConfig)
-		if err != nil {
-			fmt.Printf("Warning: failed to create Gmail source '%s': %v, skipping\n", srcName, err)
-			continue
-		}
+	source, err := createSourceWithConfig(srcName, sourceConfig, nil)
+	if err != nil {
+		fmt.Printf("Warning: failed to create Gmail source '%s': %v, skipping\n", srcName, err)
+		continue
+	}
 
 		// Use source-specific since time if configured, but CLI flag takes precedence
 		sourceSince := finalSince
@@ -210,11 +211,11 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func createSource(name string) (interfaces.Source, error) {
+func createSource(name string, client *http.Client) (interfaces.Source, error) {
 	switch name {
 	case "google":
 		source := google.NewGoogleSource()
-		if err := source.Configure(nil); err != nil {
+		if err := source.Configure(nil, client); err != nil {
 			return nil, err
 		}
 		return source, nil
@@ -223,17 +224,17 @@ func createSource(name string) (interfaces.Source, error) {
 	}
 }
 
-func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig) (interfaces.Source, error) {
+func createSourceWithConfig(sourceID string, sourceConfig models.SourceConfig, client *http.Client) (interfaces.Source, error) {
 	switch sourceConfig.Type {
 	case "google":
 		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
-		if err := source.Configure(nil); err != nil {
+		if err := source.Configure(nil, client); err != nil {
 			return nil, err
 		}
 		return source, nil
 	case "gmail":
 		source := google.NewGoogleSourceWithConfig(sourceID, sourceConfig)
-		if err := source.Configure(nil); err != nil {
+		if err := source.Configure(nil, client); err != nil {
 			return nil, err
 		}
 		return source, nil
@@ -443,11 +444,14 @@ func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePrevie
 	// Show detailed file operations
 	fmt.Printf("Detailed file operations:\n")
 	for _, preview := range previews {
-		emoji := "📝"
-		if preview.Action == "update" {
+		var emoji string
+		switch preview.Action {
+		case "update":
 			emoji = "✏️"
-		} else if preview.Action == "skip" {
+		case "skip":
 			emoji = "⏭️"
+		default:
+			emoji = "📝"
 		}
 		if preview.Conflict {
 			emoji = "⚠️"

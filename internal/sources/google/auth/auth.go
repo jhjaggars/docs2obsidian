@@ -59,7 +59,9 @@ func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 		if err != nil {
 			return nil, err
 		}
-		saveToken(token)
+		if err := saveToken(token); err != nil {
+			return nil, fmt.Errorf("unable to save token: %w", err)
+		}
 		return token, nil
 	}
 
@@ -73,7 +75,9 @@ func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 		if err != nil {
 			return nil, err
 		}
-		saveToken(token)
+		if err := saveToken(token); err != nil {
+			return nil, fmt.Errorf("unable to save token: %w", err)
+		}
 	}
 
 	return token, nil
@@ -155,24 +159,35 @@ func tokenFromFile() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Warning: failed to close token file: %v", err)
+		}
+	}()
 
 	token := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(token)
 	return token, err
 }
 
-func saveToken(token *oauth2.Token) {
+func saveToken(token *oauth2.Token) error {
 	tokenPath, err := config.GetTokenPath()
 	if err != nil {
-		log.Fatalf("Unable to get token path: %v", err)
+		return fmt.Errorf("unable to get token path: %w", err)
 	}
 
 	fmt.Printf("Saving credential file to: %s\n", tokenPath)
 	f, err := os.OpenFile(tokenPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("Unable to cache oauth token: %v", err)
+		return fmt.Errorf("unable to cache oauth token: %w", err)
 	}
-	defer f.Close()
-	json.NewEncoder(f).Encode(token)
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Warning: failed to close token file for writing: %v", err)
+		}
+	}()
+	if err := json.NewEncoder(f).Encode(token); err != nil {
+		return fmt.Errorf("unable to encode token to file: %w", err)
+	}
+	return nil
 }

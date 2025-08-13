@@ -60,31 +60,38 @@ func SaveConfig(cfg *models.Config) error {
 func GetDefaultConfig() *models.Config {
 	return &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources:   []string{"google"},
-			DefaultTarget:    "obsidian",
+			EnabledSources:  []string{"google"},
+			DefaultTarget:   "obsidian",
 			DefaultOutputDir: "./output",
-			DefaultSince:     "7d",
-			SourceTags:       false,
+			DefaultSince:    "7d",
+			SourceTags:      false,
+			SourceSchedules: make(map[string]string),
 		},
 		Sources: map[string]models.SourceConfig{
 			"google": {
 				Enabled: true,
 				Type:    "google",
 				Google: models.GoogleSourceConfig{
-					CalendarID:      "primary",
-					DownloadDocs:    true,
-					IncludeDeclined: false,
-					IncludePrivate:  false,
+					CalendarID:        "primary",
+					DownloadDocs:      true,
+					IncludeDeclined:   false,
+					IncludePrivate:    false,
+					EventTypes:        []string{},
+					AttendeeAllowList: []string{},
+					DocFormats:        []string{},
 				},
 			},
 			"google_meetings": {
 				Enabled: true,
 				Type:    "google_meetings",
 				Google: models.GoogleSourceConfig{
-					CalendarID:      "primary",
-					DownloadDocs:    true,
-					IncludeDeclined: false,
-					IncludePrivate:  false,
+					CalendarID:        "primary",
+					DownloadDocs:      true,
+					IncludeDeclined:   false,
+					IncludePrivate:    false,
+					EventTypes:        []string{},
+					AttendeeAllowList: []string{},
+					DocFormats:        []string{},
 				},
 			},
 		},
@@ -95,6 +102,7 @@ func GetDefaultConfig() *models.Config {
 					DefaultFolder:      "Calendar",
 					IncludeFrontmatter: true,
 					DateFormat:         "2006-01-02",
+					CustomFields:       []string{},
 				},
 			},
 			"logseq": {

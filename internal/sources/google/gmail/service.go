@@ -101,7 +101,7 @@ func (s *Service) GetMessage(messageID string) (*gmail.Message, error) {
 	}
 
 	if s.service == nil {
-		return nil, fmt.Errorf("Gmail service is not initialized")
+		return nil, fmt.Errorf("gmail service is not initialized")
 	}
 
 	// Get the full message including body
@@ -122,7 +122,7 @@ func (s *Service) GetMessageWithRetry(messageID string) (*gmail.Message, error) 
 	}
 
 	if s.service == nil {
-		return nil, fmt.Errorf("Gmail service is not initialized")
+		return nil, fmt.Errorf("gmail service is not initialized")
 	}
 
 	// Get the full message including body with retry logic
@@ -374,12 +374,6 @@ func (s *Service) getMessagesWithBatchProcessing(since time.Time, limit int) ([]
 			break
 		}
 		pageToken = nextPageToken
-
-		// Memory management: trigger GC periodically for very large batches
-		if len(allMessages)%1000 == 0 {
-			// In a real implementation, you might want to process messages in chunks
-			// and write them to storage immediately to avoid memory issues
-		}
 	}
 
 	if totalSkipped > 0 {
@@ -424,7 +418,7 @@ func (s *Service) GetAttachment(messageID, attachmentID string) (*gmail.MessageP
 	}
 
 	if s.service == nil {
-		return nil, fmt.Errorf("Gmail service is not initialized")
+		return nil, fmt.Errorf("gmail service is not initialized")
 	}
 
 	req := s.service.Users.Messages.Attachments.Get("me", messageID, attachmentID)

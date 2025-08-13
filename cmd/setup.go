@@ -158,7 +158,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Printf("   rm %s\n", tokenPath)
 		fmt.Println("3. Run this setup command again to re-authorize with Gmail scope")
 
-		return fmt.Errorf("Gmail service creation failed: %w", err)
+		return fmt.Errorf("gmail service creation failed: %w", err)
 	}
 
 	// Test Gmail API by getting user profile
@@ -178,7 +178,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Printf("   rm %s\n", tokenPath)
 		fmt.Println("3. Run this setup command again to re-authorize with Gmail scope")
 
-		return fmt.Errorf("Gmail API access failed: %w", err)
+		return fmt.Errorf("gmail API access failed: %w", err)
 	}
 
 	fmt.Printf("   [OK] Successfully accessed Gmail (user: %s, messages: %d)\n", profile.EmailAddress, profile.MessagesTotal)

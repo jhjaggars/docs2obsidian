@@ -416,7 +416,6 @@ func (p *ContentProcessor) StripQuotedText(content string) string {
 func (p *ContentProcessor) ExtractSignatures(content string) string {
 	lines := strings.Split(content, "\n")
 	var contentLines []string
-	var signatureLines []string
 	var inSignature bool
 
 	for i, line := range lines {
@@ -425,7 +424,6 @@ func (p *ContentProcessor) ExtractSignatures(content string) string {
 		// Common signature indicators
 		if trimmed == "--" || strings.HasPrefix(trimmed, "-- ") {
 			inSignature = true
-			signatureLines = append(signatureLines, line)
 			continue
 		}
 
@@ -441,9 +439,7 @@ func (p *ContentProcessor) ExtractSignatures(content string) string {
 			}
 		}
 
-		if inSignature {
-			signatureLines = append(signatureLines, line)
-		} else {
+		if !inSignature {
 			contentLines = append(contentLines, line)
 		}
 	}
@@ -527,28 +523,6 @@ func (p *ContentProcessor) ExtractLinks(content string) []models.Link {
 	}
 
 	return links
-}
-
-// extractUrlTitle attempts to extract a meaningful title from a URL
-func (p *ContentProcessor) extractUrlTitle(url string) string {
-	// For now, just return empty - could be enhanced to fetch actual page titles
-	// or extract meaningful parts from the URL structure
-	return ""
-}
-
-// deduplicateLinks removes duplicate links from the slice
-func (p *ContentProcessor) deduplicateLinks(links []models.Link) []models.Link {
-	seen := make(map[string]bool)
-	var result []models.Link
-
-	for _, link := range links {
-		if !seen[link.URL] {
-			seen[link.URL] = true
-			result = append(result, link)
-		}
-	}
-
-	return result
 }
 
 // ProcessEmailAttachments processes email attachments based on configuration

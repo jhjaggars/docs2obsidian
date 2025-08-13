@@ -15,7 +15,7 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 	// Create a temporary directory for test outputs
 	tempDir, err := os.MkdirTemp("", "pkm-sync-output-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name                string
@@ -175,7 +175,7 @@ func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 				assert.NoError(t, err, "Test file does not exist for source %s", sourceID)
 
 				// Clean up the test file
-				os.Remove(testFile)
+				_ = os.Remove(testFile)
 			}
 		})
 	}
@@ -320,7 +320,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 	// Create a temporary directory for the complete workflow test
 	tempDir, err := os.MkdirTemp("", "pkm-sync-workflow-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create a comprehensive configuration that exercises all features
 	config := &models.Config{
@@ -520,7 +520,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 func TestErrorHandlingInMultiInstanceWorkflow(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "pkm-sync-error-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test configuration with various error conditions
 	config := &models.Config{
