@@ -464,6 +464,7 @@ func TestService_filterEvents(t *testing.T) {
 		if len(result[0].Attendees) < 1 || result[0].Attendees[0].Email != expectedEmail {
 			t.Errorf("filterEvents() returned wrong event, expected first attendee email to be %s", expectedEmail)
 		}
+
 		if len(result[0].Attendees) != 2 {
 			t.Errorf("filterEvents() returned event with %d attendees, expected 2", len(result[0].Attendees))
 		}
@@ -490,12 +491,14 @@ func TestService_SetRequireMultipleAttendees(t *testing.T) {
 
 	// Test setting to false
 	service.SetRequireMultipleAttendees(false)
+
 	if service.requireMultipleAttendees != false {
 		t.Errorf("SetRequireMultipleAttendees(false) = %v, expected false", service.requireMultipleAttendees)
 	}
 
 	// Test setting to true
 	service.SetRequireMultipleAttendees(true)
+
 	if service.requireMultipleAttendees != true {
 		t.Errorf("SetRequireMultipleAttendees(true) = %v, expected true", service.requireMultipleAttendees)
 	}
@@ -506,12 +509,14 @@ func TestService_SetIncludeSelfOnlyEvents(t *testing.T) {
 
 	// Test setting to true
 	service.SetIncludeSelfOnlyEvents(true)
+
 	if service.includeSelfOnlyEvents != true {
 		t.Errorf("SetIncludeSelfOnlyEvents(true) = %v, expected true", service.includeSelfOnlyEvents)
 	}
 
 	// Test setting to false
 	service.SetIncludeSelfOnlyEvents(false)
+
 	if service.includeSelfOnlyEvents != false {
 		t.Errorf("SetIncludeSelfOnlyEvents(false) = %v, expected false", service.includeSelfOnlyEvents)
 	}

@@ -7,7 +7,7 @@ import (
 	"pkm-sync/pkg/models"
 )
 
-// BenchmarkBuildQuery tests the performance of query building
+// BenchmarkBuildQuery tests the performance of query building.
 func BenchmarkBuildQuery(b *testing.B) {
 	config := models.GmailSourceConfig{
 		Labels:             []string{"IMPORTANT", "STARRED", "WORK"},
@@ -24,12 +24,13 @@ func BenchmarkBuildQuery(b *testing.B) {
 	since := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = buildQuery(config, since)
 	}
 }
 
-// BenchmarkBuildComplexQuery tests the performance of complex query building
+// BenchmarkBuildComplexQuery tests the performance of complex query building.
 func BenchmarkBuildComplexQuery(b *testing.B) {
 	config := models.GmailSourceConfig{
 		Query:  "base:query has:attachment",
@@ -46,16 +47,18 @@ func BenchmarkBuildComplexQuery(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = BuildComplexQuery(config, criteria)
 	}
 }
 
-// BenchmarkParseDuration tests the performance of duration parsing
+// BenchmarkParseDuration tests the performance of duration parsing.
 func BenchmarkParseDuration(b *testing.B) {
 	durations := []string{"30d", "1y", "2w", "12h", "45m"}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		for _, d := range durations {
 			_, _ = parseDuration(d)
@@ -63,7 +66,7 @@ func BenchmarkParseDuration(b *testing.B) {
 	}
 }
 
-// BenchmarkQueryValidation tests the performance of query validation
+// BenchmarkQueryValidation tests the performance of query validation.
 func BenchmarkQueryValidation(b *testing.B) {
 	queries := []string{
 		"from:example.com",
@@ -74,6 +77,7 @@ func BenchmarkQueryValidation(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		for _, query := range queries {
 			_ = ValidateQuery(query)

@@ -5,20 +5,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
-
 	"pkm-sync/pkg/models"
+
+	"gopkg.in/yaml.v3"
 )
 
 const ConfigFileName = "config.yaml"
 
-// LoadConfig loads configuration from the standard search paths
+// LoadConfig loads configuration from the standard search paths.
 func LoadConfig() (*models.Config, error) {
 	// Search for config file in order:
 	// 1. Custom config dir (if set)
 	// 2. Global config directory
 	// 3. Current directory
-
 	configPaths := getConfigSearchPaths()
 
 	for _, configPath := range configPaths {
@@ -30,7 +29,7 @@ func LoadConfig() (*models.Config, error) {
 	return nil, fmt.Errorf("no config file found in search paths: %v", configPaths)
 }
 
-// SaveConfig saves configuration to the appropriate location
+// SaveConfig saves configuration to the appropriate location.
 func SaveConfig(cfg *models.Config) error {
 	configPath, err := getConfigFilePath()
 	if err != nil {
@@ -56,16 +55,16 @@ func SaveConfig(cfg *models.Config) error {
 	return nil
 }
 
-// GetDefaultConfig returns the default configuration
+// GetDefaultConfig returns the default configuration.
 func GetDefaultConfig() *models.Config {
 	return &models.Config{
 		Sync: models.SyncConfig{
-			EnabledSources:  []string{"google"},
-			DefaultTarget:   "obsidian",
+			EnabledSources:   []string{"google"},
+			DefaultTarget:    "obsidian",
 			DefaultOutputDir: "./output",
-			DefaultSince:    "7d",
-			SourceTags:      false,
-			SourceSchedules: make(map[string]string),
+			DefaultSince:     "7d",
+			SourceTags:       false,
+			SourceSchedules:  make(map[string]string),
 		},
 		Sources: map[string]models.SourceConfig{
 			"google": {
@@ -116,13 +115,14 @@ func GetDefaultConfig() *models.Config {
 	}
 }
 
-// CreateDefaultConfig creates and saves a default configuration
+// CreateDefaultConfig creates and saves a default configuration.
 func CreateDefaultConfig() error {
 	cfg := GetDefaultConfig()
+
 	return SaveConfig(cfg)
 }
 
-// getConfigSearchPaths returns the list of paths to search for config files
+// getConfigSearchPaths returns the list of paths to search for config files.
 func getConfigSearchPaths() []string {
 	var paths []string
 
@@ -142,7 +142,7 @@ func getConfigSearchPaths() []string {
 	return paths
 }
 
-// getConfigFilePath returns the path where config should be saved
+// getConfigFilePath returns the path where config should be saved.
 func getConfigFilePath() (string, error) {
 	// Use custom config dir if set
 	if customConfigDir != "" {
@@ -158,7 +158,7 @@ func getConfigFilePath() (string, error) {
 	return filepath.Join(configDir, ConfigFileName), nil
 }
 
-// loadConfigFromFile loads configuration from a specific file
+// loadConfigFromFile loads configuration from a specific file.
 func loadConfigFromFile(configPath string) (*models.Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -173,7 +173,7 @@ func loadConfigFromFile(configPath string) (*models.Config, error) {
 	return &cfg, nil
 }
 
-// ValidateConfig performs comprehensive validation of the configuration
+// ValidateConfig performs comprehensive validation of the configuration.
 func ValidateConfig(cfg *models.Config) error {
 	if cfg == nil {
 		return fmt.Errorf("configuration is nil")
@@ -213,7 +213,7 @@ func ValidateConfig(cfg *models.Config) error {
 	return nil
 }
 
-// validateSyncConfig validates the sync section
+// validateSyncConfig validates the sync section.
 func validateSyncConfig(sync *models.SyncConfig) error {
 	if sync == nil {
 		return fmt.Errorf("sync configuration is required")
@@ -232,7 +232,7 @@ func validateSyncConfig(sync *models.SyncConfig) error {
 	return nil
 }
 
-// validateSources validates the sources configuration
+// validateSources validates the sources configuration.
 func validateSources(sources map[string]models.SourceConfig) error {
 	if len(sources) == 0 {
 		return fmt.Errorf("at least one source must be configured")
@@ -247,8 +247,8 @@ func validateSources(sources map[string]models.SourceConfig) error {
 	return nil
 }
 
-// validateSourceConfig validates an individual source configuration
-func validateSourceConfig(sourceName string, config models.SourceConfig) error {
+// validateSourceConfig validates an individual source configuration.
+func validateSourceConfig(_ string, config models.SourceConfig) error {
 	if config.Type == "" {
 		return fmt.Errorf("type is required")
 	}
@@ -274,7 +274,7 @@ func validateSourceConfig(sourceName string, config models.SourceConfig) error {
 	return nil
 }
 
-// validateTargets validates the targets configuration
+// validateTargets validates the targets configuration.
 func validateTargets(targets map[string]models.TargetConfig) error {
 	if len(targets) == 0 {
 		return fmt.Errorf("at least one target must be configured")
@@ -289,8 +289,8 @@ func validateTargets(targets map[string]models.TargetConfig) error {
 	return nil
 }
 
-// validateTargetConfig validates an individual target configuration
-func validateTargetConfig(targetName string, config models.TargetConfig) error {
+// validateTargetConfig validates an individual target configuration.
+func validateTargetConfig(_ string, config models.TargetConfig) error {
 	if config.Type == "" {
 		return fmt.Errorf("type is required")
 	}

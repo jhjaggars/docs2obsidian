@@ -71,6 +71,7 @@ func TestConfigSerialization_YAML(t *testing.T) {
 
 	// Deserialize from YAML
 	var deserializedConfig Config
+
 	err = yaml.Unmarshal(yamlData, &deserializedConfig)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal config from YAML: %v", err)
@@ -132,6 +133,7 @@ func TestConfigSerialization_JSON(t *testing.T) {
 
 	// Deserialize from JSON
 	var deserializedConfig Config
+
 	err = json.Unmarshal(jsonData, &deserializedConfig)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal config from JSON: %v", err)

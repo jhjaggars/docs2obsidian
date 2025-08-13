@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/api/gmail/v1"
-
 	"pkm-sync/pkg/models"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 func TestFromGmailMessage(t *testing.T) {
@@ -95,8 +95,10 @@ func TestFromGmailMessage(t *testing.T) {
 			got, err := FromGmailMessage(tt.message, tt.config)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FromGmailMessage() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.want != nil && !tt.want(got) {
 				t.Errorf("FromGmailMessage() validation failed for %s", tt.name)
 			}
@@ -195,8 +197,10 @@ func TestParseEmailAddressList(t *testing.T) {
 			got := parseEmailAddressList(tt.input)
 			if len(got) != len(tt.want) {
 				t.Errorf("parseEmailAddressList() length = %d, want %d", len(got), len(tt.want))
+
 				return
 			}
+
 			for i, recipient := range got {
 				if recipient.Name != tt.want[i].Name || recipient.Email != tt.want[i].Email {
 					t.Errorf("parseEmailAddressList()[%d] = %v, want %v", i, recipient, tt.want[i])
@@ -242,6 +246,7 @@ func TestProcessHTMLContent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
+
 			got := processor.ProcessHTMLContent(tt.html)
 			if got != tt.want {
 				t.Errorf("ProcessHTMLContent() = %q, want %q", got, tt.want)
@@ -281,6 +286,7 @@ func TestStripQuotedText(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{StripQuotedText: true})
+
 			got := processor.StripQuotedText(tt.input)
 			if got != tt.want {
 				t.Errorf("StripQuotedText() = %q, want %q", got, tt.want)
@@ -304,6 +310,7 @@ func TestExtractLinks(t *testing.T) {
 		if link.URL != expectedURLs[i] {
 			t.Errorf("ExtractLinks() link[%d].URL = %s, want %s", i, link.URL, expectedURLs[i])
 		}
+
 		if link.Type != "external" {
 			t.Errorf("extractLinks() link[%d].Type = %s, want external", i, link.Type)
 		}
@@ -515,6 +522,7 @@ func contains(slice []string, item string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -524,5 +532,6 @@ func containsAll(slice []string, items []string) bool {
 			return false
 		}
 	}
+
 	return true
 }

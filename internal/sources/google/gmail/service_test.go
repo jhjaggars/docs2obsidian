@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/api/gmail/v1"
-
 	"pkm-sync/pkg/models"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 func TestNewService(t *testing.T) {
@@ -43,16 +43,19 @@ func TestNewService(t *testing.T) {
 				if err == nil {
 					t.Errorf("NewService() expected error, got nil")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("NewService() unexpected error: %v", err)
+
 				return
 			}
 
 			if service == nil {
 				t.Errorf("NewService() returned nil service")
+
 				return
 			}
 
@@ -183,6 +186,9 @@ func TestService_GetMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a basic service for testing
+			// Note: This test validates error handling since we don't have
+			// a real Gmail service configured. In integration tests,
+			// we would need proper authentication and a real message ID
 			service := &Service{
 				config:   models.GmailSourceConfig{},
 				sourceID: "test",
@@ -195,6 +201,7 @@ func TestService_GetMessage(t *testing.T) {
 				if err == nil {
 					t.Errorf("GetMessage() expected error, got nil")
 				}
+
 				return
 			}
 
@@ -202,15 +209,11 @@ func TestService_GetMessage(t *testing.T) {
 			if err != nil {
 				t.Errorf("GetMessage() unexpected error: %v", err)
 			}
-
-			// Note: This test validates error handling since we don't have
-			// a real Gmail service configured. In integration tests,
-			// we would need proper authentication and a real message ID
 		})
 	}
 }
 
-// MockGmailService provides a mock implementation for testing
+// MockGmailService provides a mock implementation for testing.
 type MockGmailService struct {
 	messages []*gmail.Message
 	labels   []*gmail.Label
@@ -263,6 +266,7 @@ func NewMockGmailService() *MockGmailService {
 func (m *MockGmailService) GetMessages(query string, maxResults int64) ([]*gmail.Message, error) {
 	// Simple mock - return all messages regardless of query
 	var result []*gmail.Message
+
 	limit := int(maxResults)
 	if limit == 0 || limit > len(m.messages) {
 		limit = len(m.messages)
@@ -281,6 +285,7 @@ func (m *MockGmailService) GetMessage(messageID string) (*gmail.Message, error) 
 			return msg, nil
 		}
 	}
+
 	return nil, fmt.Errorf("message not found: %s", messageID)
 }
 
@@ -300,6 +305,7 @@ func TestMockGmailService(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetMessages() error = %v", err)
 	}
+
 	if len(messages) != 2 {
 		t.Errorf("GetMessages() returned %d messages, want 2", len(messages))
 	}
@@ -309,6 +315,7 @@ func TestMockGmailService(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetMessage() error = %v", err)
 	}
+
 	if msg.Id != "msg1" {
 		t.Errorf("GetMessage() returned message with ID %s, want msg1", msg.Id)
 	}
@@ -324,6 +331,7 @@ func TestMockGmailService(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetLabels() error = %v", err)
 	}
+
 	if len(labels) != 3 {
 		t.Errorf("GetLabels() returned %d labels, want 3", len(labels))
 	}
@@ -333,6 +341,7 @@ func TestMockGmailService(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetProfile() error = %v", err)
 	}
+
 	if profile.EmailAddress != "test@example.com" {
 		t.Errorf("GetProfile() returned email %s, want test@example.com", profile.EmailAddress)
 	}

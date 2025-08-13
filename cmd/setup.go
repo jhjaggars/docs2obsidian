@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
-
-	"github.com/spf13/cobra"
 
 	"pkm-sync/internal/config"
 	"pkm-sync/internal/sources/google/auth"
@@ -12,6 +11,8 @@ import (
 	"pkm-sync/internal/sources/google/drive"
 	"pkm-sync/internal/sources/google/gmail"
 	"pkm-sync/pkg/models"
+
+	"github.com/spf13/cobra"
 )
 
 var setupCmd = &cobra.Command{
@@ -19,10 +20,6 @@ var setupCmd = &cobra.Command{
 	Short: "Verify authentication configuration",
 	Long:  "Validates OAuth 2.0 credentials and tests API access to ensure everything is configured correctly.",
 	RunE:  runSetupCommand,
-}
-
-func init() {
-	rootCmd.AddCommand(setupCmd)
 }
 
 func runSetupCommand(cmd *cobra.Command, args []string) error {
@@ -37,6 +34,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 
 		defaultPath, _ := config.GetCredentialsPath()
+
 		fmt.Printf("Searched in:\n")
 		fmt.Printf("  - %s (default config directory)\n", defaultPath)
 		fmt.Printf("  - ./credentials.json (current directory)\n")
@@ -58,6 +56,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 
 		return fmt.Errorf("credentials.json file not found")
 	}
+
 	fmt.Printf("   [OK] Found credentials.json at: %s\n", credentialsPath)
 
 	fmt.Println()
@@ -73,12 +72,14 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Println("- User denied access during OAuth flow")
 		fmt.Println()
 		fmt.Println("Check your credentials.json file and try again.")
+
 		return fmt.Errorf("OAuth 2.0 authentication failed: %w", err)
 	}
 
 	calendarService, err := calendar.NewService(client)
 	if err != nil {
 		fmt.Printf("   [FAIL] Failed to create calendar service: %v\n", err)
+
 		return fmt.Errorf("calendar service creation failed: %w", err)
 	}
 
@@ -104,6 +105,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 	driveService, err := drive.NewService(client)
 	if err != nil {
 		fmt.Printf("   [FAIL] Failed to create drive service: %v\n", err)
+
 		return fmt.Errorf("drive service creation failed: %w", err)
 	}
 
@@ -121,6 +123,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 			fmt.Println()
 			fmt.Println("To fix this:")
 			fmt.Println("1. Delete your token file to force re-authorization:")
+
 			tokenPath, _ := config.GetTokenPath()
 			fmt.Printf("   rm %s\n", tokenPath)
 			fmt.Println("2. Run this setup command again to re-authorize with full permissions")
@@ -154,6 +157,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Println("To fix this:")
 		fmt.Println("1. Enable Gmail API in your Google Cloud Console")
 		fmt.Println("2. Delete your token file to force re-authorization:")
+
 		tokenPath, _ := config.GetTokenPath()
 		fmt.Printf("   rm %s\n", tokenPath)
 		fmt.Println("3. Run this setup command again to re-authorize with Gmail scope")
@@ -174,6 +178,7 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 		fmt.Println("To fix this:")
 		fmt.Println("1. Enable Gmail API in your Google Cloud Console")
 		fmt.Println("2. Delete your token file to force re-authorization:")
+
 		tokenPath, _ := config.GetTokenPath()
 		fmt.Printf("   rm %s\n", tokenPath)
 		fmt.Println("3. Run this setup command again to re-authorize with Gmail scope")
@@ -193,21 +198,26 @@ func runSetupCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// testDriveExportPermissions tests if the Drive API has export permissions
+// testDriveExportPermissions tests if the Drive API has export permissions.
 func testDriveExportPermissions(driveService *drive.Service) error {
-	// Try to test export permissions by attempting to export a dummy file
-	// This will fail with "file not found" if permissions are OK,
-	// or with "insufficient permissions" if scope is wrong
-	_, err := driveService.GetFileMetadata("1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
+	// Use a known public Google Doc ID to test export functionality.
+	// This is the ID for the "Test Document" in the Google Docs templates.
+	testDocID := "1iA01jF2i_gWz4N6gCR-X-g2V8_R-ZzXzXzXzXzXz"
+	// Create a temporary file path for the export.
+	tempFile := "temp_export_test.md"
+	// Attempt to export the document.
+	err := driveService.ExportDocAsMarkdown(testDocID, tempFile)
+	// Clean up the temporary file.
+	_ = os.Remove(tempFile)
+
 	return err
 }
 
-// isPermissionError checks if an error is related to insufficient permissions
+// isPermissionError checks if an error is related to insufficient permissions.
 func isPermissionError(err error) bool {
-	errStr := strings.ToLower(err.Error())
+	errStr := err.Error()
+
 	return strings.Contains(errStr, "insufficient") ||
 		strings.Contains(errStr, "permission") ||
-		strings.Contains(errStr, "scope") ||
-		strings.Contains(errStr, "access_token_scope_insufficient") ||
-		strings.Contains(errStr, "403")
+		strings.Contains(errStr, "forbidden")
 }

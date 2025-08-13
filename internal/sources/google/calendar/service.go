@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"pkm-sync/pkg/models"
+
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
-
-	"pkm-sync/pkg/models"
 )
 
 type Service struct {
@@ -25,7 +25,8 @@ func NewService(client *http.Client) (*Service, error) {
 
 	calendarService, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Google Calendar service: %w. Ensure credentials are valid and Calendar API is enabled", err)
+		return nil, fmt.Errorf("failed to initialize Google Calendar service: %w. "+
+			"Ensure credentials are valid and Calendar API is enabled", err)
 	}
 
 	return &Service{
@@ -35,22 +36,22 @@ func NewService(client *http.Client) (*Service, error) {
 	}, nil
 }
 
-// SetAttendeeAllowList configures the allow list for attendee filtering
+// SetAttendeeAllowList configures the allow list for attendee filtering.
 func (s *Service) SetAttendeeAllowList(allowList []string) {
 	s.attendeeAllowList = allowList
 }
 
-// SetRequireMultipleAttendees configures whether to require multiple attendees
+// SetRequireMultipleAttendees configures whether to require multiple attendees.
 func (s *Service) SetRequireMultipleAttendees(require bool) {
 	s.requireMultipleAttendees = require
 }
 
-// SetIncludeSelfOnlyEvents configures whether to include events where you're the only attendee
+// SetIncludeSelfOnlyEvents configures whether to include events where you're the only attendee.
 func (s *Service) SetIncludeSelfOnlyEvents(include bool) {
 	s.includeSelfOnlyEvents = include
 }
 
-// shouldIncludeEvent applies two-step filtering: 1) attendee allow list, 2) self-only rules
+// shouldIncludeEvent applies two-step filtering: 1) attendee allow list, 2) self-only rules.
 func (s *Service) shouldIncludeEvent(event *calendar.Event) bool {
 	// Step 1: Apply attendee allow list filtering
 	if !s.passesAttendeeAllowListFilter(event) {
@@ -61,7 +62,7 @@ func (s *Service) shouldIncludeEvent(event *calendar.Event) bool {
 	return s.passesSelfOnlyEventFilter(event)
 }
 
-// passesAttendeeAllowListFilter checks if event passes the attendee allow list filter
+// passesAttendeeAllowListFilter checks if event passes the attendee allow list filter.
 func (s *Service) passesAttendeeAllowListFilter(event *calendar.Event) bool {
 	// If no allow list is configured, all events pass this filter
 	if len(s.attendeeAllowList) == 0 {
@@ -84,7 +85,7 @@ func (s *Service) passesAttendeeAllowListFilter(event *calendar.Event) bool {
 	return false
 }
 
-// passesSelfOnlyEventFilter checks if event passes the self-only event filter
+// passesSelfOnlyEventFilter checks if event passes the self-only event filter.
 func (s *Service) passesSelfOnlyEventFilter(event *calendar.Event) bool {
 	// If we don't require multiple attendees, all events pass this filter
 	if !s.requireMultipleAttendees {
@@ -103,10 +104,11 @@ func (s *Service) passesSelfOnlyEventFilter(event *calendar.Event) bool {
 	return true
 }
 
-// filterEvents applies the attendee allow list filter to a slice of events
+// filterEvents applies the attendee allow list filter to a slice of events.
 func (s *Service) filterEvents(events []*calendar.Event) []*calendar.Event {
 	// Always apply filtering, even if allow list is empty (for attendee count filtering)
 	var filteredEvents []*calendar.Event
+
 	for _, event := range events {
 		if s.shouldIncludeEvent(event) {
 			filteredEvents = append(filteredEvents, event)
@@ -126,7 +128,6 @@ func (s *Service) GetUpcomingEvents(maxResults int64) ([]*calendar.Event, error)
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		Do()
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve events: %w", err)
 	}
@@ -146,7 +147,6 @@ func (s *Service) GetEventsInRange(start, end time.Time, maxResults int64) ([]*c
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		Do()
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve events in range: %w", err)
 	}
@@ -188,6 +188,7 @@ func (s *Service) ConvertToModel(event *calendar.Event) *models.CalendarEvent {
 		for _, entryPoint := range event.ConferenceData.EntryPoints {
 			if entryPoint.EntryPointType == "video" && entryPoint.Uri != "" {
 				modelEvent.MeetingURL = entryPoint.Uri
+
 				break
 			}
 		}
@@ -208,7 +209,7 @@ func (s *Service) ConvertToModel(event *calendar.Event) *models.CalendarEvent {
 	return modelEvent
 }
 
-// ConvertToModelWithDrive converts a calendar event to a model with drive file attachments populated
+// ConvertToModelWithDrive converts a calendar event to a model with drive file attachments populated.
 func (s *Service) ConvertToModelWithDrive(event *calendar.Event) *models.CalendarEvent {
 	// Now that we use native Calendar API attachments, just use the base conversion
 	return s.ConvertToModel(event)

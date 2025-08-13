@@ -26,6 +26,12 @@ lint:
 	@echo "🔍 Running linters..."
 	@$(GOLANGCI_LINT) run ./... --timeout=5m
 
+# Target: lint-full - Runs the golangci-lint linter with all issues shown.
+.PHONY: lint-full
+lint-full:
+	@echo "🔍 Running all linters..."
+	@$(GOLANGCI_LINT) run ./... --max-issues-per-linter=0 --max-same-issues=0 --timeout=5m
+
 # Target: test - Runs unit tests with the race detector.
 .PHONY: test
 test:

@@ -13,6 +13,11 @@ import (
 	"pkm-sync/pkg/models"
 )
 
+const (
+	SourceTypeGoogle = "google"
+	SourceTypeGmail  = "gmail"
+)
+
 type GoogleSource struct {
 	calendarService *calendar.Service
 	driveService    *drive.Service
@@ -34,7 +39,7 @@ func NewGoogleSourceWithConfig(sourceID string, config models.SourceConfig) *Goo
 }
 
 func (g *GoogleSource) Name() string {
-	return "google"
+	return SourceTypeGoogle
 }
 
 func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Client) error {
@@ -46,6 +51,7 @@ func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Cli
 			return err
 		}
 	}
+
 	g.httpClient = client
 
 	// Initialize services using existing code
@@ -58,11 +64,13 @@ func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Cli
 	if allowListInterface, exists := config["attendee_allow_list"]; exists {
 		if allowList, ok := allowListInterface.([]interface{}); ok {
 			var stringAllowList []string
+
 			for _, item := range allowList {
 				if emailStr, ok := item.(string); ok {
 					stringAllowList = append(stringAllowList, emailStr)
 				}
 			}
+
 			g.calendarService.SetAttendeeAllowList(stringAllowList)
 		}
 	}
@@ -86,7 +94,7 @@ func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Cli
 	}
 
 	// Initialize Gmail service if this is a Gmail source type
-	if g.config.Type == "gmail" {
+	if g.config.Type == SourceTypeGmail {
 		g.gmailService, err = gmail.NewService(client, g.config.Gmail, g.sourceID)
 		if err != nil {
 			return fmt.Errorf("failed to initialize Gmail service: %w", err)
@@ -97,57 +105,58 @@ func (g *GoogleSource) Configure(config map[string]interface{}, client *http.Cli
 }
 
 func (g *GoogleSource) Fetch(since time.Time, limit int) ([]*models.Item, error) {
-	// Handle Gmail sources
-	if g.config.Type == "gmail" {
-		if g.gmailService == nil {
-			return nil, fmt.Errorf("gmail service not initialized")
-		}
-
-		// Fetch messages from Gmail
-		messages, err := g.gmailService.GetMessages(since, limit)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch Gmail messages: %w", err)
-		}
-
-		// Convert to universal Item format
-		var items []*models.Item
-		for _, message := range messages {
-			item, err := gmail.FromGmailMessageWithService(message, g.config.Gmail, g.gmailService)
-			if err != nil {
-				slog.Warn("Failed to convert message", "message_id", message.Id, "error", err)
-				continue
-			}
-			items = append(items, item)
-		}
-
-		// Apply thread processing if enabled
-		if g.config.Gmail.IncludeThreads {
-			threadProcessor := gmail.NewThreadProcessor(g.config.Gmail)
-			processedItems, err := threadProcessor.ProcessThreads(items)
-			if err != nil {
-				return nil, fmt.Errorf("failed to process threads: %w", err)
-			}
-			return processedItems, nil
-		}
-
-		return items, nil
+	if g.config.Type == SourceTypeGmail {
+		return g.fetchGmail(since, limit)
 	}
 
 	// Default: Handle Google Calendar sources
-	// Use existing calendar.GetEventsInRange
+	return g.fetchCalendar(since, limit)
+}
+
+func (g *GoogleSource) fetchGmail(since time.Time, limit int) ([]*models.Item, error) {
+	if g.gmailService == nil {
+		return nil, fmt.Errorf("gmail service not initialized")
+	}
+
+	messages, err := g.gmailService.GetMessages(since, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch Gmail messages: %w", err)
+	}
+
+	items := make([]*models.Item, 0, len(messages))
+
+	for _, message := range messages {
+		item, err := gmail.FromGmailMessageWithService(message, g.config.Gmail, g.gmailService)
+		if err != nil {
+			slog.Warn("Failed to convert message", "message_id", message.Id, "error", err)
+
+			continue
+		}
+
+		items = append(items, item)
+	}
+
+	if g.config.Gmail.IncludeThreads {
+		threadProcessor := gmail.NewThreadProcessor(g.config.Gmail)
+
+		return threadProcessor.ProcessThreads(items)
+	}
+
+	return items, nil
+}
+
+func (g *GoogleSource) fetchCalendar(since time.Time, limit int) ([]*models.Item, error) {
 	end := time.Now().Add(24 * time.Hour) // Default to next 24 hours
+
 	events, err := g.calendarService.GetEventsInRange(since, end, int64(limit))
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert events to universal Item format
-	var items []*models.Item
-	for _, event := range events {
-		// Convert to our model first
-		calEvent := g.calendarService.ConvertToModelWithDrive(event)
+	items := make([]*models.Item, 0, len(events))
 
-		// Then convert to universal Item format
+	for _, event := range events {
+		calEvent := g.calendarService.ConvertToModelWithDrive(event)
 		item := models.FromCalendarEvent(calEvent)
 		items = append(items, item)
 	}

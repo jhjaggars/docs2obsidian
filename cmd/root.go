@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"pkm-sync/internal/config"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -28,14 +28,7 @@ Commands:
   calendar  List and sync Google Calendar events
   setup     Verify authentication configuration
   config    Manage configuration files`,
-}
-
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&credentialsPath, "credentials", "c", "", "Path to credentials.json file")
-	rootCmd.PersistentFlags().StringVar(&configDir, "config-dir", "", "Custom configuration directory")
-	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "Enable debug logging")
-
-	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Set up logging based on debug flag
 		if debugMode {
 			// Set debug level logging
@@ -57,7 +50,7 @@ func init() {
 		if configDir != "" {
 			config.SetCustomConfigDir(configDir)
 		}
-	}
+	},
 }
 
 func Execute() {

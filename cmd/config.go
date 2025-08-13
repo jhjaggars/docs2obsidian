@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
-
 	"pkm-sync/internal/config"
 	"pkm-sync/pkg/models"
+
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var configCmd = &cobra.Command{
@@ -61,22 +61,6 @@ var configEditCmd = &cobra.Command{
 	RunE:  runConfigEditCommand,
 }
 
-func init() {
-	rootCmd.AddCommand(configCmd)
-
-	configCmd.AddCommand(configInitCmd)
-	configCmd.AddCommand(configShowCmd)
-	configCmd.AddCommand(configPathCmd)
-	configCmd.AddCommand(configValidateCmd)
-	configCmd.AddCommand(configEditCmd)
-
-	// Flags for config init
-	configInitCmd.Flags().BoolP("force", "f", false, "Overwrite existing config file")
-	configInitCmd.Flags().StringP("output", "o", "", "Output directory for default target")
-	configInitCmd.Flags().String("target", "", "Default target (obsidian, logseq)")
-	configInitCmd.Flags().String("source", "", "Default source (google)")
-}
-
 func runConfigInitCommand(cmd *cobra.Command, args []string) error {
 	force, _ := cmd.Flags().GetBool("force")
 	output, _ := cmd.Flags().GetString("output")
@@ -108,12 +92,15 @@ func runConfigInitCommand(cmd *cobra.Command, args []string) error {
 	if source != "" {
 		// Add to enabled sources if not already present
 		found := false
+
 		for _, src := range cfg.Sync.EnabledSources {
 			if src == source {
 				found = true
+
 				break
 			}
 		}
+
 		if !found {
 			cfg.Sync.EnabledSources = append(cfg.Sync.EnabledSources, source)
 		}
@@ -152,6 +139,7 @@ func runConfigShowCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Print(string(data))
+
 	return nil
 }
 
@@ -177,12 +165,14 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Printf("❌ Configuration validation failed: %v\n", err)
+
 		return err
 	}
 
 	// Use comprehensive validation
 	if err := config.ValidateConfig(cfg); err != nil {
 		fmt.Printf("❌ Configuration validation failed: %v\n", err)
+
 		return err
 	}
 
@@ -190,6 +180,7 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 	if cfg.Sync.DefaultOutputDir != "" {
 		if err := validateOutputDirectory(cfg.Sync.DefaultOutputDir); err != nil {
 			fmt.Printf("❌ Default output directory '%s' is not writable: %v\n", cfg.Sync.DefaultOutputDir, err)
+
 			return fmt.Errorf("invalid configuration")
 		}
 	}
@@ -216,6 +207,7 @@ func runConfigEditCommand(cmd *cobra.Command, args []string) error {
 	// Check if config exists, create if not
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		fmt.Printf("Config file doesn't exist. Creating default config at %s\n", configPath)
+
 		if err := config.CreateDefaultConfig(); err != nil {
 			return fmt.Errorf("failed to create default config: %w", err)
 		}
@@ -238,7 +230,7 @@ func runConfigEditCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Helper function to get config file path
+// Helper function to get config file path.
 func getConfigFilePath() (string, error) {
 	if configDir != "" {
 		return filepath.Join(configDir, config.ConfigFileName), nil
@@ -252,7 +244,7 @@ func getConfigFilePath() (string, error) {
 	return filepath.Join(defaultConfigDir, config.ConfigFileName), nil
 }
 
-// getEnabledSourcesForValidation returns enabled sources (same logic as sync command)
+// getEnabledSourcesForValidation returns enabled sources (same logic as sync command).
 func getEnabledSourcesForValidation(cfg *models.Config) []string {
 	var enabledSources []string
 
@@ -263,6 +255,7 @@ func getEnabledSourcesForValidation(cfg *models.Config) []string {
 				enabledSources = append(enabledSources, srcName)
 			}
 		}
+
 		return enabledSources
 	}
 
@@ -276,7 +269,7 @@ func getEnabledSourcesForValidation(cfg *models.Config) []string {
 	return enabledSources
 }
 
-// validateOutputDirectory checks if a directory path is writable
+// validateOutputDirectory checks if a directory path is writable.
 func validateOutputDirectory(dir string) error {
 	// First check if directory exists or can be created
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -285,10 +278,12 @@ func validateOutputDirectory(dir string) error {
 
 	// Try to create a temporary file to test write permissions
 	tempFile := filepath.Join(dir, ".pkm-sync-write-test")
+
 	file, err := os.Create(tempFile)
 	if err != nil {
 		return fmt.Errorf("no write permission: %w", err)
 	}
+
 	if err := file.Close(); err != nil {
 		return fmt.Errorf("failed to close test file: %w", err)
 	}

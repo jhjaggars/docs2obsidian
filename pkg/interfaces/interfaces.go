@@ -2,8 +2,9 @@ package interfaces
 
 import (
 	"net/http"
-	"pkm-sync/pkg/models"
 	"time"
+
+	"pkm-sync/pkg/models"
 )
 
 // Source represents any data source (Google Calendar, Slack, etc.)
@@ -25,7 +26,7 @@ type Target interface {
 	Preview(items []*models.Item, outputDir string) ([]*FilePreview, error)
 }
 
-// FilePreview represents what would happen to a file during sync
+// FilePreview represents what would happen to a file during sync.
 type FilePreview struct {
 	FilePath        string // Full path where file would be created
 	Action          string // "create", "update", "skip"
@@ -34,7 +35,7 @@ type FilePreview struct {
 	Conflict        bool   // True if there would be a conflict
 }
 
-// Syncer coordinates between sources and targets
+// Syncer coordinates between sources and targets.
 type Syncer interface {
 	Sync(source Source, target Target, options SyncOptions) error
 }

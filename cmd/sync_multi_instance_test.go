@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"pkm-sync/pkg/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"pkm-sync/pkg/models"
 )
 
 func TestMultiInstanceGmailConfiguration(t *testing.T) {
@@ -316,8 +316,6 @@ func TestCreateSourceWithConfig(t *testing.T) {
 				if source != nil {
 					assert.NotNil(t, source)
 				}
-				// We can't test the actual source without credentials,
-				// but we can test that the right error is returned
 			}
 		})
 	}
@@ -326,6 +324,7 @@ func TestCreateSourceWithConfig(t *testing.T) {
 func TestMultiInstancePerSourceTargets(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "pkm-sync-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
@@ -516,12 +515,12 @@ func TestSourcePriorityOrdering(t *testing.T) {
 	enabledSources := getEnabledSources(config)
 
 	// All sources should be enabled
-	assert.Len(t, enabledSources, 3)
-	assert.Contains(t, enabledSources, "gmail_high")
-	assert.Contains(t, enabledSources, "gmail_medium")
-	assert.Contains(t, enabledSources, "gmail_low")
 
 	// Note: In a real implementation, you might want to sort by priority
 	// The current getEnabledSources doesn't implement priority sorting
 	// This test documents the current behavior
+	assert.Len(t, enabledSources, 3)
+	assert.Contains(t, enabledSources, "gmail_high")
+	assert.Contains(t, enabledSources, "gmail_medium")
+	assert.Contains(t, enabledSources, "gmail_low")
 }

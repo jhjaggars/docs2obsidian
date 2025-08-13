@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/api/gmail/v1"
-
 	"pkm-sync/pkg/models"
+
+	"google.golang.org/api/gmail/v1"
 )
 
-// MockService provides a mock implementation of the Gmail service for testing
+// MockService provides a mock implementation of the Gmail service for testing.
 type MockService struct {
 	messages []*gmail.Message
 	labels   []*gmail.Label
@@ -19,7 +19,7 @@ type MockService struct {
 	sourceID string
 }
 
-// NewMockService creates a new mock Gmail service with test data
+// NewMockService creates a new mock Gmail service with test data.
 func NewMockService(config models.GmailSourceConfig, sourceID string) *MockService {
 	return &MockService{
 		config:   config,
@@ -30,21 +30,22 @@ func NewMockService(config models.GmailSourceConfig, sourceID string) *MockServi
 	}
 }
 
-// GetMessages returns mock messages filtered by the query
+// GetMessages returns mock messages filtered by the query.
 func (m *MockService) GetMessages(since time.Time, limit int) ([]*gmail.Message, error) {
 	if limit <= 0 {
 		limit = 100
 	}
 
-	// Apply basic filtering based on configuration
+	// Apply basic filtering based on configuration.
 	var filtered []*gmail.Message
+
 	for _, msg := range m.messages {
 		if m.messageMatchesFilters(msg) {
 			filtered = append(filtered, msg)
 		}
 	}
 
-	// Apply limit
+	// Apply limit.
 	if len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
@@ -52,7 +53,7 @@ func (m *MockService) GetMessages(since time.Time, limit int) ([]*gmail.Message,
 	return filtered, nil
 }
 
-// GetMessage returns a specific mock message
+// GetMessage returns a specific mock message.
 func (m *MockService) GetMessage(messageID string) (*gmail.Message, error) {
 	if messageID == "" {
 		return nil, fmt.Errorf("message ID is required")
@@ -67,7 +68,7 @@ func (m *MockService) GetMessage(messageID string) (*gmail.Message, error) {
 	return nil, fmt.Errorf("message not found: %s", messageID)
 }
 
-// GetMessagesInRange returns mock messages within a time range
+// GetMessagesInRange returns mock messages within a time range.
 func (m *MockService) GetMessagesInRange(start, end time.Time, limit int) ([]*gmail.Message, error) {
 	if end.Before(start) {
 		return nil, fmt.Errorf("end time must be after start time")
@@ -76,19 +77,19 @@ func (m *MockService) GetMessagesInRange(start, end time.Time, limit int) ([]*gm
 	return m.GetMessages(start, limit)
 }
 
-// GetLabels returns mock labels
+// GetLabels returns mock labels.
 func (m *MockService) GetLabels() ([]*gmail.Label, error) {
 	return m.labels, nil
 }
 
-// GetProfile returns mock profile
+// GetProfile returns mock profile.
 func (m *MockService) GetProfile() (*gmail.Profile, error) {
 	return m.profile, nil
 }
 
-// ValidateConfiguration validates the mock configuration
+// ValidateConfiguration validates the mock configuration.
 func (m *MockService) ValidateConfiguration() error {
-	// Validate that configured labels exist in mock labels
+	// Validate that configured labels exist in mock labels.
 	if len(m.config.Labels) > 0 {
 		labelMap := make(map[string]bool)
 		for _, label := range m.labels {
@@ -106,43 +107,50 @@ func (m *MockService) ValidateConfiguration() error {
 	return nil
 }
 
-// messageMatchesFilters checks if a message matches the configured filters
+// messageMatchesFilters checks if a message matches the configured filters.
 func (m *MockService) messageMatchesFilters(msg *gmail.Message) bool {
-	// Check labels
+	// Check labels.
 	if len(m.config.Labels) > 0 {
 		hasLabel := false
+
 		for _, configLabel := range m.config.Labels {
 			for _, msgLabel := range msg.LabelIds {
 				if msgLabel == configLabel {
 					hasLabel = true
+
 					break
 				}
 			}
+
 			if hasLabel {
 				break
 			}
 		}
+
 		if !hasLabel {
 			return false
 		}
 	}
 
-	// Check from domains
+	// Check from domains.
 	if len(m.config.FromDomains) > 0 {
 		from := getHeaderValue(msg, "From")
 		hasValidDomain := false
+
 		for _, domain := range m.config.FromDomains {
 			if strings.Contains(from, domain) {
 				hasValidDomain = true
+
 				break
 			}
 		}
+
 		if !hasValidDomain {
 			return false
 		}
 	}
 
-	// Check excluded domains
+	// Check excluded domains.
 	if len(m.config.ExcludeFromDomains) > 0 {
 		from := getHeaderValue(msg, "From")
 		for _, domain := range m.config.ExcludeFromDomains {
@@ -155,7 +163,7 @@ func (m *MockService) messageMatchesFilters(msg *gmail.Message) bool {
 	return true
 }
 
-// Helper function to get header value from message
+// Helper function to get header value from message.
 func getHeaderValue(msg *gmail.Message, headerName string) string {
 	if msg.Payload == nil || msg.Payload.Headers == nil {
 		return ""
@@ -166,10 +174,11 @@ func getHeaderValue(msg *gmail.Message, headerName string) string {
 			return header.Value
 		}
 	}
+
 	return ""
 }
 
-// createTestMessages creates sample test messages
+// createTestMessages creates sample test messages.
 func createTestMessages() []*gmail.Message {
 	return []*gmail.Message{
 		{
@@ -188,7 +197,7 @@ func createTestMessages() []*gmail.Message {
 					{Name: "Message-ID", Value: "<msg1@company.com>"},
 				},
 				Body: &gmail.MessagePartBody{
-					Data: "VGhpcyBpcyBhbiBpbXBvcnRhbnQgd29yayBlbWFpbA==", // Base64 encoded
+					Data: "VGhpcyBpcyBhbiBpbXBvcnRhbnQgd29yayBlbWFpbA==", // Base64 encoded.
 				},
 			},
 		},
@@ -208,7 +217,7 @@ func createTestMessages() []*gmail.Message {
 					{Name: "Message-ID", Value: "<msg2@personal.com>"},
 				},
 				Body: &gmail.MessagePartBody{
-					Data: "VGhpcyBpcyBhIHBlcnNvbmFsIGVtYWls", // Base64 encoded
+					Data: "VGhpcyBpcyBhIHBlcnNvbmFsIGVtYWls", // Base64 encoded.
 				},
 			},
 		},
@@ -228,7 +237,7 @@ func createTestMessages() []*gmail.Message {
 					{Name: "Message-ID", Value: "<msg3@noreply.com>"},
 				},
 				Body: &gmail.MessagePartBody{
-					Data: "VGhpcyBpcyBhIG5ld3NsZXR0ZXIgZW1haWw=", // Base64 encoded
+					Data: "VGhpcyBpcyBhIG5ld3NsZXR0ZXIgZW1haWw=", // Base64 encoded.
 				},
 			},
 		},
@@ -248,7 +257,7 @@ func createTestMessages() []*gmail.Message {
 					{Name: "Message-ID", Value: "<msg4@company.com>"},
 				},
 				Body: &gmail.MessagePartBody{
-					Data: "UHJvamVjdCB1cGRhdGUgd2l0aCBhdHRhY2htZW50", // Base64 encoded
+					Data: "UHJvamVjdCB1cGRhdGUgd2l0aCBhdHRhY2htZW50", // Base64 encoded.
 				},
 				Parts: []*gmail.MessagePart{
 					{
@@ -265,7 +274,7 @@ func createTestMessages() []*gmail.Message {
 	}
 }
 
-// createTestLabels creates sample test labels
+// createTestLabels creates sample test labels.
 func createTestLabels() []*gmail.Label {
 	return []*gmail.Label{
 		{Id: "INBOX", Name: "INBOX", Type: "system"},
@@ -280,7 +289,7 @@ func createTestLabels() []*gmail.Label {
 	}
 }
 
-// createTestProfile creates a sample test profile
+// createTestProfile creates a sample test profile.
 func createTestProfile() *gmail.Profile {
 	return &gmail.Profile{
 		EmailAddress:  "testuser@example.com",
@@ -290,17 +299,17 @@ func createTestProfile() *gmail.Profile {
 	}
 }
 
-// AddTestMessage adds a custom test message to the mock service
+// AddTestMessage adds a custom test message to the mock service.
 func (m *MockService) AddTestMessage(msg *gmail.Message) {
 	m.messages = append(m.messages, msg)
 }
 
-// ClearMessages removes all test messages
+// ClearMessages removes all test messages.
 func (m *MockService) ClearMessages() {
 	m.messages = []*gmail.Message{}
 }
 
-// SetConfig updates the mock service configuration
+// SetConfig updates the mock service configuration.
 func (m *MockService) SetConfig(config models.GmailSourceConfig) {
 	m.config = config
 }

@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"pkm-sync/internal/sources/google/auth"
 	"pkm-sync/internal/sources/google/calendar"
 	"pkm-sync/internal/sources/google/drive"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -30,15 +30,6 @@ You can export docs from:
 - All events in a date range
 - Today's events (default)`,
 	RunE: runDriveCommand,
-}
-
-func init() {
-	rootCmd.AddCommand(driveCmd)
-
-	driveCmd.Flags().StringVarP(&driveOutputDir, "output", "o", "./exported-docs", "Output directory for exported markdown files")
-	driveCmd.Flags().StringVar(&driveEventID, "event-id", "", "Export docs from specific event ID")
-	driveCmd.Flags().StringVar(&driveStartDate, "start", "", "Start date for range export (YYYY-MM-DD)")
-	driveCmd.Flags().StringVar(&driveEndDate, "end", "", "End date for range export (YYYY-MM-DD)")
 }
 
 func runDriveCommand(cmd *cobra.Command, args []string) error {
@@ -72,6 +63,7 @@ func runDriveCommand(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		totalExported = count
 	} else {
 		// Export from date range
@@ -84,10 +76,12 @@ func runDriveCommand(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		totalExported = count
 	}
 
 	fmt.Printf("\nDrive export complete! %d documents exported to %s\n", totalExported, driveOutputDir)
+
 	return nil
 }
 
@@ -123,12 +117,15 @@ func driveExportFromDateRange(calendarService *calendar.Service, driveService *d
 	}
 
 	var totalExported int
+
 	for _, event := range events {
 		count, err := driveExportFromSingleEvent(driveService, event.Summary, event.Description)
 		if err != nil {
 			fmt.Printf("Warning: failed to export docs from event '%s': %v\n", event.Summary, err)
+
 			continue
 		}
+
 		totalExported += count
 	}
 
@@ -152,8 +149,10 @@ func driveExportFromSingleEvent(driveService *drive.Service, eventSummary, event
 }
 
 func getDriveExportDateRange() (time.Time, time.Time, error) {
-	var start, end time.Time
-	var err error
+	var (
+		start, end time.Time
+		err        error
+	)
 
 	if driveStartDate != "" {
 		start, err = time.Parse("2006-01-02", driveStartDate)

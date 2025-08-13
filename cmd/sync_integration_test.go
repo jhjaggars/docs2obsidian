@@ -5,16 +5,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"pkm-sync/pkg/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"pkm-sync/pkg/models"
 )
 
 func TestPerSourceOutputDirectoryHandling(t *testing.T) {
 	// Create a temporary directory for test outputs
 	tempDir, err := os.MkdirTemp("", "pkm-sync-output-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
@@ -320,6 +321,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 	// Create a temporary directory for the complete workflow test
 	tempDir, err := os.MkdirTemp("", "pkm-sync-workflow-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create a comprehensive configuration that exercises all features
@@ -434,6 +436,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 
 	for _, sourceID := range enabledSources {
 		sourceConfig := config.Sources[sourceID]
+
 		var targetName string
 		if sourceConfig.OutputTarget != "" {
 			targetName = sourceConfig.OutputTarget
@@ -507,7 +510,9 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 	assert.NoError(t, err, "Failed to read base output directory")
 
 	expectedSubdirs := []string{"work", "personal", "calendar"}
+
 	actualSubdirs := make([]string, 0, len(baseEntries))
+
 	for _, entry := range baseEntries {
 		if entry.IsDir() {
 			actualSubdirs = append(actualSubdirs, entry.Name())
@@ -520,6 +525,7 @@ func TestCompleteMultiInstanceWorkflow(t *testing.T) {
 func TestErrorHandlingInMultiInstanceWorkflow(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "pkm-sync-error-test")
 	require.NoError(t, err)
+
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test configuration with various error conditions

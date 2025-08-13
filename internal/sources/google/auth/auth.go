@@ -9,13 +9,13 @@ import (
 	"os"
 	"strings"
 
+	"pkm-sync/internal/config"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/gmail/v1"
-
-	"pkm-sync/internal/config"
 )
 
 func GetClient() (*http.Client, error) {
@@ -43,7 +43,11 @@ func getOAuthConfig() (*oauth2.Config, error) {
 		return nil, fmt.Errorf("unable to read client secret file: %w", err)
 	}
 
-	oauthConfig, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope, drive.DriveReadonlyScope, gmail.GmailReadonlyScope)
+	oauthConfig, err := google.ConfigFromJSON(b,
+		calendar.CalendarReadonlyScope,
+		drive.DriveReadonlyScope,
+		gmail.GmailReadonlyScope,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse client secret file to config: %w", err)
 	}
@@ -59,9 +63,11 @@ func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		if err := saveToken(token); err != nil {
 			return nil, fmt.Errorf("unable to save token: %w", err)
 		}
+
 		return token, nil
 	}
 
@@ -75,6 +81,7 @@ func getToken(oauthConfig *oauth2.Config) (*oauth2.Token, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		if err := saveToken(token); err != nil {
 			return nil, fmt.Errorf("unable to save token: %w", err)
 		}
@@ -91,6 +98,7 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 		fmt.Printf("Web server authorization failed: %v\n", err)
 		fmt.Println("Falling back to manual authorization...")
 		fmt.Println()
+
 		return getTokenFromWebManual(config)
 	}
 
@@ -125,6 +133,7 @@ func getTokenFromWebManual(config *oauth2.Config) (*oauth2.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve token from web: %w", err)
 	}
+
 	return token, nil
 }
 
@@ -138,6 +147,7 @@ func extractAuthCode(input string) string {
 			if strings.Contains(codePart, "&") {
 				codePart = strings.Split(codePart, "&")[0]
 			}
+
 			return codePart
 		}
 	}
@@ -159,6 +169,7 @@ func tokenFromFile() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Printf("Warning: failed to close token file: %v", err)
@@ -167,6 +178,7 @@ func tokenFromFile() (*oauth2.Token, error) {
 
 	token := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(token)
+
 	return token, err
 }
 
@@ -177,17 +189,21 @@ func saveToken(token *oauth2.Token) error {
 	}
 
 	fmt.Printf("Saving credential file to: %s\n", tokenPath)
+
 	f, err := os.OpenFile(tokenPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("unable to cache oauth token: %w", err)
 	}
+
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Printf("Warning: failed to close token file for writing: %v", err)
 		}
 	}()
+
 	if err := json.NewEncoder(f).Encode(token); err != nil {
 		return fmt.Errorf("unable to encode token to file: %w", err)
 	}
+
 	return nil
 }

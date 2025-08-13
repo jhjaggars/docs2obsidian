@@ -10,172 +10,191 @@ import (
 	"pkm-sync/pkg/models"
 )
 
-// buildQuery constructs a Gmail search query based on configuration and since time
+// buildQuery constructs a Gmail search query based on configuration and since time.
 func buildQuery(config models.GmailSourceConfig, since time.Time) string {
 	var parts []string
 
-	// Time filter - always include since time
+	// Time filter - always include since time.
 	parts = append(parts, fmt.Sprintf("after:%s", since.Format("2006/01/02")))
 
-	// Max email age filter - exclude emails older than this
+	// Max email age filter - exclude emails older than this.
 	if config.MaxEmailAge != "" {
 		if duration, err := parseDuration(config.MaxEmailAge); err == nil {
-			// MaxEmailAge means "emails not older than X days"
-			// So we want emails after (now - maxAge)
+			// MaxEmailAge means "emails not older than X days".
+			// So we want emails after (now - maxAge).
 			maxAgeStart := time.Now().Add(-duration)
-			// Only add the after filter if it's more restrictive than the since time
+			// Only add the after filter if it's more restrictive than the since time.
 			if maxAgeStart.After(since) {
 				parts = append(parts, fmt.Sprintf("after:%s", maxAgeStart.Format("2006/01/02")))
 			}
 		}
 	}
 
-	// Min email age filter - exclude very recent emails
+	// Min email age filter - exclude very recent emails.
 	if config.MinEmailAge != "" {
 		if duration, err := parseDuration(config.MinEmailAge); err == nil {
-			// MinEmailAge means "emails older than X days"
-			// So we want emails before (now - minAge)
+			// MinEmailAge means "emails older than X days".
+			// So we want emails before (now - minAge).
 			minAgeEnd := time.Now().Add(-duration)
-			// Only add the before filter if it's more restrictive than the since time
-			// (i.e., the minAgeEnd is after the since time, meaning we want to exclude recent emails)
-			slog.Debug("MinEmailAge calculation", "config.MinEmailAge", config.MinEmailAge, "duration", duration, "minAgeEnd", minAgeEnd, "since", since, "condition", minAgeEnd.After(since))
+			// Only add the before filter if it's more restrictive than the since time.
+			// (i.e., the minAgeEnd is after the since time, meaning we want to exclude recent emails).
+			slog.Debug("MinEmailAge calculation",
+				"config.MinEmailAge", config.MinEmailAge,
+				"duration", duration,
+				"minAgeEnd", minAgeEnd,
+				"since", since,
+				"condition", minAgeEnd.After(since))
+
 			if minAgeEnd.After(since) {
 				parts = append(parts, fmt.Sprintf("before:%s", minAgeEnd.Format("2006/01/02")))
 			}
 		}
 	}
 
-	// Label filtering
+	// Label filtering.
 	for _, label := range config.Labels {
-		if label != "" { // Filter out empty labels
+		if label != "" { // Filter out empty labels.
 			parts = append(parts, fmt.Sprintf("label:%s", label))
 		}
 	}
 
-	// Custom query
+	// Custom query.
 	if config.Query != "" {
 		parts = append(parts, fmt.Sprintf("(%s)", config.Query))
 	}
 
-	// Domain filtering - from domains
+	// Domain filtering - from domains.
 	if len(config.FromDomains) > 0 {
 		var domainParts []string
+
 		for _, domain := range config.FromDomains {
-			if domain != "" { // Filter out empty domains
+			if domain != "" { // Filter out empty domains.
 				domainParts = append(domainParts, fmt.Sprintf("from:%s", domain))
 			}
 		}
+
 		if len(domainParts) > 0 {
 			parts = append(parts, fmt.Sprintf("(%s)", strings.Join(domainParts, " OR ")))
 		}
 	}
 
-	// Domain filtering - to domains
+	// Domain filtering - to domains.
 	if len(config.ToDomains) > 0 {
 		var domainParts []string
+
 		for _, domain := range config.ToDomains {
-			if domain != "" { // Filter out empty domains
+			if domain != "" { // Filter out empty domains.
 				domainParts = append(domainParts, fmt.Sprintf("to:%s", domain))
 			}
 		}
+
 		if len(domainParts) > 0 {
 			parts = append(parts, fmt.Sprintf("(%s)", strings.Join(domainParts, " OR ")))
 		}
 	}
 
-	// Exclude from domains
+	// Exclude from domains.
 	if len(config.ExcludeFromDomains) > 0 {
 		for _, domain := range config.ExcludeFromDomains {
-			if domain != "" { // Filter out empty domains
+			if domain != "" { // Filter out empty domains.
 				parts = append(parts, fmt.Sprintf("-from:%s", domain))
 			}
 		}
 	}
 
-	// Read/unread filtering
+	// Read/unread filtering.
 	if config.IncludeUnread && !config.IncludeRead {
 		parts = append(parts, "is:unread")
 	} else if config.IncludeRead && !config.IncludeUnread {
 		parts = append(parts, "is:read")
 	}
-	// If both or neither are set, include all (no filter)
+	// If both or neither are set, include all (no filter).
 
-	// Attachment requirement
+	// Attachment requirement.
 	if config.RequireAttachments {
 		parts = append(parts, "has:attachment")
 	}
 
 	finalQuery := strings.Join(parts, " ")
 
-	// Debug logging
-	slog.Debug("Gmail query built", "parts", parts, "final_query", finalQuery, "since", since.Format("2006-01-02"), "config.MaxEmailAge", config.MaxEmailAge, "config.MinEmailAge", config.MinEmailAge)
+	// Debug logging.
+	slog.Debug("Gmail query built",
+		"parts", parts,
+		"final_query", finalQuery,
+		"since", since.Format("2006-01-02"),
+		"config.MaxEmailAge", config.MaxEmailAge,
+		"config.MinEmailAge", config.MinEmailAge)
 
 	return finalQuery
 }
 
-// buildQueryWithRange constructs a Gmail search query with specific start and end times
+// buildQueryWithRange constructs a Gmail search query with specific start and end times.
 func buildQueryWithRange(config models.GmailSourceConfig, start, end time.Time) string {
 	var parts []string
 
-	// Time range
+	// Time range.
 	parts = append(parts, fmt.Sprintf("after:%s", start.Format("2006/01/02")))
 	parts = append(parts, fmt.Sprintf("before:%s", end.Format("2006/01/02")))
 
-	// Label filtering
+	// Label filtering.
 	for _, label := range config.Labels {
-		if label != "" { // Filter out empty labels
+		if label != "" { // Filter out empty labels.
 			parts = append(parts, fmt.Sprintf("label:%s", label))
 		}
 	}
 
-	// Custom query
+	// Custom query.
 	if config.Query != "" {
 		parts = append(parts, fmt.Sprintf("(%s)", config.Query))
 	}
 
-	// Domain filtering - from domains
+	// Domain filtering - from domains.
 	if len(config.FromDomains) > 0 {
 		var domainParts []string
+
 		for _, domain := range config.FromDomains {
-			if domain != "" { // Filter out empty domains
+			if domain != "" { // Filter out empty domains.
 				domainParts = append(domainParts, fmt.Sprintf("from:%s", domain))
 			}
 		}
+
 		if len(domainParts) > 0 {
 			parts = append(parts, fmt.Sprintf("(%s)", strings.Join(domainParts, " OR ")))
 		}
 	}
 
-	// Domain filtering - to domains
+	// Domain filtering - to domains.
 	if len(config.ToDomains) > 0 {
 		var domainParts []string
+
 		for _, domain := range config.ToDomains {
-			if domain != "" { // Filter out empty domains
+			if domain != "" { // Filter out empty domains.
 				domainParts = append(domainParts, fmt.Sprintf("to:%s", domain))
 			}
 		}
+
 		if len(domainParts) > 0 {
 			parts = append(parts, fmt.Sprintf("(%s)", strings.Join(domainParts, " OR ")))
 		}
 	}
 
-	// Exclude from domains
+	// Exclude from domains.
 	if len(config.ExcludeFromDomains) > 0 {
 		for _, domain := range config.ExcludeFromDomains {
-			if domain != "" { // Filter out empty domains
+			if domain != "" { // Filter out empty domains.
 				parts = append(parts, fmt.Sprintf("-from:%s", domain))
 			}
 		}
 	}
 
-	// Read/unread filtering
+	// Read/unread filtering.
 	if config.IncludeUnread && !config.IncludeRead {
 		parts = append(parts, "is:unread")
 	} else if config.IncludeRead && !config.IncludeUnread {
 		parts = append(parts, "is:read")
 	}
 
-	// Attachment requirement
+	// Attachment requirement.
 	if config.RequireAttachments {
 		parts = append(parts, "has:attachment")
 	}
@@ -183,15 +202,18 @@ func buildQueryWithRange(config models.GmailSourceConfig, start, end time.Time) 
 	return strings.Join(parts, " ")
 }
 
-// parseDuration parses duration strings like "30d", "1y", "2w", "12h"
+// parseDuration parses duration strings like "30d", "1y", "2w", "12h".
 func parseDuration(s string) (time.Duration, error) {
 	if s == "" {
 		return 0, fmt.Errorf("empty duration string")
 	}
 
-	// Extract number and unit
-	var numStr, unit string
-	var i int
+	// Extract number and unit.
+	var (
+		numStr, unit string
+		i            int
+	)
+
 	for i = 0; i < len(s); i++ {
 		if s[i] < '0' || s[i] > '9' {
 			break
@@ -228,14 +250,15 @@ func parseDuration(s string) (time.Duration, error) {
 	}
 }
 
-// ValidateQuery checks if a Gmail query is syntactically valid
+// ValidateQuery checks if a Gmail query is syntactically valid.
 func ValidateQuery(query string) error {
 	if query == "" {
-		return nil // Empty query is valid
+		return nil // Empty query is valid.
 	}
 
-	// Basic validation - check for balanced parentheses
+	// Basic validation - check for balanced parentheses.
 	openParens := 0
+
 	for _, char := range query {
 		switch char {
 		case '(':
@@ -255,16 +278,16 @@ func ValidateQuery(query string) error {
 	return nil
 }
 
-// BuildComplexQuery allows building more complex queries with multiple criteria
+// BuildComplexQuery allows building more complex queries with multiple criteria.
 func BuildComplexQuery(config models.GmailSourceConfig, criteria map[string]interface{}) string {
 	var parts []string
 
-	// Start with base configuration query
+	// Start with base configuration query.
 	if config.Query != "" {
 		parts = append(parts, fmt.Sprintf("(%s)", config.Query))
 	}
 
-	// Add criteria from map
+	// Add criteria from map.
 	for key, value := range criteria {
 		switch key {
 		case "from":

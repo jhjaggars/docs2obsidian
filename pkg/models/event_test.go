@@ -114,6 +114,7 @@ func TestAttendee_GetDisplayName(t *testing.T) {
 func TestAttendee_GetDisplayName_EdgeCases(t *testing.T) {
 	// Test zero value attendee
 	zeroAttendee := Attendee{}
+
 	result := zeroAttendee.GetDisplayName()
 	if result != "" {
 		t.Errorf("GetDisplayName() on zero value = %q, expected empty string", result)

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/api/gmail/v1"
-
 	"pkm-sync/pkg/models"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 func TestContentProcessor_ProcessHTMLContent(t *testing.T) {
@@ -82,6 +82,7 @@ func TestContentProcessor_ProcessHTMLContent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
+
 			result := processor.ProcessHTMLContent(tt.html)
 			if result != tt.expected {
 				t.Errorf("ProcessHTMLContent() = %q, want %q", result, tt.expected)
@@ -144,6 +145,7 @@ func TestContentProcessor_StripQuotedText(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
+
 			result := processor.StripQuotedText(tt.content)
 			if result != tt.expected {
 				t.Errorf("StripQuotedText() = %q, want %q", result, tt.expected)
@@ -193,6 +195,7 @@ func TestContentProcessor_ExtractSignatures(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(models.GmailSourceConfig{ExtractSignatures: true})
+
 			result := processor.ExtractSignatures(tt.content)
 			if result != tt.expected {
 				t.Errorf("ExtractSignatures() = %q, want %q", result, tt.expected)
@@ -261,6 +264,7 @@ func TestContentProcessor_ExtractLinks(t *testing.T) {
 
 			if len(result) != len(tt.expected) {
 				t.Errorf("ExtractLinks() returned %d links, want %d", len(result), len(tt.expected))
+
 				return
 			}
 
@@ -464,10 +468,11 @@ func TestContentProcessor_ProcessEmailBody(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			processor := NewContentProcessor(tt.config)
-			result, err := processor.ProcessEmailBody(tt.msg)
 
+			result, err := processor.ProcessEmailBody(tt.msg)
 			if err != nil {
 				t.Errorf("ProcessEmailBody() error = %v", err)
+
 				return
 			}
 
@@ -706,11 +711,13 @@ func TestThreadProcessor_ProcessThreads(t *testing.T) {
 				if err == nil || !strings.Contains(err.Error(), tt.expectedErr) {
 					t.Errorf("ProcessThreads() expected error containing %q, got %v", tt.expectedErr, err)
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("ProcessThreads() unexpected error: %v", err)
+
 				return
 			}
 
@@ -742,6 +749,7 @@ func TestThreadProcessor_GroupMessagesByThread(t *testing.T) {
 		if thread1.MessageCount != 2 {
 			t.Errorf("Thread1 has %d messages, want 2", thread1.MessageCount)
 		}
+
 		if len(thread1.Messages) != 2 {
 			t.Errorf("Thread1 Messages slice has %d items, want 2", len(thread1.Messages))
 		}
@@ -762,13 +770,16 @@ func TestThreadProcessor_GroupMessagesByThread(t *testing.T) {
 func TestThreadProcessor_NilSafety(t *testing.T) {
 	// Test with nil items
 	validProcessor := NewThreadProcessor(models.GmailSourceConfig{})
+
 	processed, err := validProcessor.ProcessThreads(nil)
 	if err != nil {
 		t.Errorf("ProcessThreads with nil items should not error, got %v", err)
 	}
+
 	if processed == nil {
 		t.Error("ProcessThreads should not return nil slice")
 	}
+
 	if len(processed) != 0 {
 		t.Errorf("ProcessThreads with nil items should return empty slice, got %d items", len(processed))
 	}
@@ -840,7 +851,7 @@ func TestThreadProcessor_ExtractEmailFromRecipient(t *testing.T) {
 	}
 }
 
-// Helper function to create test items
+// Helper function to create test items.
 func createTestItem(id, title, threadID string) *models.Item {
 	item := &models.Item{
 		ID:         id,

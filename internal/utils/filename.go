@@ -5,8 +5,12 @@ import (
 	"strings"
 )
 
+const (
+	safeFilename = "safe-filename"
+)
+
 // SanitizeFilename sanitizes a string to be safe for use as a filename
-// This function prevents path traversal attacks and removes unsafe characters
+// This function prevents path traversal attacks and removes unsafe characters.
 func SanitizeFilename(filename string) string {
 	// Input validation
 	if filename == "" {
@@ -53,21 +57,26 @@ func SanitizeFilename(filename string) string {
 
 	// Remove multiple consecutive hyphens using an efficient approach
 	var result strings.Builder
+
 	result.Grow(len(cleaned)) // Pre-allocate capacity
 
 	prevWasHyphen := false
+
 	for _, char := range cleaned {
 		if char == '-' {
+			// Skip additional consecutive hyphens
 			if !prevWasHyphen {
 				result.WriteRune(char)
+
 				prevWasHyphen = true
 			}
-			// Skip additional consecutive hyphens
 		} else {
 			result.WriteRune(char)
+
 			prevWasHyphen = false
 		}
 	}
+
 	cleaned = result.String()
 
 	// Remove leading/trailing hyphens and limit length
@@ -79,6 +88,7 @@ func SanitizeFilename(filename string) string {
 		if len(cleaned) >= 80 {
 			cleaned = cleaned[:80]
 		}
+
 		cleaned = strings.Trim(cleaned, "-")
 	}
 
@@ -87,24 +97,25 @@ func SanitizeFilename(filename string) string {
 
 	// Additional security validation: ensure it's a safe filename
 	if cleaned == "." || cleaned == ".." || strings.Contains(cleaned, string(filepath.Separator)) {
-		cleaned = "safe-filename"
+		cleaned = safeFilename
 	}
 
 	// Final validation - ensure we have a valid filename
 	if cleaned == "" || cleaned == "-" {
-		cleaned = "safe-filename"
+		cleaned = safeFilename
 	}
 
 	return cleaned
 }
 
 // SanitizeThreadSubject sanitizes a thread subject for use in filenames
-// with fallback handling for empty subjects and thread ID collision prevention
+// with fallback handling for empty subjects and thread ID collision prevention.
 func SanitizeThreadSubject(subject, threadID string) string {
 	if subject == "" {
 		if threadID != "" {
 			return "email-thread-" + SanitizeFilename(threadID)
 		}
+
 		return "email-thread"
 	}
 
@@ -117,7 +128,7 @@ func SanitizeThreadSubject(subject, threadID string) string {
 	sanitized := SanitizeFilename(cleaned)
 
 	// If sanitization results in a generic name and we have a thread ID, append it
-	if (sanitized == "safe-filename" || sanitized == "default-filename" || sanitized == "email-thread") && threadID != "" {
+	if (sanitized == safeFilename || sanitized == "default-filename" || sanitized == "email-thread") && threadID != "" {
 		sanitized = sanitized + "-" + SanitizeFilename(threadID)
 	}
 
@@ -135,6 +146,7 @@ func cleanEmailSubject(subject string) string {
 
 	for iterations < maxIterations {
 		original := subject
+
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(subject, prefix) {
 				subject = strings.TrimSpace(subject[len(prefix):])
@@ -144,6 +156,7 @@ func cleanEmailSubject(subject string) string {
 		if subject == original {
 			break
 		}
+
 		iterations++
 	}
 
