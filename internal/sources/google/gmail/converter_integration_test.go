@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"pkm-sync/internal/sources/google/gmail/testdata"
+	"pkm-sync/internal/transform"
 	"pkm-sync/pkg/models"
 
 	"github.com/stretchr/testify/assert"
@@ -38,8 +39,28 @@ func TestFromGmailMessage_HTMLWithLinks(t *testing.T) {
 	require.NotNil(t, item)
 
 	assert.Equal(t, "Weekly Newsletter - HTML Format", item.Title)
-	assert.NotEmpty(t, item.Links)
 	assert.NotEmpty(t, item.Content)
+
+	// Test link extraction using the transformer pipeline
+	linkTransformer := transform.NewLinkExtractionTransformer()
+	err = linkTransformer.Configure(map[string]interface{}{"enabled": true})
+	require.NoError(t, err)
+
+	transformedItems, err := linkTransformer.Transform([]*models.Item{item})
+	require.NoError(t, err)
+	require.Len(t, transformedItems, 1)
+
+	transformedItem := transformedItems[0]
+	assert.NotEmpty(t, transformedItem.Links, "Links should be extracted by transformer")
+	assert.Len(t, transformedItem.Links, 2, "Should extract 2 links from HTML content")
+
+	// Verify the specific links extracted
+	expectedURLs := []string{"https://company.com/features", "https://blog.company.com"}
+	for i, link := range transformedItem.Links {
+		if i < len(expectedURLs) {
+			assert.Equal(t, expectedURLs[i], link.URL)
+		}
+	}
 
 	cc, ok := item.Metadata["cc"].([]EmailRecipient)
 	require.True(t, ok)
@@ -107,7 +128,21 @@ func TestFromGmailMessage_QuotedReply(t *testing.T) {
 
 	assert.Equal(t, "Re: Project Update", item.Title)
 	assert.NotEmpty(t, item.Content)
-	assert.NotContains(t, item.Content, ">")
+
+	// Test quoted text removal using the transformer pipeline
+	cleanupTransformer := transform.NewContentCleanupTransformer()
+	err = cleanupTransformer.Configure(map[string]interface{}{
+		"strip_quoted_text": true,
+	})
+	require.NoError(t, err)
+
+	transformedItems, err := cleanupTransformer.Transform([]*models.Item{item})
+	require.NoError(t, err)
+	require.Len(t, transformedItems, 1)
+
+	transformedItem := transformedItems[0]
+	assert.NotContains(t, transformedItem.Content, ">", "Quoted text should be stripped by transformer")
+
 	assert.Equal(t, "<reply005@company.com>", item.Metadata["message_id"])
 }
 

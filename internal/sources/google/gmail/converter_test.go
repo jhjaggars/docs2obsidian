@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"pkm-sync/internal/transform"
 	"pkm-sync/pkg/models"
 
 	"google.golang.org/api/gmail/v1"
@@ -47,11 +48,23 @@ func TestFromGmailMessage(t *testing.T) {
 				ExtractRecipients:  true,
 			},
 			want: func(item *models.Item) bool {
-				return item.ID == "test-message-html" &&
+				// Test basic converter functionality
+				if !(item.ID == "test-message-html" &&
 					item.Title == "HTML Email Test" &&
-					len(item.Links) > 0 &&
 					item.Content != "" &&
-					!strings.Contains(item.Content, "<html>")
+					!strings.Contains(item.Content, "<html>")) {
+					return false
+				}
+
+				// Test link extraction via transformer
+				linkTransformer := transform.NewLinkExtractionTransformer()
+				linkTransformer.Configure(map[string]interface{}{"enabled": true})
+				transformedItems, err := linkTransformer.Transform([]*models.Item{item})
+				if err != nil || len(transformedItems) != 1 {
+					return false
+				}
+
+				return len(transformedItems[0].Links) > 0
 			},
 			wantErr: false,
 		},
