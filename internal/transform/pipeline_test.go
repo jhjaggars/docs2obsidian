@@ -292,16 +292,20 @@ func TestTransformLogAndContinue(t *testing.T) {
 		t.Fatalf("Transform() failed with log_and_continue: %v", err)
 	}
 
-	// Should have tags from transformer1 and transformer3, but not transformer2
+	// Should have tags from transformer1 only, since transformer2 failed and transformer3 didn't run on the failed result
 	item := result[0]
-	expectedTags := map[string]bool{
-		"transformed_by_transformer1": false,
-		"transformed_by_transformer3": false,
-	}
+
+	// Count expected tags
+	hasTransformer1Tag := false
+	hasTransformer3Tag := false
 
 	for _, tag := range item.Tags {
-		if tag == "transformed_by_transformer1" || tag == "transformed_by_transformer3" {
-			expectedTags[tag] = true
+		if tag == "transformed_by_transformer1" {
+			hasTransformer1Tag = true
+		}
+
+		if tag == "transformed_by_transformer3" {
+			hasTransformer3Tag = true
 		}
 
 		if tag == "transformed_by_transformer2" {
@@ -309,10 +313,12 @@ func TestTransformLogAndContinue(t *testing.T) {
 		}
 	}
 
-	for tag, found := range expectedTags {
-		if !found {
-			t.Errorf("Missing expected tag: %s", tag)
-		}
+	if !hasTransformer1Tag {
+		t.Error("Missing tag from transformer1")
+	}
+
+	if !hasTransformer3Tag {
+		t.Error("Missing tag from transformer3 (should run on result from transformer1)")
 	}
 }
 

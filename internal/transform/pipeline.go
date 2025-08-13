@@ -85,13 +85,11 @@ func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.It
 			case "fail_fast":
 				return nil, fmt.Errorf("transformer '%s' failed: %w", transformer.Name(), err)
 			case "log_and_continue":
-				log.Printf("Warning: transformer '%s' failed, continuing with original items: %v", transformer.Name(), err)
-
-				continue
+				log.Printf("Warning: transformer '%s' failed, continuing with previous items: %v", transformer.Name(), err)
+				// Don't update currentItems, continue with previous state
 			case "skip_item":
 				log.Printf("Warning: transformer '%s' failed, skipping affected items: %v", transformer.Name(), err)
-
-				continue
+				// Don't update currentItems, continue with previous state
 			default:
 				return nil, fmt.Errorf("unknown error strategy '%s'", p.config.ErrorStrategy)
 			}

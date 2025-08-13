@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"log"
 	"strings"
 
 	"pkm-sync/pkg/interfaces"
@@ -32,14 +33,20 @@ func (t *ContentCleanupTransformer) Transform(items []*models.Item) ([]*models.I
 	transformedItems := make([]*models.Item, len(items))
 
 	for i, item := range items {
-		// Create a copy of the item
-		transformedItem := *item
+		// Clean up content and title
+		cleanedContent := t.cleanupContent(item.Content)
+		cleanedTitle := t.cleanupTitle(item.Title)
 
-		// Clean up content
-		transformedItem.Content = t.cleanupContent(item.Content)
-		transformedItem.Title = t.cleanupTitle(item.Title)
-
-		transformedItems[i] = &transformedItem
+		// Only copy if changes were made
+		if cleanedContent != item.Content || cleanedTitle != item.Title {
+			transformedItem := *item
+			transformedItem.Content = cleanedContent
+			transformedItem.Title = cleanedTitle
+			transformedItems[i] = &transformedItem
+		} else {
+			// No changes needed, reuse original item
+			transformedItems[i] = item
+		}
 	}
 
 	return transformedItems, nil
@@ -120,20 +127,43 @@ func (t *AutoTaggingTransformer) Configure(config map[string]interface{}) error 
 func (t *AutoTaggingTransformer) parseTaggingRule(ruleInterface interface{}) *TaggingRule {
 	ruleMap, ok := ruleInterface.(map[string]interface{})
 	if !ok {
+		log.Printf("Warning: invalid tagging rule format, expected map[string]interface{}, got %T", ruleInterface)
+
 		return nil
 	}
 
 	rule := TaggingRule{}
 
-	if pattern, ok := ruleMap["pattern"].(string); ok {
-		rule.Pattern = pattern
+	pattern, hasPattern := ruleMap["pattern"]
+	if !hasPattern {
+		log.Printf("Warning: tagging rule missing required 'pattern' field")
+
+		return nil
 	}
 
-	if tagsInterface, ok := ruleMap["tags"].([]interface{}); ok {
-		rule.Tags = make([]string, len(tagsInterface))
-		for i, tagInterface := range tagsInterface {
+	patternStr, ok := pattern.(string)
+	if !ok {
+		log.Printf("Warning: tagging rule 'pattern' must be a string, got %T", pattern)
+
+		return nil
+	}
+
+	rule.Pattern = patternStr
+
+	if tagsInterface, exists := ruleMap["tags"]; exists {
+		tagsSlice, ok := tagsInterface.([]interface{})
+		if !ok {
+			log.Printf("Warning: tagging rule 'tags' must be an array, got %T", tagsInterface)
+
+			return nil
+		}
+
+		rule.Tags = make([]string, 0, len(tagsSlice))
+		for i, tagInterface := range tagsSlice {
 			if tag, ok := tagInterface.(string); ok {
-				rule.Tags[i] = tag
+				rule.Tags = append(rule.Tags, tag)
+			} else {
+				log.Printf("Warning: tagging rule tag[%d] must be a string, got %T", i, tagInterface)
 			}
 		}
 	}
@@ -145,34 +175,47 @@ func (t *AutoTaggingTransformer) Transform(items []*models.Item) ([]*models.Item
 	transformedItems := make([]*models.Item, len(items))
 
 	for i, item := range items {
-		// Create a copy of the item
-		transformedItem := *item
-
-		// Copy existing tags
-		existingTags := make([]string, len(item.Tags))
-		copy(existingTags, item.Tags)
-
 		// Apply tagging rules
 		newTags := t.applyTaggingRules(item)
 
+		// Check if any new tags would be added
+		if len(newTags) == 0 {
+			// No new tags, reuse original item
+			transformedItems[i] = item
+
+			continue
+		}
+
 		// Merge tags (avoiding duplicates)
 		tagMap := make(map[string]bool)
-		for _, tag := range existingTags {
+		for _, tag := range item.Tags {
 			tagMap[tag] = true
 		}
+
+		hasNewTags := false
 
 		for _, tag := range newTags {
-			tagMap[tag] = true
+			if !tagMap[tag] {
+				hasNewTags = true
+				tagMap[tag] = true
+			}
 		}
 
-		// Convert back to slice
-		allTags := make([]string, 0, len(tagMap))
-		for tag := range tagMap {
-			allTags = append(allTags, tag)
-		}
+		if !hasNewTags {
+			// No new tags to add, reuse original item
+			transformedItems[i] = item
+		} else {
+			// Copy item and update tags
+			transformedItem := *item
 
-		transformedItem.Tags = allTags
-		transformedItems[i] = &transformedItem
+			allTags := make([]string, 0, len(tagMap))
+			for tag := range tagMap {
+				allTags = append(allTags, tag)
+			}
+
+			transformedItem.Tags = allTags
+			transformedItems[i] = &transformedItem
+		}
 	}
 
 	return transformedItems, nil
@@ -253,37 +296,53 @@ func (t *FilterTransformer) getMinContentLength() int {
 }
 
 func (t *FilterTransformer) getExcludeSourceTypes() []string {
-	if val, exists := t.config["exclude_source_types"]; exists {
-		if types, ok := val.([]interface{}); ok {
-			result := make([]string, len(types))
-			for i, typeInterface := range types {
-				if sourceType, ok := typeInterface.(string); ok {
-					result[i] = sourceType
-				}
-			}
+	val, exists := t.config["exclude_source_types"]
+	if !exists {
+		return nil
+	}
 
-			return result
+	types, ok := val.([]interface{})
+	if !ok {
+		log.Printf("Warning: exclude_source_types must be an array, got %T", val)
+
+		return nil
+	}
+
+	result := make([]string, 0, len(types))
+	for i, typeInterface := range types {
+		if sourceType, ok := typeInterface.(string); ok {
+			result = append(result, sourceType)
+		} else {
+			log.Printf("Warning: exclude_source_types[%d] must be a string, got %T", i, typeInterface)
 		}
 	}
 
-	return nil
+	return result
 }
 
 func (t *FilterTransformer) getRequiredTags() []string {
-	if val, exists := t.config["required_tags"]; exists {
-		if tags, ok := val.([]interface{}); ok {
-			result := make([]string, len(tags))
-			for i, tagInterface := range tags {
-				if tag, ok := tagInterface.(string); ok {
-					result[i] = tag
-				}
-			}
+	val, exists := t.config["required_tags"]
+	if !exists {
+		return nil
+	}
 
-			return result
+	tags, ok := val.([]interface{})
+	if !ok {
+		log.Printf("Warning: required_tags must be an array, got %T", val)
+
+		return nil
+	}
+
+	result := make([]string, 0, len(tags))
+	for i, tagInterface := range tags {
+		if tag, ok := tagInterface.(string); ok {
+			result = append(result, tag)
+		} else {
+			log.Printf("Warning: required_tags[%d] must be a string, got %T", i, tagInterface)
 		}
 	}
 
-	return nil
+	return result
 }
 
 func (t *FilterTransformer) shouldIncludeItem(
