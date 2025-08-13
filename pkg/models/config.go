@@ -13,11 +13,23 @@ type Config struct {
 	// Target configurations
 	Targets map[string]TargetConfig `json:"targets" yaml:"targets"`
 
+	// Transformer configurations
+	Transformers TransformConfig `json:"transformers" yaml:"transformers"`
+
 	// Authentication settings
 	Auth AuthConfig `json:"auth" yaml:"auth"`
 
 	// General application settings
 	App AppConfig `json:"app" yaml:"app"`
+}
+
+// TransformConfig defines transformer pipeline configuration.
+type TransformConfig struct {
+	Enabled       bool     `json:"enabled"        yaml:"enabled"`
+	PipelineOrder []string `json:"pipeline_order" yaml:"pipeline_order"`
+	// "fail_fast", "log_and_continue", "skip_item"
+	ErrorStrategy string                            `json:"error_strategy" yaml:"error_strategy"`
+	Transformers  map[string]map[string]interface{} `json:"transformers"   yaml:"transformers"`
 }
 
 type SyncConfig struct {
