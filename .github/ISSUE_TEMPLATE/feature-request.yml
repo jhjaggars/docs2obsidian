@@ -1,0 +1,278 @@
+name: Feature Request
+description: Request a new feature or enhancement for pkm-sync
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 Feature Request Template
+        
+        This template helps ensure all necessary information is provided for effective implementation.
+        **For Code Assistants**: This template structure should be followed when generating issues programmatically.
+
+  - type: input
+    id: feature_title
+    attributes:
+      label: Feature Title
+      description: Concise, descriptive title for the feature
+      placeholder: "Describe the feature you want to add"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief overview of what this feature implements
+      placeholder: |
+        One paragraph summary of the feature and its main purpose.
+        What does this add to pkm-sync?
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Context for why this feature is needed now
+      placeholder: |
+        Explain the current state and why this change is needed.
+        What problem exists that makes this feature necessary?
+        What has changed that makes this the right time to implement this?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature_type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - New Command/Functionality
+        - Configuration Enhancement
+        - Source Integration
+        - Target Integration
+        - Transformer/Filter
+        - Performance Improvement
+        - Developer Experience
+        - Documentation
+        - Testing/Quality
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex is this feature?
+      options:
+        - Small (1-2 files, <100 lines)
+        - Medium (3-5 files, 100-500 lines)
+        - Large (5+ files, 500+ lines)
+        - Epic (Multiple features, architectural changes)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What is the current limitation?
+      placeholder: |
+        Describe the current limitation or problem that users face.
+        What workflow is missing or inefficient?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: High-level description of your proposed solution
+      placeholder: |
+        Describe what you want to add or change.
+        How would this solve the problem described above?
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_plan
+    attributes:
+      label: Implementation Plan
+      description: Detailed step-by-step implementation plan
+      placeholder: |
+        ### 1. Analysis Phase
+        - [ ] Analyze existing codebase to understand current architecture
+        - [ ] Identify files and functions that handle similar functionality
+        - [ ] Map out integration points and dependencies
+        
+        ### 2. Implementation Phase
+        - [ ] Design and implement core interfaces
+        - [ ] Create new functionality following existing patterns
+        - [ ] Integrate with existing systems
+        
+        ### 3. Testing and Documentation Phase
+        - [ ] Add comprehensive tests
+        - [ ] Update documentation and examples
+        
+        Each phase should be concrete and actionable for an agent.
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_requirements
+    attributes:
+      label: Technical Requirements
+      description: Specific constraints, requirements, and implementation details
+      placeholder: |
+        - Must maintain backward compatibility with existing configurations
+        - Performance impact should be minimal (<5% overhead)
+        - Must integrate with existing error handling patterns
+        - Should follow existing code organization and naming conventions
+        - Error handling strategy: fail-fast vs graceful degradation
+    validations:
+      required: false
+
+  - type: textarea
+    id: key_benefits
+    attributes:
+      label: Key Benefits
+      description: Main advantages this feature provides
+      placeholder: |
+        - **Benefit 1**: Explanation of value to users
+        - **Benefit 2**: How it improves developer experience
+        - **Benefit 3**: Technical advantages and maintainability
+        - **Benefit 4**: Future extensibility opportunities
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_guidance
+    attributes:
+      label: Implementation Guidance
+      description: Hints and guidance for finding relevant files and patterns
+      placeholder: |
+        **Analysis Steps:**
+        1. Search for existing similar functionality using patterns like "X" or "Y"
+        2. Look at how current Z feature is implemented as a reference
+        3. Find configuration handling patterns in config-related files
+        4. Examine error handling approaches in similar components
+        
+        **File Type Hints:**
+        - Interface definitions: likely in pkg/interfaces/
+        - Core implementation: likely in internal/[component]/
+        - Configuration: likely in pkg/models/ and internal/config/
+        - CLI integration: likely in cmd/
+        - Tests: look for existing *_test.go patterns to follow
+        
+        **Integration Points:**
+        - Look for where similar features integrate with the sync process
+        - Find existing extension points or plugin architectures
+        - Identify where configuration is loaded and validated
+    validations:
+      required: true
+
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Specific, testable requirements that define "done"
+      placeholder: |
+        - [ ] Feature can be enabled/disabled via configuration
+        - [ ] Command-line interface works as expected
+        - [ ] Error handling for common failure scenarios
+        - [ ] Unit tests cover new functionality
+        - [ ] Integration tests verify end-to-end behavior
+        - [ ] Documentation updated with examples
+        - [ ] Performance meets requirements
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration_example
+    attributes:
+      label: Configuration Example
+      description: Show how users would configure this feature (if applicable)
+      placeholder: |
+        ```yaml
+        # Example configuration for this feature
+        feature_name:
+          enabled: true
+          setting1: value1
+          setting2: value2
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: What other issues, features, or external dependencies does this require?
+      placeholder: |
+        - Requires issue #XX to be completed first
+        - Depends on external library/service
+        - May conflict with existing feature Y
+        - Needs access to API/service Z
+    validations:
+      required: false
+
+  - type: textarea
+    id: testing_strategy
+    attributes:
+      label: Testing Strategy
+      description: How should this feature be tested?
+      placeholder: |
+        - Unit tests for core logic
+        - Integration tests for API interactions
+        - End-to-end tests for user workflows
+        - Performance/load testing if applicable
+        - Error scenario testing
+    validations:
+      required: false
+
+  - type: textarea
+    id: rollback_plan
+    attributes:
+      label: Rollback/Failure Plan
+      description: What happens if this feature breaks or needs to be disabled?
+      placeholder: |
+        - Feature can be disabled via configuration flag
+        - Graceful degradation when dependencies fail
+        - Backward compatibility maintained
+        - Migration strategy for config changes
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: implementation_checklist
+    attributes:
+      label: Implementation Checklist (for agents)
+      description: Standard checklist for implementation
+      options:
+        - label: Read and understand existing codebase architecture
+        - label: Design interfaces and data structures
+        - label: Implement core functionality with error handling
+        - label: Add configuration support and validation
+        - label: Write comprehensive unit tests
+        - label: Add integration tests
+        - label: Update documentation and examples
+        - label: Test with real usage scenarios
+        - label: Verify performance requirements
+        - label: Ensure backward compatibility
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other information that would be helpful
+      placeholder: |
+        - Links to relevant documentation
+        - Examples from other projects
+        - User feedback or requests
+        - Screenshots or mockups
+        - Performance benchmarks or requirements
+    validations:
+      required: false

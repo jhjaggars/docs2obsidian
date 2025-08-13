@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Discussion Forum
+    url: https://github.com/jhjaggars/pkm-sync/discussions
+    about: Ask questions, share ideas, or discuss pkm-sync usage
+  - name: 📖 Documentation
+    url: https://github.com/jhjaggars/pkm-sync/blob/main/README.md
+    about: Read the documentation and setup guides
