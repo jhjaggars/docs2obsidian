@@ -1,0 +1,131 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in pkm-sync
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Bug Report Template
+        
+        Please provide detailed information to help us reproduce and fix the issue.
+
+  - type: input
+    id: bug_title
+    attributes:
+      label: Bug Title
+      description: Concise description of the bug
+      placeholder: "Gmail sync fails with authentication error"
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected_areas
+    attributes:
+      label: Code Areas/Components Affected
+      description: Which parts of the codebase will need changes? (helps agents understand scope)
+      placeholder: |
+        - Source implementations (Gmail, Calendar, etc.)
+        - Configuration system and validation
+        - CLI command structure
+        - Target export logic
+        - Authentication handling
+        - Documentation and examples
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical (Complete failure, data loss)
+        - High (Major functionality broken)
+        - Medium (Feature partially broken)
+        - Low (Minor issue, workaround available)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear description of what the bug is
+      placeholder: Describe what happened and what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior
+      placeholder: |
+        1. Run command '...'
+        2. With configuration '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Information about your environment
+      placeholder: |
+        - OS: macOS 14.0
+        - pkm-sync version: v1.0.0
+        - Go version: 1.21
+        - Configuration: Gmail + Obsidian
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/Error Output
+      description: Relevant log output or error messages
+      placeholder: |
+        ```
+        Paste error messages, logs, or command output here
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration
+      description: Relevant parts of your configuration (remove sensitive data)
+      placeholder: |
+        ```yaml
+        # Paste relevant config sections here
+        # Remove any sensitive information like tokens, emails, etc.
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem
+    validations:
+      required: false
