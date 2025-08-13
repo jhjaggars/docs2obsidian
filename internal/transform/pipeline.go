@@ -88,8 +88,9 @@ func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.It
 				log.Printf("Warning: transformer '%s' failed, continuing with previous items: %v", transformer.Name(), err)
 				// Don't update currentItems, continue with previous state
 			case "skip_item":
-				log.Printf("Warning: transformer '%s' failed, skipping affected items: %v", transformer.Name(), err)
-				// Don't update currentItems, continue with previous state
+				log.Printf("Warning: transformer '%s' failed, skipping this batch of items: %v", transformer.Name(), err)
+
+				currentItems = []*models.Item{} // Skip the batch
 			default:
 				return nil, fmt.Errorf("unknown error strategy '%s'", p.config.ErrorStrategy)
 			}
@@ -105,14 +106,17 @@ func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.It
 func (p *DefaultTransformPipeline) processWithErrorHandling(
 	transformer interfaces.Transformer,
 	items []*models.Item,
-) ([]*models.Item, error) {
+) (processedItems []*models.Item, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Transformer '%s' panicked: %v", transformer.Name(), r)
+			err = fmt.Errorf("panic in transformer '%s': %v", transformer.Name(), r)
 		}
 	}()
 
-	return transformer.Transform(items)
+	processedItems, err = transformer.Transform(items)
+
+	return
 }
 
 // RegisterTransformer is a helper function to register transformers.

@@ -2,6 +2,7 @@ package transform
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,9 +12,10 @@ import (
 
 // MockTransformer for testing.
 type MockTransformer struct {
-	name       string
-	shouldFail bool
-	config     map[string]interface{}
+	name          string
+	shouldFail    bool
+	config        map[string]interface{}
+	TransformFunc func(items []*models.Item) ([]*models.Item, error)
 }
 
 // Compile-time check to ensure MockTransformer implements interfaces.Transformer.
@@ -30,6 +32,10 @@ func (m *MockTransformer) Configure(config map[string]interface{}) error {
 }
 
 func (m *MockTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
+	if m.TransformFunc != nil {
+		return m.TransformFunc(items)
+	}
+
 	if m.shouldFail {
 		return nil, fmt.Errorf("mock transformer failed")
 	}
@@ -319,6 +325,68 @@ func TestTransformLogAndContinue(t *testing.T) {
 
 	if !hasTransformer3Tag {
 		t.Error("Missing tag from transformer3 (should run on result from transformer1)")
+	}
+}
+
+func TestTransformSkipItem(t *testing.T) {
+	pipeline := NewPipeline()
+	transformer1 := &MockTransformer{name: "transformer1"}
+	transformer2 := &MockTransformer{name: "transformer2", shouldFail: true}
+	transformer3 := &MockTransformer{name: "transformer3"}
+
+	pipeline.AddTransformer(transformer1)
+	pipeline.AddTransformer(transformer2)
+	pipeline.AddTransformer(transformer3)
+
+	config := models.TransformConfig{
+		Enabled:       true,
+		PipelineOrder: []string{"transformer1", "transformer2", "transformer3"},
+		ErrorStrategy: "skip_item",
+	}
+	pipeline.Configure(config)
+
+	items := []*models.Item{
+		{ID: "1", Title: "Test Item", Tags: []string{}},
+	}
+
+	result, err := pipeline.Transform(items)
+	if err != nil {
+		t.Fatalf("Transform() failed with skip_item: %v", err)
+	}
+
+	if len(result) != 0 {
+		t.Errorf("Expected 0 items after skip_item, got %d", len(result))
+	}
+}
+
+func TestTransformPanicHandling(t *testing.T) {
+	pipeline := NewPipeline()
+	panickingTransformer := &MockTransformer{name: "panicker", shouldFail: true}
+	// Overwrite the transform function to cause a panic
+	panickingTransformer.TransformFunc = func(items []*models.Item) ([]*models.Item, error) {
+		panic("test panic")
+	}
+
+	pipeline.AddTransformer(panickingTransformer)
+
+	config := models.TransformConfig{
+		Enabled:       true,
+		PipelineOrder: []string{"panicker"},
+		ErrorStrategy: "fail_fast",
+	}
+	pipeline.Configure(config)
+
+	items := []*models.Item{
+		{ID: "1", Title: "Test Item"},
+	}
+
+	_, err := pipeline.Transform(items)
+	if err == nil {
+		t.Fatal("Expected an error from a panicking transformer, but got nil")
+	}
+
+	if !strings.Contains(err.Error(), "panic in transformer") {
+		t.Errorf("Expected error message to contain 'panic in transformer', but got: %v", err)
 	}
 }
 
