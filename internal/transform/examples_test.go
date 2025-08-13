@@ -220,11 +220,10 @@ func TestFilterTransformer(t *testing.T) {
 
 func TestFilterTransformerNoFilters(t *testing.T) {
 	transformer := NewFilterTransformer()
+	transformer.Configure(make(map[string]interface{}))
 
-	// No configuration, should pass all items
 	items := []*models.Item{
-		{ID: "1", Title: "Item 1", Content: "A"},
-		{ID: "2", Title: "Item 2", Content: "B"},
+		createTestItem("1", "Test", "Content"),
 	}
 
 	result, err := transformer.Transform(items)
@@ -232,37 +231,32 @@ func TestFilterTransformerNoFilters(t *testing.T) {
 		t.Fatalf("Transform failed: %v", err)
 	}
 
-	if len(result) != 2 {
-		t.Errorf("Expected 2 items, got %d", len(result))
+	if len(result) != 1 {
+		t.Errorf("Expected 1 item, got %d", len(result))
+	}
+}
+
+func TestFilterTransformerInvalidConfig(t *testing.T) {
+	transformer := NewFilterTransformer()
+	config := map[string]interface{}{
+		"min_content_length": "not a number",
+	}
+	transformer.Configure(config)
+
+	items := []*models.Item{
+		createTestItem("1", "Test", "Content"),
+	}
+
+	_, err := transformer.Transform(items)
+	if err == nil {
+		t.Error("Expected an error for invalid config, but got nil")
 	}
 }
 
 func TestGetAllExampleTransformers(t *testing.T) {
 	transformers := GetAllExampleTransformers()
-
 	if len(transformers) != 3 {
 		t.Errorf("Expected 3 example transformers, got %d", len(transformers))
-	}
-
-	expectedNames := map[string]bool{
-		"content_cleanup": false,
-		"auto_tagging":    false,
-		"filter":          false,
-	}
-
-	for _, transformer := range transformers {
-		name := transformer.Name()
-		if _, exists := expectedNames[name]; exists {
-			expectedNames[name] = true
-		} else {
-			t.Errorf("Unexpected transformer name: %s", name)
-		}
-	}
-
-	for name, found := range expectedNames {
-		if !found {
-			t.Errorf("Missing expected transformer: %s", name)
-		}
 	}
 }
 

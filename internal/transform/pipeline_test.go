@@ -328,6 +328,49 @@ func TestTransformLogAndContinue(t *testing.T) {
 	}
 }
 
+func TestTransformLogAndContinueWithPartialSuccess(t *testing.T) {
+	pipeline := NewPipeline()
+	transformer1 := &MockTransformer{name: "transformer1"}
+	failingTransformer := &MockTransformer{
+		name: "failing_transformer",
+		TransformFunc: func(items []*models.Item) ([]*models.Item, error) {
+			// Partially succeeds, returns one item and an error
+			return []*models.Item{items[0]}, fmt.Errorf("partial failure")
+		},
+	}
+	transformer3 := &MockTransformer{name: "transformer3"}
+
+	pipeline.AddTransformer(transformer1)
+	pipeline.AddTransformer(failingTransformer)
+	pipeline.AddTransformer(transformer3)
+
+	config := models.TransformConfig{
+		Enabled:       true,
+		PipelineOrder: []string{"transformer1", "failing_transformer", "transformer3"},
+		ErrorStrategy: "log_and_continue",
+	}
+	pipeline.Configure(config)
+
+	items := []*models.Item{
+		{ID: "1", Title: "Test Item", Tags: []string{}},
+		{ID: "2", Title: "Another Item", Tags: []string{}},
+	}
+
+	result, err := pipeline.Transform(items)
+	if err != nil {
+		t.Fatalf("Transform() failed with log_and_continue: %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("Expected 2 items after partial success, got %d", len(result))
+	}
+
+	// Check that transformer3 ran on the result from transformer1
+	if len(result[0].Tags) != 2 {
+		t.Errorf("Expected 2 tags on the item, got %d", len(result[0].Tags))
+	}
+}
+
 func TestTransformSkipItem(t *testing.T) {
 	pipeline := NewPipeline()
 	transformer1 := &MockTransformer{name: "transformer1"}

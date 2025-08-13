@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -33,18 +34,17 @@ func (t *ContentCleanupTransformer) Transform(items []*models.Item) ([]*models.I
 	transformedItems := make([]*models.Item, len(items))
 
 	for i, item := range items {
-		// Clean up content and title
 		cleanedContent := t.cleanupContent(item.Content)
 		cleanedTitle := t.cleanupTitle(item.Title)
 
-		// Only copy if changes were made
 		if cleanedContent != item.Content || cleanedTitle != item.Title {
+			// Only copy if changes were made
 			transformedItem := *item
 			transformedItem.Content = cleanedContent
 			transformedItem.Title = cleanedTitle
 			transformedItems[i] = &transformedItem
 		} else {
-			// No changes needed, reuse original item
+			// No changes, so no copy
 			transformedItems[i] = item
 		}
 	}
@@ -175,46 +175,27 @@ func (t *AutoTaggingTransformer) Transform(items []*models.Item) ([]*models.Item
 	transformedItems := make([]*models.Item, len(items))
 
 	for i, item := range items {
-		// Apply tagging rules
 		newTags := t.applyTaggingRules(item)
 
-		// Check if any new tags would be added
-		if len(newTags) == 0 {
-			// No new tags, reuse original item
-			transformedItems[i] = item
-
-			continue
-		}
-
-		// Merge tags (avoiding duplicates)
-		tagMap := make(map[string]bool)
-		for _, tag := range item.Tags {
-			tagMap[tag] = true
-		}
-
-		hasNewTags := false
-
-		for _, tag := range newTags {
-			if !tagMap[tag] {
-				hasNewTags = true
-				tagMap[tag] = true
-			}
-		}
-
-		if !hasNewTags {
-			// No new tags to add, reuse original item
-			transformedItems[i] = item
-		} else {
-			// Copy item and update tags
+		if len(newTags) > 0 {
+			// Copy-on-write: only copy if there are new tags to add
 			transformedItem := *item
 
-			allTags := make([]string, 0, len(tagMap))
-			for tag := range tagMap {
-				allTags = append(allTags, tag)
+			existingTags := make(map[string]bool)
+			for _, tag := range transformedItem.Tags {
+				existingTags[tag] = true
 			}
 
-			transformedItem.Tags = allTags
+			for _, newTag := range newTags {
+				if !existingTags[newTag] {
+					transformedItem.Tags = append(transformedItem.Tags, newTag)
+				}
+			}
+
 			transformedItems[i] = &transformedItem
+		} else {
+			// No new tags, so no copy
+			transformedItems[i] = item
 		}
 	}
 
@@ -268,9 +249,20 @@ func (t *FilterTransformer) Configure(config map[string]interface{}) error {
 func (t *FilterTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
 	var filteredItems []*models.Item
 
-	minContentLength := t.getMinContentLength()
-	excludeSourceTypes := t.getExcludeSourceTypes()
-	requiredTags := t.getRequiredTags()
+	minContentLength, err := t.getMinContentLength()
+	if err != nil {
+		return nil, err
+	}
+
+	excludeSourceTypes, err := t.getExcludeSourceTypes()
+	if err != nil {
+		return nil, err
+	}
+
+	requiredTags, err := t.getRequiredTags()
+	if err != nil {
+		return nil, err
+	}
 
 	for _, item := range items {
 		if t.shouldIncludeItem(item, minContentLength, excludeSourceTypes, requiredTags) {
@@ -281,31 +273,30 @@ func (t *FilterTransformer) Transform(items []*models.Item) ([]*models.Item, err
 	return filteredItems, nil
 }
 
-func (t *FilterTransformer) getMinContentLength() int {
+func (t *FilterTransformer) getMinContentLength() (int, error) {
 	if val, exists := t.config["min_content_length"]; exists {
-		if length, ok := val.(int); ok {
-			return length
-		}
-
-		if length, ok := val.(float64); ok {
-			return int(length)
+		switch v := val.(type) {
+		case int:
+			return v, nil
+		case float64:
+			return int(v), nil
+		default:
+			return 0, fmt.Errorf("invalid type for min_content_length: expected int, got %T", v)
 		}
 	}
 
-	return 0
+	return 0, nil
 }
 
-func (t *FilterTransformer) getExcludeSourceTypes() []string {
+func (t *FilterTransformer) getExcludeSourceTypes() ([]string, error) {
 	val, exists := t.config["exclude_source_types"]
 	if !exists {
-		return nil
+		return nil, nil
 	}
 
 	types, ok := val.([]interface{})
 	if !ok {
-		log.Printf("Warning: exclude_source_types must be an array, got %T", val)
-
-		return nil
+		return nil, fmt.Errorf("invalid type for exclude_source_types: expected array, got %T", val)
 	}
 
 	result := make([]string, 0, len(types))
@@ -313,24 +304,22 @@ func (t *FilterTransformer) getExcludeSourceTypes() []string {
 		if sourceType, ok := typeInterface.(string); ok {
 			result = append(result, sourceType)
 		} else {
-			log.Printf("Warning: exclude_source_types[%d] must be a string, got %T", i, typeInterface)
+			return nil, fmt.Errorf("invalid type for exclude_source_types[%d]: expected string, got %T", i, typeInterface)
 		}
 	}
 
-	return result
+	return result, nil
 }
 
-func (t *FilterTransformer) getRequiredTags() []string {
+func (t *FilterTransformer) getRequiredTags() ([]string, error) {
 	val, exists := t.config["required_tags"]
 	if !exists {
-		return nil
+		return nil, nil
 	}
 
 	tags, ok := val.([]interface{})
 	if !ok {
-		log.Printf("Warning: required_tags must be an array, got %T", val)
-
-		return nil
+		return nil, fmt.Errorf("invalid type for required_tags: expected array, got %T", val)
 	}
 
 	result := make([]string, 0, len(tags))
@@ -338,11 +327,11 @@ func (t *FilterTransformer) getRequiredTags() []string {
 		if tag, ok := tagInterface.(string); ok {
 			result = append(result, tag)
 		} else {
-			log.Printf("Warning: required_tags[%d] must be a string, got %T", i, tagInterface)
+			return nil, fmt.Errorf("invalid type for required_tags[%d]: expected string, got %T", i, tagInterface)
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 func (t *FilterTransformer) shouldIncludeItem(
