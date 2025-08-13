@@ -41,6 +41,17 @@ Examples:
 	RunE: runGmailCommand,
 }
 
+func init() {
+	rootCmd.AddCommand(gmailCmd)
+	gmailCmd.Flags().StringVar(&gmailSourceName, "source", "", "Gmail source (gmail_work, gmail_personal, etc.)")
+	gmailCmd.Flags().StringVar(&gmailTargetName, "target", "", "PKM target (obsidian, logseq)")
+	gmailCmd.Flags().StringVarP(&gmailOutputDir, "output", "o", "", "Output directory")
+	gmailCmd.Flags().StringVar(&gmailSince, "since", "", "Sync emails since (7d, 2006-01-02, today)")
+	gmailCmd.Flags().BoolVar(&gmailDryRun, "dry-run", false, "Show what would be synced without making changes")
+	gmailCmd.Flags().IntVar(&gmailLimit, "limit", 1000, "Maximum number of emails to fetch (default: 1000)")
+	gmailCmd.Flags().StringVar(&gmailOutputFormat, "format", "summary", "Output format for dry-run (summary, json)")
+}
+
 func runGmailCommand(cmd *cobra.Command, args []string) error {
 	// Load configuration
 	cfg, err := config.LoadConfig()

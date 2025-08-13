@@ -22,6 +22,10 @@ var setupCmd = &cobra.Command{
 	RunE:  runSetupCommand,
 }
 
+func init() {
+	rootCmd.AddCommand(setupCmd)
+}
+
 func runSetupCommand(cmd *cobra.Command, args []string) error {
 	fmt.Println("Validating OAuth 2.0 authentication configuration...")
 	fmt.Println()

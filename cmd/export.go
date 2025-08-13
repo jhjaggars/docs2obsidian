@@ -32,6 +32,14 @@ You can export docs from:
 	RunE: runDriveCommand,
 }
 
+func init() {
+	rootCmd.AddCommand(driveCmd)
+	driveCmd.Flags().StringVarP(&driveOutputDir, "output", "o", "./exported-docs", "Output directory for exported markdown files")
+	driveCmd.Flags().StringVar(&driveEventID, "event-id", "", "Export docs from specific event ID")
+	driveCmd.Flags().StringVar(&driveStartDate, "start", "", "Start date for range export (YYYY-MM-DD)")
+	driveCmd.Flags().StringVar(&driveEndDate, "end", "", "End date for range export (YYYY-MM-DD)")
+}
+
 func runDriveCommand(cmd *cobra.Command, args []string) error {
 	// Get authenticated client
 	client, err := auth.GetClient()
