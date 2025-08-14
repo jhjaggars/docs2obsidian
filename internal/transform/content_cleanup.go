@@ -2,6 +2,7 @@ package transform
 
 import (
 	"html"
+	"log"
 	"regexp"
 	"strings"
 
@@ -101,7 +102,9 @@ func (t *ContentCleanupTransformer) Transform(items []*models.Item) ([]*models.I
 func (t *ContentCleanupTransformer) ProcessHTMLContent(htmlContent string) string {
 	doc, err := nethtml.Parse(strings.NewReader(htmlContent))
 	if err != nil {
-		// Fallback to the input if parsing fails
+		// Log the parsing failure for debugging purposes
+		log.Printf("Warning: HTML parsing failed in content_cleanup transformer, falling back to basic unescaping: %v", err)
+
 		return html.UnescapeString(htmlContent)
 	}
 
@@ -159,7 +162,7 @@ func (t *ContentCleanupTransformer) StripQuotedText(content string) string {
 		if trimmed == "--" || strings.HasPrefix(trimmed, "-- ") {
 			// This might be a signature, check if this is near the end
 			remainingLines := len(lines) - i
-			if remainingLines <= 10 { // Likely a signature if less than 10 lines remain
+			if remainingLines <= t.getSignatureDetectionThreshold() {
 				break
 			}
 		}
@@ -473,6 +476,21 @@ func (t *ContentCleanupTransformer) shouldPreserveFormatting() bool {
 	}
 
 	return true // Default: enabled
+}
+
+// getSignatureDetectionThreshold returns the configurable threshold for signature detection.
+func (t *ContentCleanupTransformer) getSignatureDetectionThreshold() int {
+	if val, exists := t.config["signature_detection_threshold"]; exists {
+		if threshold, ok := val.(int); ok && threshold > 0 {
+			return threshold
+		}
+		// Handle float64 conversion for YAML numbers
+		if threshold, ok := val.(float64); ok && threshold > 0 {
+			return int(threshold)
+		}
+	}
+
+	return 10 // Default: likely a signature if less than 10 lines remain
 }
 
 // containsHTML checks if content appears to contain HTML.

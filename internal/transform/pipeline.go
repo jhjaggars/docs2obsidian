@@ -34,6 +34,16 @@ func (p *DefaultTransformPipeline) Configure(config models.TransformConfig) erro
 	// Clear existing transformers
 	p.transformers = make([]interfaces.Transformer, 0)
 
+	// Validate no duplicate transformers in pipeline order
+	seenTransformers := make(map[string]bool)
+	for _, name := range config.PipelineOrder {
+		if seenTransformers[name] {
+			return fmt.Errorf("duplicate transformer '%s' found in pipeline_order", name)
+		}
+
+		seenTransformers[name] = true
+	}
+
 	// Add transformers in the specified order
 	for _, name := range config.PipelineOrder {
 		transformer, exists := p.transformerRegistry[name]
@@ -81,18 +91,12 @@ func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.It
 	for _, transformer := range p.transformers {
 		transformedItems, err := p.processWithErrorHandling(transformer, currentItems)
 		if err != nil {
-			switch p.config.ErrorStrategy {
-			case "fail_fast":
-				return nil, fmt.Errorf("transformer '%s' failed: %w", transformer.Name(), err)
-			case "log_and_continue":
-				log.Printf("Warning: transformer '%s' failed: %v. Continuing with previous items.", transformer.Name(), err)
-				// Do not update currentItems, effectively skipping the failed transformer
-			case "skip_item":
-				log.Printf("Warning: transformer '%s' failed, skipping this batch of items: %v", transformer.Name(), err)
-
-				currentItems = []*models.Item{} // Skip the batch
-			default:
-				return nil, fmt.Errorf("unknown error strategy '%s'", p.config.ErrorStrategy)
+			if err := p.handleTransformerError(transformer, currentItems, err); err != nil {
+				return nil, err
+			}
+			// currentItems remains unchanged for log_and_continue, or becomes empty for skip_item
+			if p.config.ErrorStrategy == "skip_item" {
+				currentItems = []*models.Item{}
 			}
 		} else {
 			currentItems = transformedItems
@@ -109,7 +113,7 @@ func (p *DefaultTransformPipeline) processWithErrorHandling(
 ) (processedItems []*models.Item, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("Transformer '%s' panicked: %v", transformer.Name(), r)
+			log.Printf("Transformer '%s' panicked on batch of %d items: %v", transformer.Name(), len(items), r)
 			err = fmt.Errorf("panic in transformer '%s': %v", transformer.Name(), r)
 		}
 	}()
@@ -117,6 +121,43 @@ func (p *DefaultTransformPipeline) processWithErrorHandling(
 	processedItems, err = transformer.Transform(items)
 
 	return
+}
+
+// handleTransformerError handles transformer errors based on the configured strategy.
+func (p *DefaultTransformPipeline) handleTransformerError(
+	transformer interfaces.Transformer,
+	items []*models.Item,
+	err error,
+) error {
+	switch p.config.ErrorStrategy {
+	case "fail_fast":
+		return fmt.Errorf("transformer '%s' failed: %w", transformer.Name(), err)
+	case "log_and_continue":
+		p.logTransformerError(transformer, items, err, "Continuing with previous items")
+	case "skip_item":
+		p.logTransformerError(transformer, items, err, "skipping this batch")
+	default:
+		return fmt.Errorf("unknown error strategy '%s'", p.config.ErrorStrategy)
+	}
+
+	return nil
+}
+
+// logTransformerError logs transformer errors with context.
+func (p *DefaultTransformPipeline) logTransformerError(
+	transformer interfaces.Transformer,
+	items []*models.Item,
+	err error,
+	action string,
+) {
+	itemIDs := p.getItemIDs(items)
+	if len(itemIDs) > 0 && len(itemIDs) <= 5 { // Log item IDs for small batches
+		log.Printf("Warning: transformer '%s' failed on items [%v]: %v. %s.",
+			transformer.Name(), itemIDs, err, action)
+	} else {
+		log.Printf("Warning: transformer '%s' failed on batch of %d items: %v. %s.",
+			transformer.Name(), len(items), err, action)
+	}
 }
 
 // RegisterTransformer is a helper function to register transformers.
@@ -132,4 +173,16 @@ func (p *DefaultTransformPipeline) GetRegisteredTransformers() []string {
 	}
 
 	return names
+}
+
+// getItemIDs extracts item IDs for logging context.
+func (p *DefaultTransformPipeline) getItemIDs(items []*models.Item) []string {
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.ID != "" {
+			ids = append(ids, item.ID)
+		}
+	}
+
+	return ids
 }

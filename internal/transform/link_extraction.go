@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -83,16 +84,16 @@ func (t *LinkExtractionTransformer) ExtractLinks(content string) []models.Link {
 		for _, match := range markdownMatches {
 			if len(match) >= 6 {
 				title := content[match[2]:match[3]]
-				url := content[match[4]:match[5]]
-				url = strings.TrimLeft(strings.TrimRight(url, ".,!?;:)"), "(")
+				urlStr := content[match[4]:match[5]]
+				urlStr = strings.TrimLeft(strings.TrimRight(urlStr, ".,!?;:)"), "(")
 
-				if !seenURL[url] {
+				if t.isValidURL(urlStr) && !seenURL[urlStr] {
 					allMatches = append(allMatches, urlMatch{
-						url:   url,
+						url:   urlStr,
 						title: title,
 						pos:   match[0],
 					})
-					seenURL[url] = true
+					seenURL[urlStr] = true
 				}
 			}
 		}
@@ -104,8 +105,8 @@ func (t *LinkExtractionTransformer) ExtractLinks(content string) []models.Link {
 		markdownMatches := t.markdownLinkRegex.FindAllStringSubmatchIndex(content, -1)
 
 		for _, match := range urlMatches {
-			url := content[match[0]:match[1]]
-			url = strings.TrimLeft(strings.TrimRight(url, ".,!?;:)"), "(")
+			urlStr := content[match[0]:match[1]]
+			urlStr = strings.TrimLeft(strings.TrimRight(urlStr, ".,!?;:)"), "(")
 
 			// Check if this match is inside a markdown link
 			isInsideMarkdown := false
@@ -118,13 +119,13 @@ func (t *LinkExtractionTransformer) ExtractLinks(content string) []models.Link {
 				}
 			}
 
-			if !isInsideMarkdown && !seenURL[url] {
+			if !isInsideMarkdown && t.isValidURL(urlStr) && !seenURL[urlStr] {
 				allMatches = append(allMatches, urlMatch{
-					url:   url,
+					url:   urlStr,
 					title: "",
 					pos:   match[0],
 				})
-				seenURL[url] = true
+				seenURL[urlStr] = true
 			}
 		}
 	}
@@ -235,6 +236,44 @@ func (t *LinkExtractionTransformer) isDocumentLink(url string) bool {
 	}
 
 	return false
+}
+
+// isValidURL validates a URL string to ensure it's properly formed and safe.
+func (t *LinkExtractionTransformer) isValidURL(urlStr string) bool {
+	// Parse the URL to validate its structure
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return false
+	}
+
+	// Must have a scheme (http/https)
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return false
+	}
+
+	// Must have a host
+	if parsedURL.Host == "" {
+		return false
+	}
+
+	// Additional security checks to prevent malicious URLs
+	if strings.Contains(urlStr, "javascript:") ||
+		strings.Contains(urlStr, "data:") ||
+		strings.Contains(urlStr, "vbscript:") {
+		return false
+	}
+
+	// Check for suspicious characters that might indicate injection attempts
+	if strings.ContainsAny(urlStr, "<>\"'") {
+		return false
+	}
+
+	// URL length sanity check (most browsers limit URLs to ~2000 chars)
+	if len(urlStr) > 2048 {
+		return false
+	}
+
+	return true
 }
 
 // Configuration helper methods
