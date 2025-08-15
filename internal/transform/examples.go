@@ -9,74 +9,8 @@ import (
 	"pkm-sync/pkg/models"
 )
 
-// ContentCleanupTransformer cleans up and normalizes item content.
-type ContentCleanupTransformer struct {
-	config map[string]interface{}
-}
-
-func NewContentCleanupTransformer() *ContentCleanupTransformer {
-	return &ContentCleanupTransformer{
-		config: make(map[string]interface{}),
-	}
-}
-
-func (t *ContentCleanupTransformer) Name() string {
-	return "content_cleanup"
-}
-
-func (t *ContentCleanupTransformer) Configure(config map[string]interface{}) error {
-	t.config = config
-
-	return nil
-}
-
-func (t *ContentCleanupTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
-	transformedItems := make([]*models.Item, len(items))
-
-	for i, item := range items {
-		cleanedContent := t.cleanupContent(item.Content)
-		cleanedTitle := t.cleanupTitle(item.Title)
-
-		if cleanedContent != item.Content || cleanedTitle != item.Title {
-			// Only copy if changes were made
-			transformedItem := *item
-			transformedItem.Content = cleanedContent
-			transformedItem.Title = cleanedTitle
-			transformedItems[i] = &transformedItem
-		} else {
-			// No changes, so no copy
-			transformedItems[i] = item
-		}
-	}
-
-	return transformedItems, nil
-}
-
-func (t *ContentCleanupTransformer) cleanupContent(content string) string {
-	// Remove excessive whitespace
-	content = strings.TrimSpace(content)
-
-	// Replace multiple newlines with double newlines
-	for strings.Contains(content, "\n\n\n") {
-		content = strings.ReplaceAll(content, "\n\n\n", "\n\n")
-	}
-
-	// Remove carriage returns
-	content = strings.ReplaceAll(content, "\r", "")
-
-	return content
-}
-
-func (t *ContentCleanupTransformer) cleanupTitle(title string) string {
-	// Remove excessive whitespace and common prefixes
-	title = strings.TrimSpace(title)
-	title = strings.TrimPrefix(title, "Re: ")
-	title = strings.TrimPrefix(title, "Fwd: ")
-	title = strings.TrimPrefix(title, "RE: ")
-	title = strings.TrimPrefix(title, "FWD: ")
-
-	return title
-}
+// NOTE: ContentCleanupTransformer is now implemented in content_cleanup.go
+// with enhanced HTML processing capabilities extracted from Gmail processor.
 
 // AutoTaggingTransformer automatically adds tags based on content.
 type AutoTaggingTransformer struct {
@@ -369,11 +303,23 @@ func (t *FilterTransformer) shouldIncludeItem(
 	return true
 }
 
-// GetAllExampleTransformers returns all example transformers for registration.
+// GetAllExampleTransformers returns all basic example transformers for registration.
 func GetAllExampleTransformers() []interfaces.Transformer {
 	return []interfaces.Transformer{
-		NewContentCleanupTransformer(),
 		NewAutoTaggingTransformer(),
 		NewFilterTransformer(),
+	}
+}
+
+// GetAllContentProcessingTransformers returns all content processing transformers.
+// These include the enhanced transformers extracted from Gmail processing logic.
+func GetAllContentProcessingTransformers() []interfaces.Transformer {
+	return []interfaces.Transformer{
+		NewContentCleanupTransformer(),   // Enhanced version with HTML processing from content_cleanup.go
+		NewLinkExtractionTransformer(),   // URL extraction from link_extraction.go
+		NewSignatureRemovalTransformer(), // Signature detection from signature_removal.go
+		NewThreadGroupingTransformer(),   // Thread consolidation from thread_grouping.go
+		NewAutoTaggingTransformer(),      // Existing example transformer
+		NewFilterTransformer(),           // Existing example transformer
 	}
 }

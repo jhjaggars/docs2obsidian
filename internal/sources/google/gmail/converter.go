@@ -72,19 +72,15 @@ func FromGmailMessageWithService(
 		addHeaderMetadata(item, msg)
 	}
 
-	// Extract links if enabled
-	if config.ExtractLinks {
-		processor := NewContentProcessor(config)
-		item.Links = processor.ExtractLinks(content)
-	}
+	// Links extraction is now handled by LinkExtractionTransformer
 
 	// Process attachments
 	if config.DownloadAttachments {
-		var processor *ContentProcessor
+		var processor *SimplifiedContentProcessor
 		if service != nil {
-			processor = NewContentProcessorWithService(config, service)
+			processor = NewSimplifiedContentProcessorWithService(config, service)
 		} else {
-			processor = NewContentProcessor(config)
+			processor = NewSimplifiedContentProcessor(config)
 		}
 
 		item.Attachments = processor.ProcessEmailAttachments(msg)
@@ -148,7 +144,7 @@ func parseDateFromHeaders(headers []*gmail.MessagePartHeader) (time.Time, error)
 
 // getProcessedBody extracts and processes the email body based on configuration.
 func getProcessedBody(msg *gmail.Message, config models.GmailSourceConfig) (string, error) {
-	processor := NewContentProcessor(config)
+	processor := NewSimplifiedContentProcessor(config)
 
 	return processor.ProcessEmailBody(msg)
 }

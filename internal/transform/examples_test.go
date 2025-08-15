@@ -255,8 +255,15 @@ func TestFilterTransformerInvalidConfig(t *testing.T) {
 
 func TestGetAllExampleTransformers(t *testing.T) {
 	transformers := GetAllExampleTransformers()
-	if len(transformers) != 3 {
-		t.Errorf("Expected 3 example transformers, got %d", len(transformers))
+	if len(transformers) != 2 {
+		t.Errorf("Expected 2 example transformers, got %d", len(transformers))
+	}
+}
+
+func TestGetAllContentProcessingTransformers(t *testing.T) {
+	transformers := GetAllContentProcessingTransformers()
+	if len(transformers) != 6 {
+		t.Errorf("Expected 6 content processing transformers, got %d", len(transformers))
 	}
 }
 
