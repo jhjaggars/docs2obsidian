@@ -76,11 +76,11 @@ func FromGmailMessageWithService(
 
 	// Process attachments
 	if config.DownloadAttachments {
-		var processor *SimplifiedContentProcessor
+		var processor *ContentProcessor
 		if service != nil {
-			processor = NewSimplifiedContentProcessorWithService(config, service)
+			processor = NewContentProcessorWithService(config, service)
 		} else {
-			processor = NewSimplifiedContentProcessor(config)
+			processor = NewContentProcessor(config)
 		}
 
 		item.Attachments = processor.ProcessEmailAttachments(msg)
@@ -144,7 +144,7 @@ func parseDateFromHeaders(headers []*gmail.MessagePartHeader) (time.Time, error)
 
 // getProcessedBody extracts and processes the email body based on configuration.
 func getProcessedBody(msg *gmail.Message, config models.GmailSourceConfig) (string, error) {
-	processor := NewSimplifiedContentProcessor(config)
+	processor := NewContentProcessor(config)
 
 	return processor.ProcessEmailBody(msg)
 }
