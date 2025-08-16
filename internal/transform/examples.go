@@ -93,6 +93,7 @@ func (t *AutoTaggingTransformer) parseTaggingRule(ruleInterface interface{}) *Ta
 		}
 
 		rule.Tags = make([]string, 0, len(tagsSlice))
+
 		for i, tagInterface := range tagsSlice {
 			if tag, ok := tagInterface.(string); ok {
 				rule.Tags = append(rule.Tags, tag)
@@ -105,30 +106,69 @@ func (t *AutoTaggingTransformer) parseTaggingRule(ruleInterface interface{}) *Ta
 	return &rule
 }
 
-func (t *AutoTaggingTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
-	transformedItems := make([]*models.Item, len(items))
+func (t *AutoTaggingTransformer) Transform(items []models.FullItem) ([]models.FullItem, error) {
+	transformedItems := make([]models.FullItem, len(items))
 
 	for i, item := range items {
-		newTags := t.applyTaggingRules(item)
+		// Apply tagging rules directly to ItemInterface
+		newTags := t.applyTaggingRulesInterface(item)
 
 		if len(newTags) > 0 {
-			// Copy-on-write: only copy if there are new tags to add
-			transformedItem := *item
+			// Create a new item with the existing data plus new tags
+			var transformedItem models.FullItem
 
+			if thread, isThread := models.AsThread(item); isThread {
+				// Handle Thread type
+				newThread := models.NewThread(thread.GetID(), thread.GetTitle())
+				newThread.SetContent(thread.GetContent())
+				newThread.SetSourceType(thread.GetSourceType())
+				newThread.SetItemType(thread.GetItemType())
+				newThread.SetCreatedAt(thread.GetCreatedAt())
+				newThread.SetUpdatedAt(thread.GetUpdatedAt())
+				newThread.SetAttachments(thread.GetAttachments())
+				newThread.SetMetadata(thread.GetMetadata())
+				newThread.SetLinks(thread.GetLinks())
+
+				// Copy messages
+				for _, msg := range thread.GetMessages() {
+					newThread.AddMessage(msg)
+				}
+
+				transformedItem = newThread
+			} else {
+				// Handle BasicItem type
+				newBasicItem := models.NewBasicItem(item.GetID(), item.GetTitle())
+				newBasicItem.SetContent(item.GetContent())
+				newBasicItem.SetSourceType(item.GetSourceType())
+				newBasicItem.SetItemType(item.GetItemType())
+				newBasicItem.SetCreatedAt(item.GetCreatedAt())
+				newBasicItem.SetUpdatedAt(item.GetUpdatedAt())
+				newBasicItem.SetAttachments(item.GetAttachments())
+				newBasicItem.SetMetadata(item.GetMetadata())
+				newBasicItem.SetLinks(item.GetLinks())
+
+				transformedItem = newBasicItem
+			}
+
+			// Add existing tags first, then new tags (avoiding duplicates)
 			existingTags := make(map[string]bool)
-			for _, tag := range transformedItem.Tags {
+			for _, tag := range item.GetTags() {
 				existingTags[tag] = true
 			}
 
+			allTags := append([]string{}, item.GetTags()...)
+
 			for _, newTag := range newTags {
 				if !existingTags[newTag] {
-					transformedItem.Tags = append(transformedItem.Tags, newTag)
+					allTags = append(allTags, newTag)
 				}
 			}
 
-			transformedItems[i] = &transformedItem
+			transformedItem.SetTags(allTags)
+
+			transformedItems[i] = transformedItem
 		} else {
-			// No new tags, so no copy
+			// No new tags, return original item
 			transformedItems[i] = item
 		}
 	}
@@ -136,10 +176,10 @@ func (t *AutoTaggingTransformer) Transform(items []*models.Item) ([]*models.Item
 	return transformedItems, nil
 }
 
-func (t *AutoTaggingTransformer) applyTaggingRules(item *models.Item) []string {
+func (t *AutoTaggingTransformer) applyTaggingRulesInterface(item models.FullItem) []string {
 	var newTags []string
 
-	searchText := strings.ToLower(item.Title + " " + item.Content)
+	searchText := strings.ToLower(item.GetTitle() + " " + item.GetContent())
 
 	for _, rule := range t.rules {
 		if strings.Contains(searchText, strings.ToLower(rule.Pattern)) {
@@ -148,16 +188,18 @@ func (t *AutoTaggingTransformer) applyTaggingRules(item *models.Item) []string {
 	}
 
 	// Add source-based tags
-	if item.SourceType != "" {
-		newTags = append(newTags, "source:"+item.SourceType)
+	if item.GetSourceType() != "" {
+		newTags = append(newTags, "source:"+item.GetSourceType())
 	}
 
-	if item.ItemType != "" {
-		newTags = append(newTags, "type:"+item.ItemType)
+	if item.GetItemType() != "" {
+		newTags = append(newTags, "type:"+item.GetItemType())
 	}
 
 	return newTags
 }
+
+// Keep the legacy method for backward compatibility (in case it's used elsewhere)
 
 // FilterTransformer filters items based on criteria.
 type FilterTransformer struct {
@@ -180,8 +222,8 @@ func (t *FilterTransformer) Configure(config map[string]interface{}) error {
 	return nil
 }
 
-func (t *FilterTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
-	var filteredItems []*models.Item
+func (t *FilterTransformer) Transform(items []models.FullItem) ([]models.FullItem, error) {
+	var filteredItems []models.FullItem
 
 	minContentLength, err := t.getMinContentLength()
 	if err != nil {
@@ -199,7 +241,9 @@ func (t *FilterTransformer) Transform(items []*models.Item) ([]*models.Item, err
 	}
 
 	for _, item := range items {
-		if t.shouldIncludeItem(item, minContentLength, excludeSourceTypes, requiredTags) {
+		// Convert to struct for compatibility with existing filter logic
+		legacyItem := models.AsItemStruct(item)
+		if t.shouldIncludeItem(legacyItem, minContentLength, excludeSourceTypes, requiredTags) {
 			filteredItems = append(filteredItems, item)
 		}
 	}
@@ -234,6 +278,7 @@ func (t *FilterTransformer) getExcludeSourceTypes() ([]string, error) {
 	}
 
 	result := make([]string, 0, len(types))
+
 	for i, typeInterface := range types {
 		if sourceType, ok := typeInterface.(string); ok {
 			result = append(result, sourceType)
@@ -257,6 +302,7 @@ func (t *FilterTransformer) getRequiredTags() ([]string, error) {
 	}
 
 	result := make([]string, 0, len(tags))
+
 	for i, tagInterface := range tags {
 		if tag, ok := tagInterface.(string); ok {
 			result = append(result, tag)

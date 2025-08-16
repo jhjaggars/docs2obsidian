@@ -107,7 +107,7 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Collect all items from all Gmail sources for unified processing
-	var allItems []*models.Item
+	var allItems []models.ItemInterface
 
 	// Process each Gmail source independently to support per-source customization
 	for _, srcName := range sourcesToSync {
@@ -181,13 +181,14 @@ func runGmailCommand(cmd *cobra.Command, args []string) error {
 		// Add source tags if enabled
 		if cfg.Sync.SourceTags {
 			for _, item := range items {
-				item.Tags = append(item.Tags, "source:"+srcName)
+				currentTags := item.GetTags()
+				newTags := append(currentTags, "source:"+srcName)
+				item.SetTags(newTags)
 			}
 		}
 
 		fmt.Printf("Found %d emails from %s\n", len(items), srcName)
 
-		// Add items to the collection
 		// Add items to the collection
 		allItems = append(allItems, items...)
 	}
@@ -440,7 +441,7 @@ type DryRunOutput struct {
 	Sources      []string                  `json:"sources"`
 	TotalItems   int                       `json:"total_items"`
 	Summary      DryRunSummary             `json:"summary"`
-	Items        []*models.Item            `json:"items"`
+	Items        []models.ItemInterface    `json:"items"`
 	FilePreviews []*interfaces.FilePreview `json:"file_previews"`
 }
 
@@ -451,7 +452,7 @@ type DryRunSummary struct {
 	ConflictCount int `json:"conflict_count"`
 }
 
-func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
+func outputDryRunJSON(items []models.ItemInterface, previews []*interfaces.FilePreview, target, outputDir string, sources []string) error {
 	summary := calculateSummary(previews)
 
 	output := DryRunOutput{
@@ -474,7 +475,7 @@ func outputDryRunJSON(items []*models.Item, previews []*interfaces.FilePreview, 
 	return nil
 }
 
-func outputDryRunSummary(items []*models.Item, previews []*interfaces.FilePreview, target, outputDir string, _ []string) error {
+func outputDryRunSummary(items []models.ItemInterface, previews []*interfaces.FilePreview, target, outputDir string, _ []string) error {
 	fmt.Printf("=== DRY RUN: Preview of sync operation ===\n")
 	fmt.Printf("Target: %s\nOutput directory: %s\nTotal items: %d\n\n", target, outputDir, len(items))
 

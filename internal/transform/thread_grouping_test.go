@@ -43,9 +43,9 @@ func TestThreadGroupingTransformer_Transform_Disabled(t *testing.T) {
 		t.Fatalf("Failed to configure: %v", err)
 	}
 
-	items := []*models.Item{
-		{ID: "1", Title: "Item 1", Content: "Content 1"},
-		{ID: "2", Title: "Item 2", Content: "Content 2"},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Item 1", Content: "Content 1"}),
+		models.AsItemInterface(&models.Item{ID: "2", Title: "Item 2", Content: "Content 2"}),
 	}
 
 	result, err := transformer.Transform(items)
@@ -59,8 +59,8 @@ func TestThreadGroupingTransformer_Transform_Disabled(t *testing.T) {
 	}
 
 	for i, expected := range items {
-		if result[i].ID != expected.ID {
-			t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.ID, result[i].ID)
+		if result[i].GetID() != expected.GetID() {
+			t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.GetID(), result[i].GetID())
 		}
 	}
 }
@@ -78,9 +78,9 @@ func TestThreadGroupingTransformer_Transform_Individual(t *testing.T) {
 		t.Fatalf("Failed to configure: %v", err)
 	}
 
-	items := []*models.Item{
-		{ID: "1", Title: "Item 1", Content: "Content 1"},
-		{ID: "2", Title: "Item 2", Content: "Content 2"},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Item 1", Content: "Content 1"}),
+		models.AsItemInterface(&models.Item{ID: "2", Title: "Item 2", Content: "Content 2"}),
 	}
 
 	result, err := transformer.Transform(items)
@@ -110,8 +110,8 @@ func TestThreadGroupingTransformer_Transform_Consolidated(t *testing.T) {
 	now := time.Now()
 	threadID := "thread123"
 
-	items := []*models.Item{
-		{
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{
 			ID:        "1",
 			Title:     "Re: Project Discussion",
 			Content:   "First message",
@@ -120,8 +120,8 @@ func TestThreadGroupingTransformer_Transform_Consolidated(t *testing.T) {
 				"thread_id": threadID,
 				"from":      "alice@example.com",
 			},
-		},
-		{
+		}),
+		models.AsItemInterface(&models.Item{
 			ID:        "2",
 			Title:     "Re: Project Discussion",
 			Content:   "Second message",
@@ -130,14 +130,14 @@ func TestThreadGroupingTransformer_Transform_Consolidated(t *testing.T) {
 				"thread_id": threadID,
 				"from":      "bob@example.com",
 			},
-		},
-		{
+		}),
+		models.AsItemInterface(&models.Item{
 			ID:        "3",
 			Title:     "Separate Item",
 			Content:   "Individual message",
 			CreatedAt: now,
 			Metadata:  map[string]interface{}{},
-		},
+		}),
 	}
 
 	result, err := transformer.Transform(items)
@@ -152,25 +152,25 @@ func TestThreadGroupingTransformer_Transform_Consolidated(t *testing.T) {
 
 	// Check individual item (comes first due to sorting by thread ID: "3" < "thread123")
 	individual := result[0]
-	if individual.ID != "3" {
-		t.Errorf("Expected individual item ID '3', got '%s'", individual.ID)
+	if individual.GetID() != "3" {
+		t.Errorf("Expected individual item ID '3', got '%s'", individual.GetID())
 	}
 
 	// Check consolidated thread (comes second due to sorting)
 	consolidated := result[1]
-	if !strings.Contains(consolidated.ID, "thread_") {
-		t.Errorf("Expected consolidated ID to contain 'thread_', got '%s'", consolidated.ID)
+	if !strings.Contains(consolidated.GetID(), "thread_") {
+		t.Errorf("Expected consolidated ID to contain 'thread_', got '%s'", consolidated.GetID())
 	}
 
-	if !strings.Contains(consolidated.Title, "Thread_") {
-		t.Errorf("Expected consolidated title to contain 'Thread_', got '%s'", consolidated.Title)
+	if !strings.Contains(consolidated.GetTitle(), "Thread_") {
+		t.Errorf("Expected consolidated title to contain 'Thread_', got '%s'", consolidated.GetTitle())
 	}
 
-	if !strings.Contains(consolidated.Content, "First message") {
+	if !strings.Contains(consolidated.GetContent(), "First message") {
 		t.Errorf("Expected consolidated content to contain 'First message'")
 	}
 
-	if !strings.Contains(consolidated.Content, "Second message") {
+	if !strings.Contains(consolidated.GetContent(), "Second message") {
 		t.Errorf("Expected consolidated content to contain 'Second message'")
 	}
 }
@@ -192,8 +192,8 @@ func TestThreadGroupingTransformer_Transform_Summary(t *testing.T) {
 	now := time.Now()
 	threadID := "thread456"
 
-	items := []*models.Item{
-		{
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{
 			ID:        "1",
 			Title:     "Project Discussion",
 			Content:   "First message with lots of content to make it important",
@@ -202,8 +202,8 @@ func TestThreadGroupingTransformer_Transform_Summary(t *testing.T) {
 				"thread_id": threadID,
 				"from":      "alice@example.com",
 			},
-		},
-		{
+		}),
+		models.AsItemInterface(&models.Item{
 			ID:        "2",
 			Title:     "Re: Project Discussion",
 			Content:   "Short reply",
@@ -212,8 +212,8 @@ func TestThreadGroupingTransformer_Transform_Summary(t *testing.T) {
 				"thread_id": threadID,
 				"from":      "bob@example.com",
 			},
-		},
-		{
+		}),
+		models.AsItemInterface(&models.Item{
 			ID:        "3",
 			Title:     "Re: Project Discussion",
 			Content:   "Final message",
@@ -222,7 +222,7 @@ func TestThreadGroupingTransformer_Transform_Summary(t *testing.T) {
 				"thread_id": threadID,
 				"from":      "charlie@example.com",
 			},
-		},
+		}),
 	}
 
 	result, err := transformer.Transform(items)
@@ -235,15 +235,15 @@ func TestThreadGroupingTransformer_Transform_Summary(t *testing.T) {
 	}
 
 	summary := result[0]
-	if !strings.Contains(summary.ID, "thread_summary_") {
-		t.Errorf("Expected summary ID to contain 'thread_summary_', got '%s'", summary.ID)
+	if !strings.Contains(summary.GetID(), "thread_summary_") {
+		t.Errorf("Expected summary ID to contain 'thread_summary_', got '%s'", summary.GetID())
 	}
 
-	if !strings.Contains(summary.Title, "Thread-Summary_") {
-		t.Errorf("Expected summary title to contain 'Thread-Summary_', got '%s'", summary.Title)
+	if !strings.Contains(summary.GetTitle(), "Thread-Summary_") {
+		t.Errorf("Expected summary title to contain 'Thread-Summary_', got '%s'", summary.GetTitle())
 	}
 
-	if !strings.Contains(summary.Content, "Key Item") {
+	if !strings.Contains(summary.GetContent(), "Key Item") {
 		t.Errorf("Expected summary content to contain 'Key Item'")
 	}
 }
@@ -572,7 +572,7 @@ func TestThreadGroupingTransformer_ErrorHandling(t *testing.T) {
 		t.Fatalf("Failed to configure: %v", err)
 	}
 
-	items := []*models.Item{{ID: "1", Title: "Test"}}
+	items := []models.ItemInterface{models.AsItemInterface(&models.Item{ID: "1", Title: "Test"})}
 
 	_, err = transformer.Transform(items)
 	if err == nil {

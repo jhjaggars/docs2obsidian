@@ -144,68 +144,68 @@ func TestSignatureRemovalTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		items    []*models.Item
-		expected []*models.Item
+		items    []models.ItemInterface
+		expected []models.ItemInterface
 	}{
 		{
 			name: "Remove signature from email",
-			items: []*models.Item{
-				{
+			items: []models.ItemInterface{
+				models.AsItemInterface(&models.Item{
 					ID:      "1",
 					Title:   "Test Email",
 					Content: "Email content.\n\n--\nBest regards,\nJohn",
-				},
+				}),
 			},
-			expected: []*models.Item{
-				{
+			expected: []models.ItemInterface{
+				models.AsItemInterface(&models.Item{
 					ID:      "1",
 					Title:   "Test Email",
 					Content: "Email content.",
-				},
+				}),
 			},
 		},
 		{
 			name: "No signature to remove",
-			items: []*models.Item{
-				{
+			items: []models.ItemInterface{
+				models.AsItemInterface(&models.Item{
 					ID:      "2",
 					Title:   "Clean Email",
 					Content: "Clean email content without signature.",
-				},
+				}),
 			},
-			expected: []*models.Item{
-				{
+			expected: []models.ItemInterface{
+				models.AsItemInterface(&models.Item{
 					ID:      "2",
 					Title:   "Clean Email",
 					Content: "Clean email content without signature.",
-				},
+				}),
 			},
 		},
 		{
 			name: "Multiple items with mixed signatures",
-			items: []*models.Item{
-				{
+			items: []models.ItemInterface{
+				models.AsItemInterface(&models.Item{
 					ID:      "3",
 					Title:   "Email 1",
 					Content: "Content 1\n\nBest regards,\nSender",
-				},
-				{
+				}),
+				models.AsItemInterface(&models.Item{
 					ID:      "4",
 					Title:   "Email 2",
 					Content: "Content 2 without signature",
-				},
+				}),
 			},
-			expected: []*models.Item{
-				{
+			expected: []models.ItemInterface{
+				models.AsItemInterface(&models.Item{
 					ID:      "3",
 					Title:   "Email 1",
 					Content: "Content 1",
-				},
-				{
+				}),
+				models.AsItemInterface(&models.Item{
 					ID:      "4",
 					Title:   "Email 2",
 					Content: "Content 2 without signature",
-				},
+				}),
 			},
 		},
 	}
@@ -224,16 +224,16 @@ func TestSignatureRemovalTransformer_Transform(t *testing.T) {
 			for i, expected := range tt.expected {
 				actual := result[i]
 
-				if actual.ID != expected.ID {
-					t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.ID, actual.ID)
+				if actual.GetID() != expected.GetID() {
+					t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.GetID(), actual.GetID())
 				}
 
-				if actual.Title != expected.Title {
-					t.Errorf("Item %d: Expected title '%s', got '%s'", i, expected.Title, actual.Title)
+				if actual.GetTitle() != expected.GetTitle() {
+					t.Errorf("Item %d: Expected title '%s', got '%s'", i, expected.GetTitle(), actual.GetTitle())
 				}
 
-				actualContent := strings.TrimSpace(actual.Content)
-				expectedContent := strings.TrimSpace(expected.Content)
+				actualContent := strings.TrimSpace(actual.GetContent())
+				expectedContent := strings.TrimSpace(expected.GetContent())
 
 				if actualContent != expectedContent {
 					t.Errorf("Item %d: Expected content '%s', got '%s'", i, expectedContent, actualContent)

@@ -385,3 +385,4 @@ The new architecture makes it easy to add:
 - **[README.md](./README.md)** - Main documentation and quick start guide
 - **[CONFIGURATION.md](./CONFIGURATION.md)** - Complete configuration reference
 - **[CLAUDE.md](./CLAUDE.md)** - Development guide for Claude Code
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Development workflow and AI agent coordination requirements

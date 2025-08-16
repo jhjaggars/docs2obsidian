@@ -46,49 +46,98 @@ func (t *ContentCleanupTransformer) Configure(config map[string]interface{}) err
 	return nil
 }
 
-func (t *ContentCleanupTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
-	transformedItems := make([]*models.Item, len(items))
+func (t *ContentCleanupTransformer) Transform(items []models.FullItem) ([]models.FullItem, error) {
+	transformedItems := make([]models.FullItem, len(items))
 
 	for i, item := range items {
+		// Preserve the original type by creating appropriate copy
+		var newItem models.FullItem
+
+		if thread, isThread := models.AsThread(item); isThread {
+			// For threads, create a new thread and copy all fields
+			newThread := models.NewThread(thread.GetID(), thread.GetTitle())
+			newThread.SetContent(thread.GetContent())
+			newThread.SetSourceType(thread.GetSourceType())
+			newThread.SetItemType(thread.GetItemType())
+			newThread.SetCreatedAt(thread.GetCreatedAt())
+			newThread.SetUpdatedAt(thread.GetUpdatedAt())
+			newThread.SetTags(thread.GetTags())
+			newThread.SetAttachments(thread.GetAttachments())
+			newThread.SetMetadata(thread.GetMetadata())
+			newThread.SetLinks(thread.GetLinks())
+
+			// Copy messages and process them recursively
+			originalMessages := thread.GetMessages()
+			if len(originalMessages) > 0 {
+				processedMessages, err := t.Transform(originalMessages)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, processedMsg := range processedMessages {
+					newThread.AddMessage(processedMsg)
+				}
+			}
+
+			newItem = newThread
+		} else {
+			// For basic items, create a new basic item
+			newBasicItem := models.NewBasicItem(item.GetID(), item.GetTitle())
+			newBasicItem.SetContent(item.GetContent())
+			newBasicItem.SetSourceType(item.GetSourceType())
+			newBasicItem.SetItemType(item.GetItemType())
+			newBasicItem.SetCreatedAt(item.GetCreatedAt())
+			newBasicItem.SetUpdatedAt(item.GetUpdatedAt())
+			newBasicItem.SetTags(item.GetTags())
+			newBasicItem.SetAttachments(item.GetAttachments())
+			newBasicItem.SetMetadata(item.GetMetadata())
+			newBasicItem.SetLinks(item.GetLinks())
+
+			newItem = newBasicItem
+		}
+
 		transformed := false
-		newItem := *item // Copy the item
 
 		// Process content based on configuration
-		if t.shouldProcessHTMLToMarkdown() && t.containsHTML(item.Content) {
-			cleanedContent := t.ProcessHTMLContent(item.Content)
-			if cleanedContent != item.Content {
-				newItem.Content = cleanedContent
+		if t.shouldProcessHTMLToMarkdown() && t.containsHTML(newItem.GetContent()) {
+			cleanedContent := t.ProcessHTMLContent(newItem.GetContent())
+			if cleanedContent != newItem.GetContent() {
+				newItem.SetContent(cleanedContent)
+
 				transformed = true
 			}
 		}
 
 		// Apply content cleanup
 		if t.shouldRemoveExtraWhitespace() {
-			cleanedContent := t.cleanupWhitespace(newItem.Content)
-			if cleanedContent != newItem.Content {
-				newItem.Content = cleanedContent
+			cleanedContent := t.cleanupWhitespace(newItem.GetContent())
+			if cleanedContent != newItem.GetContent() {
+				newItem.SetContent(cleanedContent)
+
 				transformed = true
 			}
 		}
 
 		// Strip quoted text if enabled
 		if t.shouldStripQuotedText() {
-			cleanedContent := t.StripQuotedText(newItem.Content)
-			if cleanedContent != newItem.Content {
-				newItem.Content = cleanedContent
+			cleanedContent := t.StripQuotedText(newItem.GetContent())
+			if cleanedContent != newItem.GetContent() {
+				newItem.SetContent(cleanedContent)
+
 				transformed = true
 			}
 		}
 
 		// Clean up title
-		cleanedTitle := t.cleanupTitle(newItem.Title)
-		if cleanedTitle != newItem.Title {
-			newItem.Title = cleanedTitle
+		cleanedTitle := t.cleanupTitle(newItem.GetTitle())
+		if cleanedTitle != newItem.GetTitle() {
+			newItem.SetTitle(cleanedTitle)
+
 			transformed = true
 		}
 
 		if transformed {
-			transformedItems[i] = &newItem
+			transformedItems[i] = newItem
 		} else {
 			transformedItems[i] = item
 		}
@@ -109,7 +158,9 @@ func (t *ContentCleanupTransformer) ProcessHTMLContent(htmlContent string) strin
 	}
 
 	var markdown strings.Builder
+
 	t.convertNodeToMarkdown(doc, &markdown)
+
 	result := markdown.String()
 
 	// Apply additional entity processing for any that weren't handled by the parser
@@ -231,6 +282,7 @@ func (t *ContentCleanupTransformer) convertNodeToMarkdown(n *nethtml.Node, markd
 		case "blockquote":
 			// Process blockquote content and add > prefix to each line
 			var blockquoteContent strings.Builder
+
 			t.convertChildNodes(n, &blockquoteContent)
 
 			content := strings.TrimSpace(blockquoteContent.String())
@@ -317,6 +369,7 @@ func (t *ContentCleanupTransformer) convertTableRow(n *nethtml.Node, markdown *s
 
 	// Count cells first
 	var cells []*nethtml.Node
+
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
 		if child.Type == nethtml.ElementNode && (child.Data == "td" || child.Data == "th") {
 			cells = append(cells, child)
@@ -420,6 +473,7 @@ func (t *ContentCleanupTransformer) cleanupTitle(title string) string {
 
 	for iterations < maxIterations {
 		original := title
+
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(title, prefix) {
 				title = strings.TrimSpace(title[len(prefix):])
@@ -460,16 +514,6 @@ func (t *ContentCleanupTransformer) shouldStripQuotedText() bool {
 
 func (t *ContentCleanupTransformer) shouldRemoveExtraWhitespace() bool {
 	if val, exists := t.config["remove_extra_whitespace"]; exists {
-		if b, ok := val.(bool); ok {
-			return b
-		}
-	}
-
-	return true // Default: enabled
-}
-
-func (t *ContentCleanupTransformer) shouldPreserveFormatting() bool {
-	if val, exists := t.config["preserve_formatting"]; exists {
 		if b, ok := val.(bool); ok {
 			return b
 		}

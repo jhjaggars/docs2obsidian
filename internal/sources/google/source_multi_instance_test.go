@@ -125,22 +125,22 @@ func TestGoogleSourceName(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "Gmail source should return 'google_calendar' as name",
+			name:     "Gmail source should return source ID as name",
 			sourceID: "gmail_work",
 			config: models.SourceConfig{
 				Type: "gmail",
 				Name: "Work Emails",
 			},
-			expected: "google_calendar",
+			expected: "gmail_work",
 		},
 		{
-			name:     "Google Calendar source should return 'google_calendar' as name",
+			name:     "Google Calendar source should return source ID as name",
 			sourceID: "google_cal",
 			config: models.SourceConfig{
 				Type: "google_calendar",
 				Name: "Primary Calendar",
 			},
-			expected: "google_calendar",
+			expected: "google_cal",
 		},
 	}
 

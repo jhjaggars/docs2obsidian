@@ -57,3 +57,16 @@ func (s *DefaultSyncer) Sync(source interfaces.Source, target interfaces.Target,
 
 	return nil
 }
+
+// SetPipeline allows setting or changing the transform pipeline.
+func (s *DefaultSyncer) SetPipeline(pipeline interfaces.TransformPipeline) {
+	s.pipeline = pipeline
+}
+
+// GetPipeline returns the current transform pipeline (may be nil).
+func (s *DefaultSyncer) GetPipeline() interfaces.TransformPipeline {
+	return s.pipeline
+}
+
+// Ensure DefaultSyncer implements Syncer interface.
+var _ interfaces.Syncer = (*DefaultSyncer)(nil)

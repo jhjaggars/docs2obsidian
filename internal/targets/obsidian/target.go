@@ -44,18 +44,18 @@ func (o *ObsidianTarget) Configure(config map[string]interface{}) error {
 	return nil
 }
 
-func (o *ObsidianTarget) Export(items []*models.Item, outputDir string) error {
+func (o *ObsidianTarget) Export(items []models.FullItem, outputDir string) error {
 	for _, item := range items {
 		if err := o.exportItem(item, outputDir); err != nil {
-			return fmt.Errorf("failed to export item %s: %w", item.ID, err)
+			return fmt.Errorf("failed to export item %s: %w", item.GetID(), err)
 		}
 	}
 
 	return nil
 }
 
-func (o *ObsidianTarget) exportItem(item *models.Item, outputDir string) error {
-	filename := o.FormatFilename(item.Title)
+func (o *ObsidianTarget) exportItem(item models.FullItem, outputDir string) error {
+	filename := o.FormatFilename(item.GetTitle())
 	filePath := filepath.Join(outputDir, filename)
 
 	// Create directory if needed
@@ -68,21 +68,31 @@ func (o *ObsidianTarget) exportItem(item *models.Item, outputDir string) error {
 	return os.WriteFile(filePath, []byte(content), 0644)
 }
 
-func (o *ObsidianTarget) formatContent(item *models.Item) string {
+func (o *ObsidianTarget) formatContent(item models.ItemInterface) string {
+	// Handle different item types
+	if models.IsThread(item) {
+		return o.formatThreadContent(item)
+	}
+
+	// Default: format as basic item
+	return o.formatBasicItemContent(item)
+}
+
+func (o *ObsidianTarget) formatBasicItemContent(item models.ItemInterface) string {
 	var sb strings.Builder
 
 	// YAML frontmatter
 	sb.WriteString("---\n")
-	sb.WriteString(o.FormatMetadata(item.Metadata))
-	sb.WriteString(fmt.Sprintf("id: %s\n", item.ID))
-	sb.WriteString(fmt.Sprintf("source: %s\n", item.SourceType))
-	sb.WriteString(fmt.Sprintf("type: %s\n", item.ItemType))
-	sb.WriteString(fmt.Sprintf("created: %s\n", item.CreatedAt.Format(time.RFC3339)))
+	sb.WriteString(o.FormatMetadata(item.GetMetadata()))
+	sb.WriteString(fmt.Sprintf("id: %s\n", item.GetID()))
+	sb.WriteString(fmt.Sprintf("source: %s\n", item.GetSourceType()))
+	sb.WriteString(fmt.Sprintf("type: %s\n", item.GetItemType()))
+	sb.WriteString(fmt.Sprintf("created: %s\n", item.GetCreatedAt().Format(time.RFC3339)))
 
-	if len(item.Tags) > 0 {
+	if len(item.GetTags()) > 0 {
 		sb.WriteString("tags:\n")
 
-		for _, tag := range item.Tags {
+		for _, tag := range item.GetTags() {
 			sb.WriteString(fmt.Sprintf("  - %s\n", tag))
 		}
 	}
@@ -90,42 +100,133 @@ func (o *ObsidianTarget) formatContent(item *models.Item) string {
 	sb.WriteString("---\n\n")
 
 	// Title
-	sb.WriteString(fmt.Sprintf("# %s\n\n", item.Title))
+	sb.WriteString(fmt.Sprintf("# %s\n\n", item.GetTitle()))
 
 	// Content
-	if item.Content != "" {
-		sb.WriteString(item.Content)
+	if item.GetContent() != "" {
+		sb.WriteString(item.GetContent())
 		sb.WriteString("\n\n")
 	}
 
 	// Attachments
-	if len(item.Attachments) > 0 {
+	if len(item.GetAttachments()) > 0 {
 		sb.WriteString("## Attachments\n\n")
 
-		for _, attachment := range item.Attachments {
-			sb.WriteString(fmt.Sprintf("- [[%s]]\n", attachment.Name))
+		for _, attachment := range item.GetAttachments() {
+			if attachment.URL != "" {
+				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", attachment.Name, attachment.URL))
+			} else {
+				sb.WriteString(fmt.Sprintf("- %s\n", attachment.Name))
+			}
 		}
 
 		sb.WriteString("\n")
 	}
 
 	// Links
-	if len(item.Links) > 0 {
+	if len(item.GetLinks()) > 0 {
 		sb.WriteString("## Links\n\n")
 
-		for _, link := range item.Links {
+		for _, link := range item.GetLinks() {
 			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", link.Title, link.URL))
+		}
+
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+func (o *ObsidianTarget) formatThreadContent(item models.ItemInterface) string {
+	thread, ok := models.AsThread(item)
+	if !ok {
+		// Fallback to basic item formatting
+		return o.formatBasicItemContent(item)
+	}
+
+	var sb strings.Builder
+
+	// YAML frontmatter for thread
+	sb.WriteString("---\n")
+	sb.WriteString(o.FormatMetadata(thread.GetMetadata()))
+	sb.WriteString(fmt.Sprintf("id: %s\n", thread.GetID()))
+	sb.WriteString(fmt.Sprintf("source: %s\n", thread.GetSourceType()))
+	sb.WriteString(fmt.Sprintf("type: %s\n", thread.GetItemType()))
+	sb.WriteString(fmt.Sprintf("created: %s\n", thread.GetCreatedAt().Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("message_count: %d\n", len(thread.GetMessages())))
+
+	if len(thread.GetTags()) > 0 {
+		sb.WriteString("tags:\n")
+
+		for _, tag := range thread.GetTags() {
+			sb.WriteString(fmt.Sprintf("  - %s\n", tag))
+		}
+	}
+
+	sb.WriteString("---\n\n")
+
+	// Thread title
+	sb.WriteString(fmt.Sprintf("# %s\n\n", thread.GetTitle()))
+
+	// Thread summary/content
+	if thread.GetContent() != "" {
+		sb.WriteString("## Thread Summary\n\n")
+		sb.WriteString(thread.GetContent())
+		sb.WriteString("\n\n")
+	}
+
+	// Individual messages
+	if len(thread.GetMessages()) > 0 {
+		sb.WriteString("## Messages\n\n")
+
+		for i, message := range thread.GetMessages() {
+			o.formatThreadMessage(&sb, i+1, message)
 		}
 	}
 
 	return sb.String()
 }
 
-func (o *ObsidianTarget) FormatFilename(title string) string {
-	// Use centralized sanitization utility
-	filename := utils.SanitizeFilename(title)
+// formatThreadMessage formats a single message within a thread to reduce complexity.
+func (o *ObsidianTarget) formatThreadMessage(sb *strings.Builder, messageNum int, message models.ItemInterface) {
+	sb.WriteString(fmt.Sprintf("### Message %d: %s\n\n", messageNum, message.GetTitle()))
 
-	return filename + ".md"
+	// Message metadata
+	sb.WriteString(fmt.Sprintf("**From:** %s  \n", message.GetSourceType()))
+	sb.WriteString(fmt.Sprintf("**Created:** %s  \n", message.GetCreatedAt().Format(time.RFC3339)))
+
+	if len(message.GetTags()) > 0 {
+		sb.WriteString(fmt.Sprintf("**Tags:** %s  \n", strings.Join(message.GetTags(), ", ")))
+	}
+
+	sb.WriteString("\n")
+
+	// Message content
+	if message.GetContent() != "" {
+		sb.WriteString(message.GetContent())
+		sb.WriteString("\n\n")
+	}
+
+	// Message attachments
+	if len(message.GetAttachments()) > 0 {
+		sb.WriteString("**Attachments:**\n")
+
+		for _, attachment := range message.GetAttachments() {
+			if attachment.URL != "" {
+				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", attachment.Name, attachment.URL))
+			} else {
+				sb.WriteString(fmt.Sprintf("- %s\n", attachment.Name))
+			}
+		}
+
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("---\n\n")
+}
+
+func (o *ObsidianTarget) FormatFilename(title string) string {
+	return utils.SanitizeFilename(title) + o.GetFileExtension()
 }
 
 func (o *ObsidianTarget) GetFileExtension() string {
@@ -133,6 +234,10 @@ func (o *ObsidianTarget) GetFileExtension() string {
 }
 
 func (o *ObsidianTarget) FormatMetadata(metadata map[string]interface{}) string {
+	if len(metadata) == 0 {
+		return ""
+	}
+
 	var sb strings.Builder
 
 	for key, value := range metadata {
@@ -196,13 +301,39 @@ func (o *ObsidianTarget) formatAttendees(attendeesValue interface{}) string {
 }
 
 // Preview generates a preview of what files would be created/modified without actually writing them.
-func (o *ObsidianTarget) Preview(items []*models.Item, outputDir string) ([]*interfaces.FilePreview, error) {
+func (o *ObsidianTarget) Preview(items []models.FullItem, outputDir string) ([]*interfaces.FilePreview, error) {
 	previews := make([]*interfaces.FilePreview, 0, len(items))
 
 	for _, item := range items {
-		preview, err := o.previewItem(item, outputDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to preview item %s: %w", item.ID, err)
+		filename := o.FormatFilename(item.GetTitle())
+		filePath := filepath.Join(outputDir, filename)
+		content := o.formatContent(item)
+
+		var existingContent string
+
+		var conflict bool
+
+		if data, err := os.ReadFile(filePath); err == nil {
+			existingContent = string(data)
+			conflict = existingContent != content
+		}
+
+		action := "create"
+
+		if existingContent != "" {
+			if conflict {
+				action = "update"
+			} else {
+				action = "skip"
+			}
+		}
+
+		preview := &interfaces.FilePreview{
+			FilePath:        filePath,
+			Action:          action,
+			Content:         content,
+			ExistingContent: existingContent,
+			Conflict:        conflict,
 		}
 
 		previews = append(previews, preview)
@@ -211,128 +342,5 @@ func (o *ObsidianTarget) Preview(items []*models.Item, outputDir string) ([]*int
 	return previews, nil
 }
 
-func (o *ObsidianTarget) previewItem(item *models.Item, outputDir string) (*interfaces.FilePreview, error) {
-	filename := o.FormatFilename(item.Title)
-	filePath := filepath.Join(outputDir, filename)
-	content := o.formatContent(item)
-
-	action, existingContent, err := o.determineFileAction(filePath, content)
-	if err != nil {
-		return nil, fmt.Errorf("could not determine action for %s: %w", filePath, err)
-	}
-
-	conflict := false
-	if action == "update" {
-		conflict = o.detectConflict(existingContent, content)
-	}
-
-	return &interfaces.FilePreview{
-		FilePath:        filePath,
-		Action:          action,
-		Content:         content,
-		ExistingContent: existingContent,
-		Conflict:        conflict,
-	}, nil
-}
-
-func (o *ObsidianTarget) determineFileAction(filePath, newContent string) (string, string, error) {
-	existingData, err := os.ReadFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "create", "", nil // File doesn't exist
-		}
-
-		return "", "", fmt.Errorf("failed to read existing file: %w", err) // Other read error
-	}
-
-	existingContent := string(existingData)
-	if existingContent == newContent {
-		return "skip", existingContent, nil
-	}
-
-	return "update", existingContent, nil
-}
-
-// detectConflict performs basic conflict detection.
-func (o *ObsidianTarget) detectConflict(existing, newContent string) bool {
-	// Simple conflict detection: check if existing file has been manually modified
-	// by looking for content that wouldn't be generated by our sync process
-	// If the existing file has different frontmatter structure, it might be manually edited
-	existingLines := strings.Split(existing, "\n")
-	newLines := strings.Split(newContent, "\n")
-
-	// Check if frontmatter sections are very different
-	existingFrontmatter := extractFrontmatter(existingLines)
-	newFrontmatter := extractFrontmatter(newLines)
-
-	// Basic heuristic: if existing has significantly more frontmatter fields,
-	// it might have been manually edited
-	if len(existingFrontmatter) > len(newFrontmatter)+3 {
-		return true
-	}
-
-	// Check for manual content additions (content after meeting details that we wouldn't generate)
-	existingContentAfterFrontmatter := extractContent(existingLines)
-	newContentAfterFrontmatter := extractContent(newLines)
-
-	// If existing content is significantly longer, it might have manual additions
-	if len(existingContentAfterFrontmatter) > len(newContentAfterFrontmatter)+100 {
-		return true
-	}
-
-	return false
-}
-
-func extractFrontmatter(lines []string) []string {
-	var frontmatter []string
-
-	inFrontmatter := false
-	frontmatterCount := 0
-
-	for _, line := range lines {
-		if line == "---" {
-			frontmatterCount++
-			if frontmatterCount == 2 {
-				break
-			}
-
-			inFrontmatter = true
-
-			continue
-		}
-
-		if inFrontmatter {
-			frontmatter = append(frontmatter, line)
-		}
-	}
-
-	return frontmatter
-}
-
-func extractContent(lines []string) string {
-	var content strings.Builder
-
-	inFrontmatter := false
-	frontmatterCount := 0
-
-	for _, line := range lines {
-		if line == "---" {
-			frontmatterCount++
-			if frontmatterCount == 2 {
-				inFrontmatter = false
-
-				continue
-			}
-
-			inFrontmatter = true
-
-			continue
-		}
-
-		if !inFrontmatter && frontmatterCount >= 2 {
-			content.WriteString(line + "\n")
-		}
-	}
-
-	return content.String()
-}
+// Ensure ObsidianTarget implements Target interface.
+var _ interfaces.Target = (*ObsidianTarget)(nil)

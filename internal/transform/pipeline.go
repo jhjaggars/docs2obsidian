@@ -8,14 +8,14 @@ import (
 	"pkm-sync/pkg/models"
 )
 
-// DefaultTransformPipeline implements the TransformPipeline interface.
+// DefaultTransformPipeline implements the TransformPipeline interface using ItemInterface.
 type DefaultTransformPipeline struct {
 	transformers        []interfaces.Transformer
 	config              models.TransformConfig
 	transformerRegistry map[string]interfaces.Transformer
 }
 
-// NewPipeline creates a new transform pipeline.
+// NewPipeline creates a new transform pipeline using ItemInterface.
 func NewPipeline() *DefaultTransformPipeline {
 	return &DefaultTransformPipeline{
 		transformers:        make([]interfaces.Transformer, 0),
@@ -81,7 +81,7 @@ func (p *DefaultTransformPipeline) AddTransformer(transformer interfaces.Transfo
 }
 
 // Transform processes items through the configured pipeline.
-func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.Item, error) {
+func (p *DefaultTransformPipeline) Transform(items []models.FullItem) ([]models.FullItem, error) {
 	if !p.config.Enabled || len(p.transformers) == 0 {
 		return items, nil
 	}
@@ -96,7 +96,7 @@ func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.It
 			}
 			// currentItems remains unchanged for log_and_continue, or becomes empty for skip_item
 			if p.config.ErrorStrategy == "skip_item" {
-				currentItems = []*models.Item{}
+				currentItems = []models.FullItem{}
 			}
 		} else {
 			currentItems = transformedItems
@@ -109,8 +109,8 @@ func (p *DefaultTransformPipeline) Transform(items []*models.Item) ([]*models.It
 // processWithErrorHandling wraps transformer execution with error handling.
 func (p *DefaultTransformPipeline) processWithErrorHandling(
 	transformer interfaces.Transformer,
-	items []*models.Item,
-) (processedItems []*models.Item, err error) {
+	items []models.FullItem,
+) (processedItems []models.FullItem, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Transformer '%s' panicked on batch of %d items: %v", transformer.Name(), len(items), r)
@@ -126,7 +126,7 @@ func (p *DefaultTransformPipeline) processWithErrorHandling(
 // handleTransformerError handles transformer errors based on the configured strategy.
 func (p *DefaultTransformPipeline) handleTransformerError(
 	transformer interfaces.Transformer,
-	items []*models.Item,
+	items []models.FullItem,
 	err error,
 ) error {
 	switch p.config.ErrorStrategy {
@@ -146,7 +146,7 @@ func (p *DefaultTransformPipeline) handleTransformerError(
 // logTransformerError logs transformer errors with context.
 func (p *DefaultTransformPipeline) logTransformerError(
 	transformer interfaces.Transformer,
-	items []*models.Item,
+	items []models.FullItem,
 	err error,
 	action string,
 ) {
@@ -176,13 +176,17 @@ func (p *DefaultTransformPipeline) GetRegisteredTransformers() []string {
 }
 
 // getItemIDs extracts item IDs for logging context.
-func (p *DefaultTransformPipeline) getItemIDs(items []*models.Item) []string {
+func (p *DefaultTransformPipeline) getItemIDs(items []models.FullItem) []string {
 	ids := make([]string, 0, len(items))
+
 	for _, item := range items {
-		if item.ID != "" {
-			ids = append(ids, item.ID)
+		if item.GetID() != "" {
+			ids = append(ids, item.GetID())
 		}
 	}
 
 	return ids
 }
+
+// Ensure DefaultTransformPipeline implements TransformPipeline.
+var _ interfaces.TransformPipeline = (*DefaultTransformPipeline)(nil)

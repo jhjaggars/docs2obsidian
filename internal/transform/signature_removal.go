@@ -52,17 +52,50 @@ func (t *SignatureRemovalTransformer) Configure(config map[string]interface{}) e
 	return nil
 }
 
-func (t *SignatureRemovalTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
-	transformedItems := make([]*models.Item, len(items))
+func (t *SignatureRemovalTransformer) Transform(items []models.FullItem) ([]models.FullItem, error) {
+	transformedItems := make([]models.FullItem, len(items))
 
 	for i, item := range items {
-		cleanedContent := t.ExtractSignatures(item.Content)
+		cleanedContent := t.ExtractSignatures(item.GetContent())
 
-		if cleanedContent != item.Content {
-			// Copy-on-write: only copy if content changed
-			transformedItem := *item
-			transformedItem.Content = cleanedContent
-			transformedItems[i] = &transformedItem
+		if cleanedContent != item.GetContent() {
+			// Create a new item copy (preserving type)
+			var newItem models.ItemInterface
+
+			if thread, isThread := models.AsThread(item); isThread {
+				newThread := models.NewThread(thread.GetID(), thread.GetTitle())
+				newThread.SetContent(cleanedContent) // Use cleaned content
+				newThread.SetSourceType(thread.GetSourceType())
+				newThread.SetItemType(thread.GetItemType())
+				newThread.SetCreatedAt(thread.GetCreatedAt())
+				newThread.SetUpdatedAt(thread.GetUpdatedAt())
+				newThread.SetTags(thread.GetTags())
+				newThread.SetAttachments(thread.GetAttachments())
+				newThread.SetMetadata(thread.GetMetadata())
+				newThread.SetLinks(thread.GetLinks())
+
+				// Copy messages
+				for _, message := range thread.GetMessages() {
+					newThread.AddMessage(message)
+				}
+
+				newItem = newThread
+			} else {
+				newBasicItem := models.NewBasicItem(item.GetID(), item.GetTitle())
+				newBasicItem.SetContent(cleanedContent) // Use cleaned content
+				newBasicItem.SetSourceType(item.GetSourceType())
+				newBasicItem.SetItemType(item.GetItemType())
+				newBasicItem.SetCreatedAt(item.GetCreatedAt())
+				newBasicItem.SetUpdatedAt(item.GetUpdatedAt())
+				newBasicItem.SetTags(item.GetTags())
+				newBasicItem.SetAttachments(item.GetAttachments())
+				newBasicItem.SetMetadata(item.GetMetadata())
+				newBasicItem.SetLinks(item.GetLinks())
+
+				newItem = newBasicItem
+			}
+
+			transformedItems[i] = newItem
 		} else {
 			// No changes, keep original
 			transformedItems[i] = item
