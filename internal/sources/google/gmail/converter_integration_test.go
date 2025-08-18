@@ -46,17 +46,17 @@ func TestFromGmailMessage_HTMLWithLinks(t *testing.T) {
 	err = linkTransformer.Configure(map[string]interface{}{"enabled": true})
 	require.NoError(t, err)
 
-	transformedItems, err := linkTransformer.Transform([]*models.Item{item})
+	transformedItems, err := linkTransformer.Transform([]models.ItemInterface{models.AsItemInterface(item)})
 	require.NoError(t, err)
 	require.Len(t, transformedItems, 1)
 
 	transformedItem := transformedItems[0]
-	assert.NotEmpty(t, transformedItem.Links, "Links should be extracted by transformer")
-	assert.Len(t, transformedItem.Links, 2, "Should extract 2 links from HTML content")
+	assert.NotEmpty(t, transformedItem.GetLinks(), "Links should be extracted by transformer")
+	assert.Len(t, transformedItem.GetLinks(), 2, "Should extract 2 links from HTML content")
 
 	// Verify the specific links extracted
 	expectedURLs := []string{"https://company.com/features", "https://blog.company.com"}
-	for i, link := range transformedItem.Links {
+	for i, link := range transformedItem.GetLinks() {
 		if i < len(expectedURLs) {
 			assert.Equal(t, expectedURLs[i], link.URL)
 		}
@@ -136,12 +136,12 @@ func TestFromGmailMessage_QuotedReply(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	transformedItems, err := cleanupTransformer.Transform([]*models.Item{item})
+	transformedItems, err := cleanupTransformer.Transform([]models.ItemInterface{models.AsItemInterface(item)})
 	require.NoError(t, err)
 	require.Len(t, transformedItems, 1)
 
 	transformedItem := transformedItems[0]
-	assert.NotContains(t, transformedItem.Content, ">", "Quoted text should be stripped by transformer")
+	assert.NotContains(t, transformedItem.GetContent(), ">", "Quoted text should be stripped by transformer")
 
 	assert.Equal(t, "<reply005@company.com>", item.Metadata["message_id"])
 }

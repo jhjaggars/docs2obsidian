@@ -13,7 +13,7 @@ import (
 
 // MockSource implements interfaces.Source for testing pipeline integration.
 type MockSource struct {
-	items []*models.Item
+	items []models.ItemInterface
 }
 
 func (m *MockSource) Name() string {
@@ -24,7 +24,7 @@ func (m *MockSource) Configure(config map[string]interface{}, client *http.Clien
 	return nil
 }
 
-func (m *MockSource) Fetch(since time.Time, limit int) ([]*models.Item, error) {
+func (m *MockSource) Fetch(since time.Time, limit int) ([]models.ItemInterface, error) {
 	return m.items, nil
 }
 
@@ -34,7 +34,7 @@ func (m *MockSource) SupportsRealtime() bool {
 
 // MockTarget implements interfaces.Target for testing pipeline integration.
 type MockTarget struct {
-	exportedItems []*models.Item
+	exportedItems []models.ItemInterface
 }
 
 func (m *MockTarget) Name() string {
@@ -45,7 +45,7 @@ func (m *MockTarget) Configure(config map[string]interface{}) error {
 	return nil
 }
 
-func (m *MockTarget) Export(items []*models.Item, outputDir string) error {
+func (m *MockTarget) Export(items []models.ItemInterface, outputDir string) error {
 	m.exportedItems = items
 
 	return nil
@@ -63,36 +63,32 @@ func (m *MockTarget) FormatMetadata(metadata map[string]interface{}) string {
 	return ""
 }
 
-func (m *MockTarget) Preview(items []*models.Item, outputDir string) ([]*interfaces.FilePreview, error) {
+func (m *MockTarget) Preview(items []models.ItemInterface, outputDir string) ([]*interfaces.FilePreview, error) {
 	return nil, nil
 }
 
 // TestPipelineIntegrationWithSyncEngine tests the complete flow from source -> pipeline -> target.
 func TestPipelineIntegrationWithSyncEngine(t *testing.T) {
 	// Create test items with content that will trigger transformations
-	testItems := []*models.Item{
-		{
-			ID:         "1",
-			Title:      "  Re: Important Meeting  ",
-			Content:    "  This is about a meeting\n\n\n\nwith urgent details  ",
-			SourceType: "test_source",
-			ItemType:   "email",
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Tags:       []string{"existing"},
-			Metadata:   make(map[string]interface{}),
-		},
-		{
-			ID:         "2",
-			Title:      "Short note",
-			Content:    "Too short",
-			SourceType: "test_source",
-			ItemType:   "note",
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Tags:       []string{},
-			Metadata:   make(map[string]interface{}),
-		},
+	testItems := []models.ItemInterface{
+		func() models.ItemInterface {
+			item := models.NewBasicItem("1", "  Re: Important Meeting  ")
+			item.SetContent("  This is about a meeting\n\n\n\nwith urgent details  ")
+			item.SetSourceType("test_source")
+			item.SetItemType("email")
+			item.SetTags([]string{"existing"})
+
+			return item
+		}(),
+		func() models.ItemInterface {
+			item := models.NewBasicItem("2", "Short note")
+			item.SetContent("Too short")
+			item.SetSourceType("test_source")
+			item.SetItemType("note")
+			item.SetTags([]string{})
+
+			return item
+		}(),
 	}
 
 	// Create mock source and target
@@ -164,18 +160,18 @@ func TestPipelineIntegrationWithSyncEngine(t *testing.T) {
 	exportedItem := target.exportedItems[0]
 
 	// Verify content cleanup worked
-	if exportedItem.Title != "Important Meeting" {
-		t.Errorf("Expected cleaned title 'Important Meeting', got '%s'", exportedItem.Title)
+	if exportedItem.GetTitle() != "Important Meeting" {
+		t.Errorf("Expected cleaned title 'Important Meeting', got '%s'", exportedItem.GetTitle())
 	}
 
 	expectedContent := "This is about a meeting\n\nwith urgent details"
-	if exportedItem.Content != expectedContent {
-		t.Errorf("Expected cleaned content '%s', got '%s'", expectedContent, exportedItem.Content)
+	if exportedItem.GetContent() != expectedContent {
+		t.Errorf("Expected cleaned content '%s', got '%s'", expectedContent, exportedItem.GetContent())
 	}
 
 	// Verify auto-tagging worked
 	tagMap := make(map[string]bool)
-	for _, tag := range exportedItem.Tags {
+	for _, tag := range exportedItem.GetTags() {
 		tagMap[tag] = true
 	}
 
@@ -194,18 +190,16 @@ func TestPipelineIntegrationWithSyncEngine(t *testing.T) {
 
 // TestPipelineIntegrationErrorHandling tests that error handling works correctly in the sync engine.
 func TestPipelineIntegrationErrorHandling(t *testing.T) {
-	testItems := []*models.Item{
-		{
-			ID:         "1",
-			Title:      "Test Item",
-			Content:    "Test content",
-			SourceType: "test_source",
-			ItemType:   "email",
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Tags:       []string{},
-			Metadata:   make(map[string]interface{}),
-		},
+	testItems := []models.ItemInterface{
+		func() models.ItemInterface {
+			item := models.NewBasicItem("1", "Test Item")
+			item.SetContent("Test content")
+			item.SetSourceType("test_source")
+			item.SetItemType("email")
+			item.SetTags([]string{})
+
+			return item
+		}(),
 	}
 
 	source := &MockSource{items: testItems}
@@ -256,7 +250,7 @@ func TestPipelineIntegrationErrorHandling(t *testing.T) {
 	hasWorkingTag := false
 	hasFailingTag := false
 
-	for _, tag := range exportedItem.Tags {
+	for _, tag := range exportedItem.GetTags() {
 		if tag == "transformed_by_working_transformer" {
 			hasWorkingTag = true
 		}
@@ -360,7 +354,13 @@ func TestGmailTransformerIntegration(t *testing.T) {
 	}
 
 	// Apply transformations
-	result, err := pipeline.Transform(gmailItems)
+	// Convert legacy items to ItemInterface
+	interfaceItems := make([]models.ItemInterface, len(gmailItems))
+	for i, item := range gmailItems {
+		interfaceItems[i] = models.AsItemInterface(item)
+	}
+
+	result, err := pipeline.Transform(interfaceItems)
 	if err != nil {
 		t.Fatalf("Pipeline transformation failed: %v", err)
 	}
@@ -371,12 +371,12 @@ func TestGmailTransformerIntegration(t *testing.T) {
 	}
 
 	// Find the consolidated thread
-	var consolidated *models.Item
+	var consolidated models.ItemInterface
 
-	var individual *models.Item
+	var individual models.ItemInterface
 
 	for _, item := range result {
-		if strings.Contains(item.Title, "Thread_") {
+		if strings.Contains(item.GetTitle(), "Thread_") {
 			consolidated = item
 		} else {
 			individual = item
@@ -392,42 +392,42 @@ func TestGmailTransformerIntegration(t *testing.T) {
 	}
 
 	// Debug: Print consolidated content and links
-	t.Logf("Consolidated content: %s", consolidated.Content)
-	t.Logf("Consolidated links count: %d", len(consolidated.Links))
+	t.Logf("Consolidated content: %s", consolidated.GetContent())
+	t.Logf("Consolidated links count: %d", len(consolidated.GetLinks()))
 
-	for i, link := range consolidated.Links {
+	for i, link := range consolidated.GetLinks() {
 		t.Logf("  Link %d: %s", i, link.URL)
 	}
 
 	// Verify consolidated thread properties
-	if !strings.Contains(consolidated.Title, "Important-Project-Discussion") {
-		t.Errorf("Expected consolidated title to contain 'Important-Project-Discussion', got: %s", consolidated.Title)
+	if !strings.Contains(consolidated.GetTitle(), "Important-Project-Discussion") {
+		t.Errorf("Expected consolidated title to contain 'Important-Project-Discussion', got: %s", consolidated.GetTitle())
 	}
 
-	if !strings.Contains(consolidated.Content, "Meeting Notes") {
+	if !strings.Contains(consolidated.GetContent(), "Meeting Notes") {
 		t.Errorf("Expected content to contain 'Meeting Notes'")
 	}
 
-	if !strings.Contains(consolidated.Content, "I agree with the proposal completely") {
+	if !strings.Contains(consolidated.GetContent(), "I agree with the proposal completely") {
 		t.Errorf("Expected content to contain second email content")
 	}
 
 	// Verify signatures were removed
-	if strings.Contains(consolidated.Content, "Best regards") {
+	if strings.Contains(consolidated.GetContent(), "Best regards") {
 		t.Errorf("Expected signatures to be removed from consolidated content")
 	}
 
 	// Verify HTML was converted to markdown
-	if strings.Contains(consolidated.Content, "<h1>") {
+	if strings.Contains(consolidated.GetContent(), "<h1>") {
 		t.Errorf("Expected HTML to be converted to markdown")
 	}
 
-	if !strings.Contains(consolidated.Content, "# Meeting Notes") {
+	if !strings.Contains(consolidated.GetContent(), "# Meeting Notes") {
 		t.Errorf("Expected H1 to be converted to markdown header")
 	}
 
 	// Verify links were extracted
-	if len(consolidated.Links) == 0 {
+	if len(consolidated.GetLinks()) == 0 {
 		t.Errorf("Expected links to be extracted")
 	}
 
@@ -435,7 +435,7 @@ func TestGmailTransformerIntegration(t *testing.T) {
 	foundExampleURL := false
 	foundCompanyURL := false
 
-	for _, link := range consolidated.Links {
+	for _, link := range consolidated.GetLinks() {
 		if link.URL == "https://example.com/doc" {
 			foundExampleURL = true
 		}
@@ -454,11 +454,11 @@ func TestGmailTransformerIntegration(t *testing.T) {
 	}
 
 	// Verify individual email
-	if individual.Title != "Separate Email" {
-		t.Errorf("Expected individual title 'Separate Email', got: %s", individual.Title)
+	if individual.GetTitle() != "Separate Email" {
+		t.Errorf("Expected individual title 'Separate Email', got: %s", individual.GetTitle())
 	}
 
-	if strings.Contains(individual.Content, "<p>") {
+	if strings.Contains(individual.GetContent(), "<p>") {
 		t.Errorf("Expected HTML to be converted in individual item too")
 	}
 }
@@ -506,7 +506,13 @@ func TestTransformersWithCalendarItems(t *testing.T) {
 		"remove_extra_whitespace": true,
 	})
 
-	result, err := contentCleanup.Transform(calendarItems)
+	// Convert to ItemInterface
+	interfaceItems := make([]models.ItemInterface, len(calendarItems))
+	for i, item := range calendarItems {
+		interfaceItems[i] = models.AsItemInterface(item)
+	}
+
+	result, err := contentCleanup.Transform(interfaceItems)
 	if err != nil {
 		t.Fatalf("Content cleanup failed with calendar items: %v", err)
 	}
@@ -529,7 +535,7 @@ func TestTransformersWithCalendarItems(t *testing.T) {
 	// Verify links were extracted
 	totalLinks := 0
 	for _, item := range result {
-		totalLinks += len(item.Links)
+		totalLinks += len(item.GetLinks())
 	}
 
 	if totalLinks == 0 {
@@ -541,7 +547,7 @@ func TestTransformersWithCalendarItems(t *testing.T) {
 	foundDocsLink := false
 
 	for _, item := range result {
-		for _, link := range item.Links {
+		for _, link := range item.GetLinks() {
 			if strings.Contains(link.URL, "meet.google.com") {
 				foundMeetLink = true
 			}
@@ -603,13 +609,19 @@ func TestTransformersWithDriveItems(t *testing.T) {
 		"max_signature_lines": 3,
 	})
 
-	result, err := signatureRemoval.Transform(driveItems)
+	// Convert to ItemInterface
+	interfaceItems := make([]models.ItemInterface, len(driveItems))
+	for i, item := range driveItems {
+		interfaceItems[i] = models.AsItemInterface(item)
+	}
+
+	result, err := signatureRemoval.Transform(interfaceItems)
 	if err != nil {
 		t.Fatalf("Signature removal failed with drive items: %v", err)
 	}
 
 	// Check that signature was removed from second item
-	if strings.Contains(result[1].Content, "Best regards") {
+	if strings.Contains(result[1].GetContent(), "Best regards") {
 		t.Errorf("Expected signature to be removed from Drive document")
 	}
 
@@ -630,7 +642,7 @@ func TestTransformersWithDriveItems(t *testing.T) {
 	foundSheetsLink := false
 
 	for _, item := range result {
-		for _, link := range item.Links {
+		for _, link := range item.GetLinks() {
 			if strings.Contains(link.URL, "drive.google.com") {
 				foundDriveLink = true
 			}

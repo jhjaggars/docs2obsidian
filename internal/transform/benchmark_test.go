@@ -152,8 +152,8 @@ func BenchmarkTransformPipeline(b *testing.B) {
 
 // Helper functions to create benchmark data
 
-func createBenchmarkHTMLItems(count int) []*models.Item {
-	items := make([]*models.Item, count)
+func createBenchmarkHTMLItems(count int) []models.ItemInterface {
+	items := make([]models.ItemInterface, count)
 
 	complexHTML := `<h1>Important Document</h1>
 <p>This is a <strong>complex</strong> HTML document with <em>various</em> formatting.</p>
@@ -173,23 +173,24 @@ func createBenchmarkHTMLItems(count int) []*models.Item {
 <blockquote>Original message content here.</blockquote>`
 
 	for i := 0; i < count; i++ {
-		items[i] = &models.Item{
-			ID:         fmt.Sprintf("html_%d", i),
-			Title:      fmt.Sprintf("HTML Document %d", i),
-			Content:    complexHTML,
-			SourceType: "gmail",
-			ItemType:   "email",
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Metadata:   make(map[string]interface{}),
-		}
+		item := models.NewBasicItem(
+			fmt.Sprintf("html_%d", i),
+			fmt.Sprintf("HTML Document %d", i),
+		)
+		item.SetContent(complexHTML)
+		item.SetSourceType("gmail")
+		item.SetItemType("email")
+		item.SetCreatedAt(time.Now())
+		item.SetUpdatedAt(time.Now())
+		item.SetMetadata(make(map[string]interface{}))
+		items[i] = item
 	}
 
 	return items
 }
 
-func createBenchmarkLinkItems(count int) []*models.Item {
-	items := make([]*models.Item, count)
+func createBenchmarkLinkItems(count int) []models.ItemInterface {
+	items := make([]models.ItemInterface, count)
 
 	contentWithLinks := `Check out these resources:
 - Documentation: https://docs.example.com/guide
@@ -203,23 +204,24 @@ func createBenchmarkLinkItems(count int) []*models.Item {
 - More info at https://company.com/wiki/project and https://confluence.com/spaces/team`
 
 	for i := 0; i < count; i++ {
-		items[i] = &models.Item{
-			ID:         fmt.Sprintf("links_%d", i),
-			Title:      fmt.Sprintf("Document with Links %d", i),
-			Content:    contentWithLinks,
-			SourceType: "gmail",
-			ItemType:   "email",
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Metadata:   make(map[string]interface{}),
-		}
+		item := models.NewBasicItem(
+			fmt.Sprintf("links_%d", i),
+			fmt.Sprintf("Document with Links %d", i),
+		)
+		item.SetContent(contentWithLinks)
+		item.SetSourceType("gmail")
+		item.SetItemType("email")
+		item.SetCreatedAt(time.Now())
+		item.SetUpdatedAt(time.Now())
+		item.SetMetadata(make(map[string]interface{}))
+		items[i] = item
 	}
 
 	return items
 }
 
-func createBenchmarkSignatureItems(count int) []*models.Item {
-	items := make([]*models.Item, count)
+func createBenchmarkSignatureItems(count int) []models.ItemInterface {
+	items := make([]models.ItemInterface, count)
 
 	contentWithSignature := `Thank you for the update on the project status. 
 
@@ -240,48 +242,51 @@ john.smith@company.com
 This email is confidential and intended solely for the addressee.`
 
 	for i := 0; i < count; i++ {
-		items[i] = &models.Item{
-			ID:         fmt.Sprintf("sig_%d", i),
-			Title:      fmt.Sprintf("Email with Signature %d", i),
-			Content:    contentWithSignature,
-			SourceType: "gmail",
-			ItemType:   "email",
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Metadata:   make(map[string]interface{}),
-		}
+		item := models.NewBasicItem(
+			fmt.Sprintf("sig_%d", i),
+			fmt.Sprintf("Email with Signature %d", i),
+		)
+		item.SetContent(contentWithSignature)
+		item.SetSourceType("gmail")
+		item.SetItemType("email")
+		item.SetCreatedAt(time.Now())
+		item.SetUpdatedAt(time.Now())
+		item.SetMetadata(make(map[string]interface{}))
+		items[i] = item
 	}
 
 	return items
 }
 
-func createBenchmarkThreadItems(count int) []*models.Item {
-	items := make([]*models.Item, count)
+func createBenchmarkThreadItems(count int) []models.ItemInterface {
+	items := make([]models.ItemInterface, count)
 
 	// Create items that form multiple threads (5 items per thread on average)
 	for i := 0; i < count; i++ {
 		threadID := fmt.Sprintf("thread_%d", i/5)
 
-		items[i] = &models.Item{
-			ID:         fmt.Sprintf("thread_item_%d", i),
-			Title:      fmt.Sprintf("Re: Thread Discussion %d", i/5),
-			Content:    fmt.Sprintf("This is message %d in the thread.", i%5+1),
-			SourceType: "gmail",
-			ItemType:   "email",
-			CreatedAt:  time.Now().Add(time.Duration(i) * time.Minute),
-			UpdatedAt:  time.Now().Add(time.Duration(i) * time.Minute),
-			Metadata: map[string]interface{}{
-				"thread_id": threadID,
-				"from":      fmt.Sprintf("user%d@company.com", i%3),
-			},
-		}
+		item := models.NewBasicItem(
+			fmt.Sprintf("thread_item_%d", i),
+			fmt.Sprintf("Re: Thread Discussion %d", i/5),
+		)
+		item.SetContent(fmt.Sprintf("This is message %d in the thread.", i%5+1))
+		item.SetSourceType("gmail")
+		item.SetItemType("email")
+		item.SetCreatedAt(time.Now().Add(time.Duration(i) * time.Minute))
+		item.SetUpdatedAt(time.Now().Add(time.Duration(i) * time.Minute))
+		item.SetMetadata(map[string]interface{}{
+			"thread_id": threadID,
+			"from":      fmt.Sprintf("user%d@company.com", i%3),
+		})
+
+		items[i] = item
 	}
 
 	return items
 }
 
-func createBenchmarkRealisticItems(count int) []*models.Item {
-	items := make([]*models.Item, count)
+func createBenchmarkRealisticItems(count int) []models.ItemInterface {
+	items := make([]models.ItemInterface, count)
 
 	templates := []string{
 		// Gmail-style email
@@ -350,16 +355,17 @@ This document outlines the requirements for the new feature.
 			metadata["from"] = fmt.Sprintf("user%d@company.com", i%5)
 		}
 
-		items[i] = &models.Item{
-			ID:         fmt.Sprintf("realistic_%d", i),
-			Title:      fmt.Sprintf("Realistic Item %d", i),
-			Content:    template,
-			SourceType: sourceType,
-			ItemType:   "email",
-			CreatedAt:  time.Now().Add(time.Duration(i) * time.Hour),
-			UpdatedAt:  time.Now().Add(time.Duration(i) * time.Hour),
-			Metadata:   metadata,
-		}
+		item := models.NewBasicItem(
+			fmt.Sprintf("realistic_%d", i),
+			fmt.Sprintf("Realistic Item %d", i),
+		)
+		item.SetContent(template)
+		item.SetSourceType(sourceType)
+		item.SetItemType("email")
+		item.SetCreatedAt(time.Now().Add(time.Duration(i) * time.Hour))
+		item.SetUpdatedAt(time.Now().Add(time.Duration(i) * time.Hour))
+		item.SetMetadata(metadata)
+		items[i] = item
 	}
 
 	return items

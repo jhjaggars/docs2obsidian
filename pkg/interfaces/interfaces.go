@@ -8,22 +8,34 @@ import (
 )
 
 // Source represents any data source (Google Calendar, Slack, etc.)
+// Returns FullItem interface for maximum compatibility across all components.
 type Source interface {
 	Name() string
 	Configure(config map[string]interface{}, client *http.Client) error
-	Fetch(since time.Time, limit int) ([]*models.Item, error)
+	Fetch(since time.Time, limit int) ([]models.FullItem, error)
 	SupportsRealtime() bool
 }
 
 // Target represents any PKM system (Obsidian, Logseq, etc.)
+// Accepts FullItem interface to handle all types of items with full capabilities.
 type Target interface {
 	Name() string
 	Configure(config map[string]interface{}) error
-	Export(items []*models.Item, outputDir string) error
+	Export(items []models.FullItem, outputDir string) error
 	FormatFilename(title string) string
 	GetFileExtension() string
 	FormatMetadata(metadata map[string]interface{}) string
-	Preview(items []*models.Item, outputDir string) ([]*FilePreview, error)
+	Preview(items []models.FullItem, outputDir string) ([]*FilePreview, error)
+}
+
+// ContentTarget represents a target that only needs core item content for export.
+// Useful for simple export targets that don't need metadata or enrichment.
+type ContentTarget interface {
+	Name() string
+	Configure(config map[string]interface{}) error
+	Export(items []models.SourcedItem, outputDir string) error
+	FormatFilename(title string) string
+	GetFileExtension() string
 }
 
 // FilePreview represents what would happen to a file during sync.
@@ -48,15 +60,33 @@ type SyncOptions struct {
 }
 
 // Transformer represents a processing step that can modify items.
+// Uses FullItem interface for maximum compatibility and access to all item capabilities.
 type Transformer interface {
 	Name() string
-	Transform(items []*models.Item) ([]*models.Item, error)
+	Transform(items []models.FullItem) ([]models.FullItem, error)
+	Configure(config map[string]interface{}) error
+}
+
+// ContentTransformer represents a transformer that only needs to access and modify core content.
+// Useful for transformers that only need basic item properties.
+type ContentTransformer interface {
+	Name() string
+	Transform(items []models.CoreItem) ([]models.CoreItem, error)
+	Configure(config map[string]interface{}) error
+}
+
+// MetadataTransformer represents a transformer that works with item metadata and enrichment.
+// Useful for transformers that add tags, metadata, or process attachments.
+type MetadataTransformer interface {
+	Name() string
+	Transform(items []models.EnrichedItem) ([]models.EnrichedItem, error)
 	Configure(config map[string]interface{}) error
 }
 
 // TransformPipeline manages a chain of transformers.
+// Uses FullItem interface to maintain backward compatibility while supporting all transformer types.
 type TransformPipeline interface {
 	AddTransformer(transformer Transformer) error
-	Transform(items []*models.Item) ([]*models.Item, error)
+	Transform(items []models.FullItem) ([]models.FullItem, error)
 	Configure(config models.TransformConfig) error
 }

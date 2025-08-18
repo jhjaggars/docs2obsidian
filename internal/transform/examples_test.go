@@ -14,12 +14,13 @@ func TestContentCleanupTransformer(t *testing.T) {
 		t.Errorf("Expected name 'content_cleanup', got '%s'", transformer.Name())
 	}
 
-	items := []*models.Item{
-		{
-			ID:      "1",
-			Title:   "  Re: Test Subject  ",
-			Content: "  Test content\n\n\n\nwith extra newlines\r\n  ",
-		},
+	items := []models.ItemInterface{
+		func() models.ItemInterface {
+			item := models.NewBasicItem("1", "  Re: Test Subject  ")
+			item.SetContent("  Test content\n\n\n\nwith extra newlines\r\n  ")
+
+			return item
+		}(),
 	}
 
 	result, err := transformer.Transform(items)
@@ -32,13 +33,13 @@ func TestContentCleanupTransformer(t *testing.T) {
 	}
 
 	item := result[0]
-	if item.Title != "Test Subject" {
-		t.Errorf("Expected cleaned title 'Test Subject', got '%s'", item.Title)
+	if item.GetTitle() != "Test Subject" {
+		t.Errorf("Expected cleaned title 'Test Subject', got '%s'", item.GetTitle())
 	}
 
 	expectedContent := "Test content\n\nwith extra newlines"
-	if item.Content != expectedContent {
-		t.Errorf("Expected cleaned content '%s', got '%s'", expectedContent, item.Content)
+	if item.GetContent() != expectedContent {
+		t.Errorf("Expected cleaned content '%s', got '%s'", expectedContent, item.GetContent())
 	}
 }
 
@@ -85,15 +86,16 @@ func TestAutoTaggingTransformer(t *testing.T) {
 		t.Fatalf("Configure failed: %v", err)
 	}
 
-	items := []*models.Item{
-		{
-			ID:         "1",
-			Title:      "Urgent meeting tomorrow",
-			Content:    "Important meeting discussion",
-			SourceType: "gmail",
-			ItemType:   "email",
-			Tags:       []string{"existing"},
-		},
+	items := []models.ItemInterface{
+		func() models.ItemInterface {
+			item := models.NewBasicItem("1", "Urgent meeting tomorrow")
+			item.SetContent("Important meeting discussion")
+			item.SetSourceType("gmail")
+			item.SetItemType("email")
+			item.SetTags([]string{"existing"})
+
+			return item
+		}(),
 	}
 
 	result, err := transformer.Transform(items)
@@ -108,7 +110,7 @@ func TestAutoTaggingTransformer(t *testing.T) {
 	item := result[0]
 
 	tagMap := make(map[string]bool)
-	for _, tag := range item.Tags {
+	for _, tag := range item.GetTags() {
 		tagMap[tag] = true
 	}
 
@@ -123,15 +125,16 @@ func TestAutoTaggingTransformer(t *testing.T) {
 func TestAutoTaggingTransformerNoDuplicates(t *testing.T) {
 	transformer := NewAutoTaggingTransformer()
 
-	items := []*models.Item{
-		{
-			ID:         "1",
-			Title:      "Test",
-			Content:    "Test content",
-			SourceType: "gmail",
-			ItemType:   "email",
-			Tags:       []string{"source:gmail"}, // Already has this tag
-		},
+	items := []models.ItemInterface{
+		func() models.ItemInterface {
+			item := models.NewBasicItem("1", "Test")
+			item.SetContent("Test content")
+			item.SetSourceType("gmail")
+			item.SetItemType("email")
+			item.SetTags([]string{"source:gmail"}) // Already has this tag
+
+			return item
+		}(),
 	}
 
 	result, err := transformer.Transform(items)
@@ -144,7 +147,7 @@ func TestAutoTaggingTransformerNoDuplicates(t *testing.T) {
 	// Count occurrences of "source:gmail"
 	count := 0
 
-	for _, tag := range item.Tags {
+	for _, tag := range item.GetTags() {
 		if tag == "source:gmail" {
 			count++
 		}
@@ -173,35 +176,39 @@ func TestFilterTransformer(t *testing.T) {
 		t.Fatalf("Configure failed: %v", err)
 	}
 
-	items := []*models.Item{
-		{
-			ID:         "1",
-			Title:      "Valid item",
-			Content:    "This content is long enough",
-			SourceType: "gmail",
-			Tags:       []string{"important"},
-		},
-		{
-			ID:         "2",
-			Title:      "Too short",
-			Content:    "Short",
-			SourceType: "gmail",
-			Tags:       []string{"important"},
-		},
-		{
-			ID:         "3",
-			Title:      "Spam item",
-			Content:    "This content is long enough",
-			SourceType: "spam",
-			Tags:       []string{"important"},
-		},
-		{
-			ID:         "4",
-			Title:      "Missing tag",
-			Content:    "This content is long enough",
-			SourceType: "gmail",
-			Tags:       []string{},
-		},
+	items := []models.ItemInterface{
+		func() models.ItemInterface {
+			item := models.NewBasicItem("1", "Valid item")
+			item.SetContent("This content is long enough")
+			item.SetSourceType("gmail")
+			item.SetTags([]string{"important"})
+
+			return item
+		}(),
+		func() models.ItemInterface {
+			item := models.NewBasicItem("2", "Too short")
+			item.SetContent("Short")
+			item.SetSourceType("gmail")
+			item.SetTags([]string{"important"})
+
+			return item
+		}(),
+		func() models.ItemInterface {
+			item := models.NewBasicItem("3", "Spam item")
+			item.SetContent("This content is long enough")
+			item.SetSourceType("spam")
+			item.SetTags([]string{"important"})
+
+			return item
+		}(),
+		func() models.ItemInterface {
+			item := models.NewBasicItem("4", "Missing tag")
+			item.SetContent("This content is long enough")
+			item.SetSourceType("gmail")
+			item.SetTags([]string{})
+
+			return item
+		}(),
 	}
 
 	result, err := transformer.Transform(items)
@@ -213,8 +220,8 @@ func TestFilterTransformer(t *testing.T) {
 		t.Errorf("Expected 1 filtered item, got %d", len(result))
 	}
 
-	if result[0].ID != "1" {
-		t.Errorf("Expected item ID '1', got '%s'", result[0].ID)
+	if result[0].GetID() != "1" {
+		t.Errorf("Expected item ID '1', got '%s'", result[0].GetID())
 	}
 }
 
@@ -222,8 +229,8 @@ func TestFilterTransformerNoFilters(t *testing.T) {
 	transformer := NewFilterTransformer()
 	transformer.Configure(make(map[string]interface{}))
 
-	items := []*models.Item{
-		createTestItem("1", "Test", "Content"),
+	items := []models.ItemInterface{
+		models.AsItemInterface(createTestItemExample("1", "Test", "Content")),
 	}
 
 	result, err := transformer.Transform(items)
@@ -243,8 +250,8 @@ func TestFilterTransformerInvalidConfig(t *testing.T) {
 	}
 	transformer.Configure(config)
 
-	items := []*models.Item{
-		createTestItem("1", "Test", "Content"),
+	items := []models.ItemInterface{
+		models.AsItemInterface(createTestItemExample("1", "Test", "Content")),
 	}
 
 	_, err := transformer.Transform(items)
@@ -267,16 +274,14 @@ func TestGetAllContentProcessingTransformers(t *testing.T) {
 	}
 }
 
-func createTestItemWithDetails(id, title, content, sourceType, itemType string, tags []string) *models.Item {
+func createTestItemExample(id, title, content string) *models.Item {
 	return &models.Item{
-		ID:         id,
-		Title:      title,
-		Content:    content,
-		SourceType: sourceType,
-		ItemType:   itemType,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		Tags:       tags,
-		Metadata:   make(map[string]interface{}),
+		ID:        id,
+		Title:     title,
+		Content:   content,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Tags:      make([]string, 0),
+		Metadata:  make(map[string]interface{}),
 	}
 }

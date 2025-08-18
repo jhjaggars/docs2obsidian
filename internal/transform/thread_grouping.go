@@ -51,10 +51,10 @@ func (t *ThreadGroupingTransformer) Configure(config map[string]interface{}) err
 	return nil
 }
 
-func (t *ThreadGroupingTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
+func (t *ThreadGroupingTransformer) Transform(items []models.FullItem) ([]models.FullItem, error) {
 	// Ensure we always return a non-nil slice
 	if items == nil {
-		return []*models.Item{}, nil
+		return []models.FullItem{}, nil
 	}
 
 	if !t.isEnabled() {
@@ -62,22 +62,39 @@ func (t *ThreadGroupingTransformer) Transform(items []*models.Item) ([]*models.I
 		return items, nil
 	}
 
+	// Convert to legacy items for internal processing
+	legacyItems := make([]*models.Item, len(items))
+	for i, item := range items {
+		legacyItems[i] = models.AsItemStruct(item)
+	}
+
 	// Group items by thread ID
-	threadGroups := t.groupItemsByThread(items)
+	threadGroups := t.groupItemsByThread(legacyItems)
 
 	// Apply the configured thread processing mode
 	mode := t.getThreadMode()
+
+	var resultLegacyItems []*models.Item
+
 	switch strings.ToLower(mode) {
 	case threadModeConsolidated:
-		return t.consolidateThreads(threadGroups), nil
+		resultLegacyItems = t.consolidateThreads(threadGroups)
 	case "summary":
-		return t.summarizeThreads(threadGroups), nil
+		resultLegacyItems = t.summarizeThreads(threadGroups)
 	case "individual", "":
 		// Default: return individual items
-		return items, nil
+		resultLegacyItems = legacyItems
 	default:
 		return nil, fmt.Errorf("unknown thread mode: %s (supported: individual, consolidated, summary)", mode)
 	}
+
+	// Convert back to ItemInterface
+	result := make([]models.FullItem, len(resultLegacyItems))
+	for i, item := range resultLegacyItems {
+		result[i] = models.AsItemInterface(item)
+	}
+
+	return result, nil
 }
 
 // groupItemsByThread groups items by their thread ID.
@@ -405,6 +422,7 @@ func (t *ThreadGroupingTransformer) extractThreadSubject(item *models.Item) stri
 
 	for iterations < maxIterations {
 		original := subject
+
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(subject, prefix) {
 				subject = strings.TrimSpace(subject[len(prefix):])

@@ -37,25 +37,15 @@ func (t *LinkExtractionTransformer) Configure(config map[string]interface{}) err
 	return nil
 }
 
-func (t *LinkExtractionTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
-	transformedItems := make([]*models.Item, len(items))
+func (t *LinkExtractionTransformer) Transform(items []models.FullItem) ([]models.FullItem, error) {
+	transformedItems := make([]models.FullItem, len(items))
 
 	for i, item := range items {
-		extractedLinks := t.ExtractLinks(item.Content)
+		extractedLinks := t.ExtractLinks(item.GetContent())
 
 		// Check if we found any new links
 		if len(extractedLinks) > 0 || t.shouldAlwaysProcessLinks() {
-			// Copy-on-write: only copy if there are links to add or we need to merge
-			transformedItem := *item
-
-			// Merge with existing links if any
-			if len(item.Links) > 0 {
-				transformedItem.Links = t.mergeLinks(item.Links, extractedLinks)
-			} else {
-				transformedItem.Links = extractedLinks
-			}
-
-			transformedItems[i] = &transformedItem
+			transformedItems[i] = t.createItemWithLinks(item, extractedLinks)
 		} else {
 			// No new links found, keep original
 			transformedItems[i] = item
@@ -63,6 +53,70 @@ func (t *LinkExtractionTransformer) Transform(items []*models.Item) ([]*models.I
 	}
 
 	return transformedItems, nil
+}
+
+// createItemWithLinks creates a copy of the item with extracted links merged.
+func (t *LinkExtractionTransformer) createItemWithLinks(
+	item models.FullItem, extractedLinks []models.Link,
+) models.FullItem {
+	if thread, isThread := models.AsThread(item); isThread {
+		return t.createThreadWithLinks(thread, extractedLinks)
+	}
+
+	return t.createBasicItemWithLinks(item, extractedLinks)
+}
+
+// createThreadWithLinks creates a new thread with merged links.
+func (t *LinkExtractionTransformer) createThreadWithLinks(
+	thread *models.Thread, extractedLinks []models.Link,
+) models.FullItem {
+	newThread := models.NewThread(thread.GetID(), thread.GetTitle())
+	newThread.SetContent(thread.GetContent())
+	newThread.SetSourceType(thread.GetSourceType())
+	newThread.SetItemType(thread.GetItemType())
+	newThread.SetCreatedAt(thread.GetCreatedAt())
+	newThread.SetUpdatedAt(thread.GetUpdatedAt())
+	newThread.SetTags(thread.GetTags())
+	newThread.SetAttachments(thread.GetAttachments())
+	newThread.SetMetadata(thread.GetMetadata())
+
+	// Merge with existing links if any
+	if len(thread.GetLinks()) > 0 {
+		newThread.SetLinks(t.mergeLinks(thread.GetLinks(), extractedLinks))
+	} else {
+		newThread.SetLinks(extractedLinks)
+	}
+
+	// Copy messages
+	for _, message := range thread.GetMessages() {
+		newThread.AddMessage(message)
+	}
+
+	return newThread
+}
+
+// createBasicItemWithLinks creates a new basic item with merged links.
+func (t *LinkExtractionTransformer) createBasicItemWithLinks(
+	item models.FullItem, extractedLinks []models.Link,
+) models.FullItem {
+	newBasicItem := models.NewBasicItem(item.GetID(), item.GetTitle())
+	newBasicItem.SetContent(item.GetContent())
+	newBasicItem.SetSourceType(item.GetSourceType())
+	newBasicItem.SetItemType(item.GetItemType())
+	newBasicItem.SetCreatedAt(item.GetCreatedAt())
+	newBasicItem.SetUpdatedAt(item.GetUpdatedAt())
+	newBasicItem.SetTags(item.GetTags())
+	newBasicItem.SetAttachments(item.GetAttachments())
+	newBasicItem.SetMetadata(item.GetMetadata())
+
+	// Merge with existing links if any
+	if len(item.GetLinks()) > 0 {
+		newBasicItem.SetLinks(t.mergeLinks(item.GetLinks(), extractedLinks))
+	} else {
+		newBasicItem.SetLinks(extractedLinks)
+	}
+
+	return newBasicItem
 }
 
 // ExtractLinks extracts URLs from content with enhanced detection.
@@ -141,6 +195,7 @@ func (t *LinkExtractionTransformer) ExtractLinks(content string) []models.Link {
 
 	// Convert to Link objects
 	links := make([]models.Link, 0, len(allMatches))
+
 	for _, match := range allMatches {
 		linkType := "external"
 

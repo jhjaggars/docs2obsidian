@@ -166,58 +166,64 @@ func TestContentCleanupTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		items    []*models.Item
-		expected []*models.Item
+		items    []models.ItemInterface
+		expected []models.ItemInterface
 	}{
 		{
 			name: "Process HTML content",
-			items: []*models.Item{
-				{
-					ID:      "1",
-					Title:   "Re: Test Email",
-					Content: "<p>Hello <strong>world</strong>!</p>",
-				},
+			items: []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("1", "Re: Test Email")
+					item.SetContent("<p>Hello <strong>world</strong>!</p>")
+
+					return item
+				}(),
 			},
-			expected: []*models.Item{
-				{
-					ID:      "1",
-					Title:   "Test Email",
-					Content: "Hello **world**!",
-				},
+			expected: []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("1", "Test Email")
+					item.SetContent("Hello **world**!")
+
+					return item
+				}(),
 			},
 		},
 		{
 			name: "Strip quoted text",
-			items: []*models.Item{
-				{
-					ID:      "2",
-					Title:   "Fwd: Meeting Notes",
-					Content: "New comment\n\n> Previous email content",
-				},
+			items: []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("2", "Fwd: Meeting Notes")
+					item.SetContent("New comment\n\n> Previous email content")
+
+					return item
+				}(),
 			},
-			expected: []*models.Item{
-				{
-					ID:      "2",
-					Title:   "Meeting Notes",
-					Content: "New comment",
-				},
+			expected: []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("2", "Meeting Notes")
+					item.SetContent("New comment")
+
+					return item
+				}(),
 			},
 		},
 		{
 			name: "No changes needed",
-			items: []*models.Item{
-				{
-					ID:      "3",
-					Title:   "Clean Title",
-					Content: "Clean content without HTML or quotes",
-				},
+			items: []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("3", "Clean Title")
+					item.SetContent("Clean content without HTML or quotes")
+
+					return item
+				}(),
 			},
-			expected: []*models.Item{
-				{
-					ID:      "3",
-					Title:   "Clean Title",
-					Content: "Clean content without HTML or quotes",
-				},
+			expected: []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("3", "Clean Title")
+					item.SetContent("Clean content without HTML or quotes")
+
+					return item
+				}(),
 			},
 		},
 	}
@@ -236,16 +242,16 @@ func TestContentCleanupTransformer_Transform(t *testing.T) {
 			for i, expected := range tt.expected {
 				actual := result[i]
 
-				if actual.ID != expected.ID {
-					t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.ID, actual.ID)
+				if actual.GetID() != expected.GetID() {
+					t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.GetID(), actual.GetID())
 				}
 
-				if strings.TrimSpace(actual.Title) != strings.TrimSpace(expected.Title) {
-					t.Errorf("Item %d: Expected title '%s', got '%s'", i, expected.Title, actual.Title)
+				if strings.TrimSpace(actual.GetTitle()) != strings.TrimSpace(expected.GetTitle()) {
+					t.Errorf("Item %d: Expected title '%s', got '%s'", i, expected.GetTitle(), actual.GetTitle())
 				}
 
-				if strings.TrimSpace(actual.Content) != strings.TrimSpace(expected.Content) {
-					t.Errorf("Item %d: Expected content '%s', got '%s'", i, expected.Content, actual.Content)
+				if strings.TrimSpace(actual.GetContent()) != strings.TrimSpace(expected.GetContent()) {
+					t.Errorf("Item %d: Expected content '%s', got '%s'", i, expected.GetContent(), actual.GetContent())
 				}
 			}
 		})
@@ -286,12 +292,13 @@ func TestContentCleanupTransformer_ConfigurationOptions(t *testing.T) {
 				t.Fatalf("Failed to configure: %v", err)
 			}
 
-			items := []*models.Item{
-				{
-					ID:      "test",
-					Title:   "Test",
-					Content: tt.input,
-				},
+			items := []models.ItemInterface{
+				func() models.ItemInterface {
+					item := models.NewBasicItem("test", "Test")
+					item.SetContent(tt.input)
+
+					return item
+				}(),
 			}
 
 			result, err := transformer.Transform(items)
@@ -303,7 +310,7 @@ func TestContentCleanupTransformer_ConfigurationOptions(t *testing.T) {
 				t.Fatalf("Expected 1 item, got %d", len(result))
 			}
 
-			actualContent := strings.TrimSpace(result[0].Content)
+			actualContent := strings.TrimSpace(result[0].GetContent())
 			expectedContent := strings.TrimSpace(tt.expected)
 
 			if actualContent != expectedContent {

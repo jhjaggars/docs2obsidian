@@ -200,7 +200,13 @@ func TestLinkExtractionTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.Transform(tt.items)
+			// Convert to ItemInterface
+			interfaceItems := make([]models.ItemInterface, len(tt.items))
+			for i, item := range tt.items {
+				interfaceItems[i] = models.AsItemInterface(item)
+			}
+
+			result, err := transformer.Transform(interfaceItems)
 			if err != nil {
 				t.Fatalf("Transform failed: %v", err)
 			}
@@ -212,18 +218,18 @@ func TestLinkExtractionTransformer_Transform(t *testing.T) {
 			for i, expected := range tt.expected {
 				actual := result[i]
 
-				if actual.ID != expected.ID {
-					t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.ID, actual.ID)
+				if actual.GetID() != expected.ID {
+					t.Errorf("Item %d: Expected ID '%s', got '%s'", i, expected.ID, actual.GetID())
 				}
 
-				if len(actual.Links) != len(expected.Links) {
-					t.Errorf("Item %d: Expected %d links, got %d", i, len(expected.Links), len(actual.Links))
+				if len(actual.GetLinks()) != len(expected.Links) {
+					t.Errorf("Item %d: Expected %d links, got %d", i, len(expected.Links), len(actual.GetLinks()))
 
 					continue
 				}
 
 				for j, expectedLink := range expected.Links {
-					actualLink := actual.Links[j]
+					actualLink := actual.GetLinks()[j]
 
 					if actualLink.URL != expectedLink.URL {
 						t.Errorf("Item %d, Link %d: Expected URL '%s', got '%s'", i, j, expectedLink.URL, actualLink.URL)

@@ -75,3 +75,12 @@ exported-docs/
 
 # Local testing output directories
 test-output/
+
+# Agent system - local settings only, keep shared configs
+.claude/settings.local.json
+
+# Test results and temporary files
+.test-results/
+*.test-results
+test-*.tmp
+.venv

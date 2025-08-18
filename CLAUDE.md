@@ -30,6 +30,15 @@ go build -o pkm-sync ./cmd
 
 # Development setup
 ./scripts/install-hooks.sh   # Install Git hooks (pre-commit formatting)
+make check-golangci-version  # Verify golangci-lint v2.0+ installation
+
+# GitHub interactions (always use gh CLI)
+gh issue list                 # List repository issues
+gh issue view <number>        # View specific issue
+gh issue create              # Create new issue
+gh pr list                   # List pull requests
+gh pr view <number>          # View specific pull request
+gh pr create                 # Create new pull request
 ```
 
 ## Architecture Overview
@@ -44,9 +53,12 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 
 ### Multi-Source Architecture
 - **Universal interfaces** (`pkg/interfaces/`) for Source, Target, and Transformer abstractions
-- **Universal data model** (`pkg/models/item.go`) for consistent data representation
+- **Universal data model** (`pkg/models/item.go`) with ItemInterface for consistent data representation
+  - **ItemInterface**: Universal interface for all item types with getter/setter methods
+  - **BasicItem**: Standard implementation for emails, calendar events, documents
+  - **Thread**: Specialized implementation for email threads with embedded messages
 - **Source implementations** in `internal/sources/` (Google Calendar, Gmail, Drive)
-- **Target implementations** in `internal/targets/` (Obsidian, Logseq)
+- **Target implementations** in `internal/targets/` (Obsidian, Logseq) with thread-aware formatting
 - **Transformer pipeline** (`internal/transform/`) for configurable item processing
 - **Sync engine** (`internal/sync/`) handles data pipeline with optional transformations
 
@@ -68,7 +80,7 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 
 ### Data Flow
 1. **Multi-source collection**: Sync engine iterates through enabled sources
-2. **Universal data model**: Each source converts data to common `Item` format
+2. **Universal data model**: Each source converts data to common `ItemInterface` format
 3. **Transform pipeline**: Optional processing chain for item modification, filtering, and enhancement
 4. **Source tagging**: Optional tags added to identify data source
 5. **Target export**: Items formatted and exported according to target type
@@ -81,6 +93,13 @@ This is a Go CLI application that provides universal Personal Knowledge Manageme
 - `google.golang.org/api/gmail/v1` - Gmail API
 - `golang.org/x/oauth2/google` - OAuth 2.0 client
 - `gopkg.in/yaml.v3` - YAML configuration parsing
+
+### Development Tools
+- **golangci-lint v2.0+** - Required for v2 configuration format
+  - The `.golangci.yml` uses v2-specific features like `formatters` section
+  - Install: `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
+  - Alternative: `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.4.0`
+  - Verify: `make check-golangci-version`
 
 ## Current Implementation Status
 
@@ -151,10 +170,10 @@ The application uses an automatic web server-based OAuth flow that opens the use
 The transformer pipeline provides a configurable, chainable processing system for items between source fetch and target export. This enables content processing features like filtering, tagging, content cleanup, and future AI analysis.
 
 ### Core Architecture
-- **Transformer Interface**: Simple `Transform(items) -> items` pattern
+- **Transformer Interface**: Simple `Transform([]ItemInterface) -> []ItemInterface` pattern
 - **TransformPipeline**: Chains multiple transformers with configurable error handling
 - **Configuration-driven**: Enable/disable transformers and configure processing order
-- **Backward compatible**: Zero impact when disabled (default state)
+- **Interface-based**: Works seamlessly with ItemInterface system supporting Thread and BasicItem types
 
 ### Configuration Example
 ```yaml
@@ -268,6 +287,29 @@ The pre-commit hook will:
 
 **Without pre-commit hooks:** Pull requests may fail CI checks, requiring additional commits to fix formatting and quality issues. Installing hooks prevents this by catching issues locally before they're pushed.
 
+### GitHub Workflow
+Always use the `gh` CLI for GitHub interactions:
+
+```bash
+# List and manage issues
+gh issue list
+gh issue view <number>
+gh issue create --title "Bug: Description" --body "Details"
+
+# List and manage pull requests  
+gh pr list
+gh pr view <number>
+gh pr create --title "feat: Description" --body "Details"
+gh pr merge <number>
+
+# Repository management
+gh repo view
+gh repo clone <owner/repo>
+gh release list
+```
+
+**Important:** When working with GitHub programmatically or in scripts, always use `gh` CLI commands instead of direct API calls or other GitHub tools.
+
 ### Testing
 ```bash
 # Run all tests
@@ -280,3 +322,202 @@ go test ./internal/sources/google/gmail
 # Run with verbose output
 go test -v ./...
 ```
+
+## Agent Development System
+
+### Agent Coordination Setup
+The repository includes a Claude Code agent coordination system located in `.claude/agents/` for specialized development workflows.
+
+#### Available Agents
+- **feature-architect**: System design and architecture planning
+- **code-implementer**: Implementation of features and fixes
+- **security-analyst**: Security analysis and threat modeling  
+- **performance-optimizer**: Performance analysis and optimization
+- **test-strategist**: Test strategy and quality assurance
+- **bug-hunter**: Debugging and issue resolution
+- **code-reviewer**: Code quality and maintainability review
+- **technical-writer**: Technical documentation creation
+- **documentation-writer**: User-focused documentation and guides
+- **coordinator**: Multi-agent workflow orchestration
+
+#### Agent Configuration Files
+```
+.claude/
+├── agents/              # Agent definitions (committed)
+│   ├── coordinator.md   # Main coordination agent with patterns
+│   ├── feature-architect.md
+│   ├── code-implementer.md
+│   └── ...             # Other specialized agents
+└── settings.local.json  # Local permissions (NOT committed)
+```
+
+### Serena MCP Integration (REQUIRED)
+All agents working on this project must use the Serena MCP server for intelligent code analysis and modification. See `CONTRIBUTING.md` for setup instructions.
+
+#### Key Serena Operations
+```bash
+# Context gathering
+mcp__serena__list_memories                    # Check available context
+mcp__serena__get_symbols_overview <file>      # Understand file structure
+mcp__serena__find_symbol <name> <file>        # Locate specific symbols
+
+# Surgical code modifications
+mcp__serena__replace_symbol_body <symbol> <file> <new_implementation>
+mcp__serena__insert_after_symbol <symbol> <file> <additional_code>
+mcp__serena__insert_before_symbol <symbol> <file> <setup_code>
+
+# Context sharing between agents
+mcp__serena__write_memory "<task_name>_<agent_type>" """
+Agent findings, changes made, performance results, next steps
+"""
+mcp__serena__read_memory "<task_name>_analysis"  # Get previous agent context
+```
+
+### Mandatory CI Compliance
+**CRITICAL**: All agents must ensure `make ci` passes before completing any task involving code changes.
+
+```bash
+# Required CI verification for every task:
+make ci
+
+# This includes:
+# - go fmt (code formatting)  
+# - golangci-lint run (comprehensive linting)
+# - go test ./... (all unit tests with race detection)
+# - go build ./cmd (compilation verification)
+```
+
+### Task Completion Requirements
+**A task is NEVER complete unless ALL conditions are met:**
+
+1. **Implementation**: Complete the requested feature/fix using Serena MCP operations
+2. **CI Verification**: Run `make ci` and ensure exit code is 0
+3. **Context Update**: Update Serena memory with findings and changes
+4. **Cleanup**: Remove temporary files (preserve Serena memories)
+
+#### Required Context Updates
+```bash
+# Task completion summary (REQUIRED)
+mcp__serena__write_memory "<task_name>_completion" """
+## Task Completion Summary
+- Files modified: [list with specific symbols changed]
+- Functions/methods added/updated: [specific symbols]
+- Integration points affected: [interfaces, dependencies]
+- CI status: PASSED
+- Issues encountered & resolved: [specific details]
+- Context for next agent: [handoff information]
+"""
+```
+
+### File Management
+```bash
+# Clean up temporary files (NOT Serena memories)
+rm -f *.tmp *.temp *.log coverage.out cpu.prof mem.prof
+rm -rf temp/ tmp/ .temp_*
+
+# Preserve Serena memories for agent context transfer
+# Do NOT delete: task_architecture, task_implementation, etc.
+```
+
+### Agent Workflow Patterns
+Agents should follow established workflow patterns documented in `.claude/agents/coordinator.md`:
+
+- **Progressive Implementation**: Staged development with handoff points (89% success rate)
+- **Parallel Analysis**: Multiple agents analyze different aspects simultaneously  
+- **Specialized Chains**: Sequential agents for focused tasks (performance, security, debugging)
+- **Technology Detection**: Automatic adaptation to Go, Python, JavaScript, etc.
+
+### Integration with Project Standards
+Agent development follows the same standards as manual development:
+- **Pre-commit hooks**: All code changes go through formatting, linting, and testing
+- **GitHub workflow**: Use `gh` CLI for issue and PR management  
+- **Configuration validation**: Ensure `./pkm-sync config validate` passes
+- **Documentation updates**: Update relevant docs when changing functionality
+
+## Enhanced Agent Coordination
+
+The repository includes enhanced agent coordination capabilities that provide better agent selection, technology adaptation, and fallback strategies within Claude Code. These enhancements build on the existing agent system while maintaining full backward compatibility.
+
+### Coordination Features
+
+- **Technology Detection**: Automatic detection of Go, Python, JavaScript, Rust projects with appropriate tooling
+- **Agent Fallback**: Strategies for when specialist agents aren't available
+- **Proven Patterns**: Workflow patterns based on successful project executions (like Issue #28)
+- **Quality Assurance**: Maintains CI compliance and code quality regardless of agent availability
+
+### Agent Fallback Strategies
+
+When specialist agents aren't available, the coordinator adapts using proven strategies:
+
+- **Security tasks** → feature-architect + security checklists
+- **Performance work** → code-implementer + benchmarking focus  
+- **Bug hunting** → code-implementer + debugging methodology
+- **Documentation** → technical-writer + user-focused templates
+
+The system maintains quality through enhanced validation and testing when specialists are unavailable.
+
+### Technology Adaptation
+
+The coordination system automatically detects project type and adapts accordingly:
+
+```bash
+# Go projects
+TEST_CMD="go test ./..."
+LINT_CMD="golangci-lint run"  
+BUILD_CMD="go build ./cmd"
+
+# Python projects  
+TEST_CMD="pytest"
+LINT_CMD="flake8 . && mypy ."
+BUILD_CMD="python -m build"
+
+# JavaScript projects
+TEST_CMD="npm test"
+LINT_CMD="eslint . && prettier --check ."
+BUILD_CMD="npm run build"
+```
+
+### Usage Examples
+
+#### Coordination Command
+```bash
+# Use the coordinator for complex tasks
+/coordinate "implement Gmail threads API migration"
+```
+
+The coordinator will:
+1. Assess project maturity and constraints
+2. Select appropriate agent workflow pattern  
+3. Adapt commands for detected technology (Go)
+4. Apply fallback strategies if needed
+5. Ensure CI compliance throughout
+
+#### Example Output
+```markdown
+## Coordination Plan: Gmail Threads API Migration
+
+**Pattern**: Progressive Implementation (89% proven success rate)
+**Technology**: Go CLI detected  
+**Duration**: 8-11 hours
+**Agent Sequence**: feature-architect → code-implementer → test-strategist → code-reviewer
+
+**Commands**:
+- Test: go test ./...
+- Lint: golangci-lint run
+- Build: go build ./cmd
+
+**Quality Gates**: 
+- CI must pass: make ci
+- Performance: <5% overhead
+- Backward compatibility: pre-alpha project, breaking changes OK
+```
+## Summary
+
+The enhanced agent coordination system provides practical improvements to Claude Code workflows:
+
+- **Simple, effective**: Technology detection and agent fallback without complexity
+- **Proven patterns**: Based on successful project executions (Issue #28: 89% success rate) 
+- **Backward compatible**: All existing agent functionality preserved
+- **Quality focused**: Maintains CI compliance and code standards
+
+The system enhances coordination effectiveness while remaining simple to understand and use.

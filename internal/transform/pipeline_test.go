@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"pkm-sync/pkg/interfaces"
 	"pkm-sync/pkg/models"
@@ -15,7 +14,7 @@ type MockTransformer struct {
 	name          string
 	shouldFail    bool
 	config        map[string]interface{}
-	TransformFunc func(items []*models.Item) ([]*models.Item, error)
+	TransformFunc func(items []models.ItemInterface) ([]models.ItemInterface, error)
 }
 
 // Compile-time check to ensure MockTransformer implements interfaces.Transformer.
@@ -31,7 +30,7 @@ func (m *MockTransformer) Configure(config map[string]interface{}) error {
 	return nil
 }
 
-func (m *MockTransformer) Transform(items []*models.Item) ([]*models.Item, error) {
+func (m *MockTransformer) Transform(items []models.ItemInterface) ([]models.ItemInterface, error) {
 	if m.TransformFunc != nil {
 		return m.TransformFunc(items)
 	}
@@ -41,11 +40,46 @@ func (m *MockTransformer) Transform(items []*models.Item) ([]*models.Item, error
 	}
 
 	// Add a tag to indicate this transformer ran
-	transformedItems := make([]*models.Item, len(items))
+	transformedItems := make([]models.ItemInterface, len(items))
+
 	for i, item := range items {
-		transformedItem := *item
-		transformedItem.Tags = append(transformedItem.Tags, "transformed_by_"+m.name)
-		transformedItems[i] = &transformedItem
+		// Create a copy with the new tag
+		var newItem models.ItemInterface
+
+		if thread, isThread := models.AsThread(item); isThread {
+			newThread := models.NewThread(thread.GetID(), thread.GetTitle())
+			newThread.SetContent(thread.GetContent())
+			newThread.SetSourceType(thread.GetSourceType())
+			newThread.SetItemType(thread.GetItemType())
+			newThread.SetCreatedAt(thread.GetCreatedAt())
+			newThread.SetUpdatedAt(thread.GetUpdatedAt())
+			newThread.SetAttachments(thread.GetAttachments())
+			newThread.SetMetadata(thread.GetMetadata())
+			newThread.SetLinks(thread.GetLinks())
+
+			for _, msg := range thread.GetMessages() {
+				newThread.AddMessage(msg)
+			}
+
+			newTags := append(thread.GetTags(), "transformed_by_"+m.name)
+			newThread.SetTags(newTags)
+			newItem = newThread
+		} else {
+			newBasicItem := models.NewBasicItem(item.GetID(), item.GetTitle())
+			newBasicItem.SetContent(item.GetContent())
+			newBasicItem.SetSourceType(item.GetSourceType())
+			newBasicItem.SetItemType(item.GetItemType())
+			newBasicItem.SetCreatedAt(item.GetCreatedAt())
+			newBasicItem.SetUpdatedAt(item.GetUpdatedAt())
+			newBasicItem.SetAttachments(item.GetAttachments())
+			newBasicItem.SetMetadata(item.GetMetadata())
+			newBasicItem.SetLinks(item.GetLinks())
+			newTags := append(item.GetTags(), "transformed_by_"+m.name)
+			newBasicItem.SetTags(newTags)
+			newItem = newBasicItem
+		}
+
+		transformedItems[i] = newItem
 	}
 
 	return transformedItems, nil
@@ -184,8 +218,8 @@ func TestTransformDisabled(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item"},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item"}),
 	}
 
 	result, err := pipeline.Transform(items)
@@ -197,8 +231,8 @@ func TestTransformDisabled(t *testing.T) {
 		t.Errorf("Expected 1 item, got %d", len(result))
 	}
 
-	if result[0] != items[0] {
-		t.Error("Expected same item reference when disabled")
+	if result[0].GetID() != items[0].GetID() {
+		t.Error("Expected same item when disabled")
 	}
 }
 
@@ -217,8 +251,8 @@ func TestTransformSuccess(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item", Tags: []string{}},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item", Tags: []string{}}),
 	}
 
 	result, err := pipeline.Transform(items)
@@ -231,8 +265,8 @@ func TestTransformSuccess(t *testing.T) {
 	}
 
 	item := result[0]
-	if len(item.Tags) != 2 {
-		t.Errorf("Expected 2 tags, got %d", len(item.Tags))
+	if len(item.GetTags()) != 2 {
+		t.Errorf("Expected 2 tags, got %d", len(item.GetTags()))
 	}
 
 	expectedTags := map[string]bool{
@@ -240,7 +274,7 @@ func TestTransformSuccess(t *testing.T) {
 		"transformed_by_transformer2": true,
 	}
 
-	for _, tag := range item.Tags {
+	for _, tag := range item.GetTags() {
 		if !expectedTags[tag] {
 			t.Errorf("Unexpected tag: %s", tag)
 		}
@@ -262,8 +296,8 @@ func TestTransformFailFast(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item", Tags: []string{}},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item", Tags: []string{}}),
 	}
 
 	_, err := pipeline.Transform(items)
@@ -289,8 +323,8 @@ func TestTransformLogAndContinue(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item", Tags: []string{}},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item", Tags: []string{}}),
 	}
 
 	result, err := pipeline.Transform(items)
@@ -305,7 +339,7 @@ func TestTransformLogAndContinue(t *testing.T) {
 	hasTransformer1Tag := false
 	hasTransformer3Tag := false
 
-	for _, tag := range item.Tags {
+	for _, tag := range item.GetTags() {
 		if tag == "transformed_by_transformer1" {
 			hasTransformer1Tag = true
 		}
@@ -333,9 +367,9 @@ func TestTransformLogAndContinueWithPartialSuccess(t *testing.T) {
 	transformer1 := &MockTransformer{name: "transformer1"}
 	failingTransformer := &MockTransformer{
 		name: "failing_transformer",
-		TransformFunc: func(items []*models.Item) ([]*models.Item, error) {
+		TransformFunc: func(items []models.ItemInterface) ([]models.ItemInterface, error) {
 			// Partially succeeds, returns one item and an error
-			return []*models.Item{items[0]}, fmt.Errorf("partial failure")
+			return []models.ItemInterface{items[0]}, fmt.Errorf("partial failure")
 		},
 	}
 	transformer3 := &MockTransformer{name: "transformer3"}
@@ -351,9 +385,9 @@ func TestTransformLogAndContinueWithPartialSuccess(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item", Tags: []string{}},
-		{ID: "2", Title: "Another Item", Tags: []string{}},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item", Tags: []string{}}),
+		models.AsItemInterface(&models.Item{ID: "2", Title: "Another Item", Tags: []string{}}),
 	}
 
 	result, err := pipeline.Transform(items)
@@ -366,8 +400,8 @@ func TestTransformLogAndContinueWithPartialSuccess(t *testing.T) {
 	}
 
 	// Check that transformer3 ran on the result from transformer1
-	if len(result[0].Tags) != 2 {
-		t.Errorf("Expected 2 tags on the item, got %d", len(result[0].Tags))
+	if len(result[0].GetTags()) != 2 {
+		t.Errorf("Expected 2 tags on the item, got %d", len(result[0].GetTags()))
 	}
 }
 
@@ -388,8 +422,8 @@ func TestTransformSkipItem(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item", Tags: []string{}},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item", Tags: []string{}}),
 	}
 
 	result, err := pipeline.Transform(items)
@@ -406,7 +440,7 @@ func TestTransformPanicHandling(t *testing.T) {
 	pipeline := NewPipeline()
 	panickingTransformer := &MockTransformer{name: "panicker", shouldFail: true}
 	// Overwrite the transform function to cause a panic
-	panickingTransformer.TransformFunc = func(items []*models.Item) ([]*models.Item, error) {
+	panickingTransformer.TransformFunc = func(items []models.ItemInterface) ([]models.ItemInterface, error) {
 		panic("test panic")
 	}
 
@@ -419,8 +453,8 @@ func TestTransformPanicHandling(t *testing.T) {
 	}
 	pipeline.Configure(config)
 
-	items := []*models.Item{
-		{ID: "1", Title: "Test Item"},
+	items := []models.ItemInterface{
+		models.AsItemInterface(&models.Item{ID: "1", Title: "Test Item"}),
 	}
 
 	_, err := pipeline.Transform(items)
@@ -454,19 +488,5 @@ func TestGetRegisteredTransformers(t *testing.T) {
 
 	if !nameMap["transformer1"] || !nameMap["transformer2"] {
 		t.Error("Missing expected transformer names")
-	}
-}
-
-func createTestItem(id, title, content string) *models.Item {
-	return &models.Item{
-		ID:         id,
-		Title:      title,
-		Content:    content,
-		SourceType: "test",
-		ItemType:   "test_item",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		Tags:       []string{},
-		Metadata:   make(map[string]interface{}),
 	}
 }
