@@ -11,6 +11,7 @@ import (
 	"pkm-sync/internal/sources/google/drive"
 
 	"github.com/spf13/cobra"
+	"github.com/tj/go-naturaldate"
 )
 
 var (
@@ -26,7 +27,11 @@ var driveCmd = &cobra.Command{
 You can export docs from:
 - A specific calendar event by ID
 - All events in a date range
-- Today's events (default)`,
+- Today's events (default)
+
+Date formats supported:
+- Absolute dates: 2006-01-02, 2006-01-02T15:04:05
+- Relative dates: today, yesterday, tomorrow, next week, 5 days ago, last month`,
 	RunE: runDriveCommand,
 }
 
@@ -159,7 +164,7 @@ func getDriveExportDateRange() (time.Time, time.Time, error) {
 	)
 
 	if startDate != "" {
-		start, err = time.Parse("2006-01-02", startDate)
+		start, err = naturaldate.Parse(startDate, time.Now())
 		if err != nil {
 			return start, end, fmt.Errorf("invalid start date format: %w", err)
 		}
@@ -168,7 +173,7 @@ func getDriveExportDateRange() (time.Time, time.Time, error) {
 	}
 
 	if endDate != "" {
-		end, err = time.Parse("2006-01-02", endDate)
+		end, err = naturaldate.Parse(endDate, time.Now())
 		if err != nil {
 			return start, end, fmt.Errorf("invalid end date format: %w", err)
 		}
