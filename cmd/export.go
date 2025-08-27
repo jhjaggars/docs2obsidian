@@ -11,13 +11,12 @@ import (
 	"pkm-sync/internal/sources/google/drive"
 
 	"github.com/spf13/cobra"
+	"github.com/tj/go-naturaldate"
 )
 
 var (
 	driveOutputDir string
 	driveEventID   string
-	driveStartDate string
-	driveEndDate   string
 )
 
 var driveCmd = &cobra.Command{
@@ -28,7 +27,11 @@ var driveCmd = &cobra.Command{
 You can export docs from:
 - A specific calendar event by ID
 - All events in a date range
-- Today's events (default)`,
+- Today's events (default)
+
+Date formats supported:
+- Absolute dates: 2006-01-02, 2006-01-02T15:04:05
+- Relative dates: today, yesterday, tomorrow, next week, 5 days ago, last month`,
 	RunE: runDriveCommand,
 }
 
@@ -36,8 +39,6 @@ func init() {
 	rootCmd.AddCommand(driveCmd)
 	driveCmd.Flags().StringVarP(&driveOutputDir, "output", "o", "./exported-docs", "Output directory for exported markdown files")
 	driveCmd.Flags().StringVar(&driveEventID, "event-id", "", "Export docs from specific event ID")
-	driveCmd.Flags().StringVar(&driveStartDate, "start", "", "Start date for range export (YYYY-MM-DD)")
-	driveCmd.Flags().StringVar(&driveEndDate, "end", "", "End date for range export (YYYY-MM-DD)")
 }
 
 func runDriveCommand(cmd *cobra.Command, args []string) error {
@@ -162,8 +163,8 @@ func getDriveExportDateRange() (time.Time, time.Time, error) {
 		err        error
 	)
 
-	if driveStartDate != "" {
-		start, err = time.Parse("2006-01-02", driveStartDate)
+	if startDate != "" {
+		start, err = naturaldate.Parse(startDate, time.Now())
 		if err != nil {
 			return start, end, fmt.Errorf("invalid start date format: %w", err)
 		}
@@ -171,8 +172,8 @@ func getDriveExportDateRange() (time.Time, time.Time, error) {
 		start = time.Now().Truncate(24 * time.Hour)
 	}
 
-	if driveEndDate != "" {
-		end, err = time.Parse("2006-01-02", driveEndDate)
+	if endDate != "" {
+		end, err = naturaldate.Parse(endDate, time.Now())
 		if err != nil {
 			return start, end, fmt.Errorf("invalid end date format: %w", err)
 		}

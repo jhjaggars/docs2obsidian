@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"pkm-sync/pkg/models"
 
 	"github.com/spf13/cobra"
+	"github.com/tj/go-naturaldate"
 )
 
 var (
@@ -34,10 +34,16 @@ var gmailCmd = &cobra.Command{
 	Use:   "gmail",
 	Short: "Sync Gmail emails to PKM systems",
 	Long: `Sync Gmail emails to PKM targets (obsidian, logseq, etc.)
+
+Since formats supported:
+- Duration formats: 7d, 24h, 5m (relative to now)
+- Natural language: today, yesterday, tomorrow, next week, 5 days ago, last month
+- Absolute dates: 2006-01-02, 2006-01-02T15:04:05
     
 Examples:
   pkm-sync gmail --source gmail_work --target obsidian --output ./vault
   pkm-sync gmail --source gmail_personal --target logseq --output ./graph --since 7d
+  pkm-sync gmail --source gmail_work --target obsidian --since "last week"
   pkm-sync gmail --source gmail_work --target obsidian --dry-run`,
 	RunE: runGmailCommand,
 }
@@ -343,36 +349,13 @@ func createTargetWithConfig(name string, cfg *models.Config) (interfaces.Target,
 }
 
 func parseSinceTime(since string) (time.Time, error) {
-	now := time.Now()
-
-	switch since {
-	case "today":
-		return now.Truncate(24 * time.Hour), nil
-	case "yesterday":
-		return now.Add(-24 * time.Hour).Truncate(24 * time.Hour), nil
+	if since == "" {
+		return time.Time{}, fmt.Errorf("since time cannot be empty")
 	}
 
-	// Try relative duration (7d, 2h, etc.)
-	// Go's ParseDuration doesn't handle "d" for days, so convert explicitly
-	if strings.HasSuffix(since, "d") {
-		daysStr := strings.TrimSuffix(since, "d")
-		if daysInt, err := strconv.Atoi(daysStr); err == nil && daysInt >= 0 {
-			daysDuration := time.Duration(daysInt) * 24 * time.Hour
-
-			return now.Add(-daysDuration), nil
-		}
-	}
-
-	if duration, err := time.ParseDuration(since); err == nil {
-		return now.Add(-duration), nil
-	}
-
-	// Try absolute date
-	if t, err := time.Parse("2006-01-02", since); err == nil {
-		return t, nil
-	}
-
-	return time.Time{}, fmt.Errorf("unable to parse since time '%s': supported formats are 'today', 'yesterday', relative durations (7d, 24h), or absolute dates (2006-01-02)", since)
+	// Use go-naturaldate directly for all date parsing
+	// This provides consistent behavior across all CLI commands
+	return naturaldate.Parse(since, time.Now())
 }
 
 // getEnabledSources returns list of sources that are enabled in the configuration.
