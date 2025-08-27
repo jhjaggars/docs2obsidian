@@ -14,6 +14,7 @@ import (
 	"pkm-sync/pkg/models"
 
 	"github.com/spf13/cobra"
+	"github.com/tj/go-naturaldate"
 	"google.golang.org/api/calendar/v3"
 )
 
@@ -23,11 +24,17 @@ var calendarCmd = &cobra.Command{
 	Long: `Fetches and displays calendar events from your Google Calendar within a specified date range.
 
 By default, shows events from the beginning of the current week to the end of today.
-Supports flexible date formats including ISO 8601 dates and relative dates like 'today', 'tomorrow', 'yesterday'.
+Supports flexible date formats including absolute dates and natural language expressions.
+
+Date formats supported:
+- Absolute dates: 2006-01-02, 2006-01-02T15:04:05
+- Natural language: today, yesterday, tomorrow, next week, 5 days ago, last month
 
 Examples:
   pkm-sync calendar                           # Current week to today
   pkm-sync calendar --start today            # Today only  
+  pkm-sync calendar --start "next week"      # Next week's events
+  pkm-sync calendar --start "5 days ago"     # Last 5 days
   pkm-sync calendar --start 2025-01-01 --end 2025-01-31
   pkm-sync calendar --include-details        # Show meeting URLs, attendees, etc.
   pkm-sync calendar --export-docs            # Export attached Google Docs to markdown
@@ -78,37 +85,9 @@ func parseDate(dateStr string) (time.Time, error) {
 		return time.Time{}, nil
 	}
 
-	// Handle relative dates.
-	now := time.Now()
-
-	switch dateStr {
-	case "today":
-		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()), nil
-	case "tomorrow":
-		tomorrow := now.AddDate(0, 0, 1)
-
-		return time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 0, 0, 0, 0, tomorrow.Location()), nil
-	case "yesterday":
-		yesterday := now.AddDate(0, 0, -1)
-
-		return time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location()), nil
-	}
-
-	// Try parsing ISO 8601 date formats.
-	formats := []string{
-		"2006-01-02T15:04:05",
-		"2006-01-02T15:04:05Z",
-		"2006-01-02T15:04:05-07:00",
-		"2006-01-02",
-	}
-
-	for _, format := range formats {
-		if t, err := time.Parse(format, dateStr); err == nil {
-			return t, nil
-		}
-	}
-
-	return time.Time{}, fmt.Errorf("unable to parse date: %s. Supported formats: YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS, 'today', 'tomorrow', 'yesterday'", dateStr)
+	// Use go-naturaldate directly for all date parsing
+	// This provides consistent behavior across all CLI commands
+	return naturaldate.Parse(dateStr, time.Now())
 }
 
 // getDateRange returns the start and end dates for the calendar query.
