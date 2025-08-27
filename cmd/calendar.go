@@ -37,8 +37,6 @@ Examples:
 
 // Calendar command flags.
 var (
-	startDate      string
-	endDate        string
 	maxResults     int64
 	outputFormat   string
 	includeDetails bool
@@ -390,9 +388,7 @@ func displayEventsAsJSON(events []*calendar.Event, calendarService *internalcale
 func init() {
 	rootCmd.AddCommand(calendarCmd)
 
-	// Date range flags.
-	calendarCmd.Flags().StringVarP(&startDate, "start", "s", "", "Start date (e.g., '2025-01-20', 'today')")
-	calendarCmd.Flags().StringVarP(&endDate, "end", "e", "", "End date (e.g., '2025-01-21', 'tomorrow')")
+	// Command-specific flags.
 	calendarCmd.Flags().Int64VarP(&maxResults, "max-results", "n", 50, "Maximum number of events to return")
 
 	// Output and formatting flags.

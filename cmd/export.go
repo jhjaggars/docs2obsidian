@@ -16,8 +16,6 @@ import (
 var (
 	driveOutputDir string
 	driveEventID   string
-	driveStartDate string
-	driveEndDate   string
 )
 
 var driveCmd = &cobra.Command{
@@ -36,8 +34,6 @@ func init() {
 	rootCmd.AddCommand(driveCmd)
 	driveCmd.Flags().StringVarP(&driveOutputDir, "output", "o", "./exported-docs", "Output directory for exported markdown files")
 	driveCmd.Flags().StringVar(&driveEventID, "event-id", "", "Export docs from specific event ID")
-	driveCmd.Flags().StringVar(&driveStartDate, "start", "", "Start date for range export (YYYY-MM-DD)")
-	driveCmd.Flags().StringVar(&driveEndDate, "end", "", "End date for range export (YYYY-MM-DD)")
 }
 
 func runDriveCommand(cmd *cobra.Command, args []string) error {
@@ -162,8 +158,8 @@ func getDriveExportDateRange() (time.Time, time.Time, error) {
 		err        error
 	)
 
-	if driveStartDate != "" {
-		start, err = time.Parse("2006-01-02", driveStartDate)
+	if startDate != "" {
+		start, err = time.Parse("2006-01-02", startDate)
 		if err != nil {
 			return start, end, fmt.Errorf("invalid start date format: %w", err)
 		}
@@ -171,8 +167,8 @@ func getDriveExportDateRange() (time.Time, time.Time, error) {
 		start = time.Now().Truncate(24 * time.Hour)
 	}
 
-	if driveEndDate != "" {
-		end, err = time.Parse("2006-01-02", driveEndDate)
+	if endDate != "" {
+		end, err = time.Parse("2006-01-02", endDate)
 		if err != nil {
 			return start, end, fmt.Errorf("invalid end date format: %w", err)
 		}
